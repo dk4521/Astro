@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.pytest_cache/
+
+# Node / Expo
+node_modules/
+.expo/
+dist/
+*.log
+
+# JPL ephemeris kernels — 32 MB binaries, fetched at build time by
+# backend/scripts/fetch_ephemeris.py rather than committed.
+*.bsp
+
+# Environment
+.env
+.env.local
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/

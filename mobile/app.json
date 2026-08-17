@@ -1,0 +1,41 @@
+{
+  "expo": {
+    "name": "Kosmiq",
+    "slug": "kosmiq",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "kosmiq",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "backgroundColor": "#0B0A14",
+      "resizeMode": "contain",
+      "image": "./assets/splash-icon.png"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.kosmiq.app"
+    },
+    "android": {
+      "package": "com.kosmiq.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#0B0A14",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "extra": {
+      "apiBaseUrl": "http://localhost:8000"
+    }
+  }
+}

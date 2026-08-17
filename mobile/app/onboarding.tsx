@@ -1,0 +1,302 @@
+/**
+ * Birth details capture.
+ *
+ * Three facts decide every number the app will ever show: date, exact local
+ * time, and place. The form is deliberately plain about that — precision here
+ * is the whole product, and the lagna moves a full sign roughly every two
+ * hours, so a vague time is worth saying out loud.
+ */
+
+import { useRouter } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { searchPlaces } from '../src/api/client';
+import { saveBirthDetails } from '../src/api/storage';
+import type { Place } from '../src/api/types';
+import { Button, ErrorNote, Label } from '../src/components/ui';
+import { colors, radius, space, type } from '../src/theme';
+
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_PATTERN = /^\d{2}:\d{2}$/;
+
+/** Validate a calendar date, rejecting things like 2001-02-30. */
+function isRealDate(value: string): boolean {
+  if (!DATE_PATTERN.test(value)) return false;
+  const [year, month, day] = value.split('-').map(Number);
+  if (month < 1 || month > 12 || day < 1) return false;
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day &&
+    year >= 1800 &&
+    date.getTime() <= Date.now()
+  );
+}
+
+function isRealTime(value: string): boolean {
+  if (!TIME_PATTERN.test(value)) return false;
+  const [hours, minutes] = value.split(':').map(Number);
+  return hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59;
+}
+
+export default function Onboarding() {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+
+  const [date, setDate] = useState('');
+  const [time, setTime] = useState('');
+  const [placeQuery, setPlaceQuery] = useState('');
+  const [place, setPlace] = useState<Place | null>(null);
+  const [results, setResults] = useState<Place[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  // Debounce so a fast typist does not fire a request per keystroke.
+  const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const requestId = useRef(0);
+
+  useEffect(() => {
+    if (place && placeQuery === `${place.name}, ${place.admin}`) return;
+
+    if (debounce.current) clearTimeout(debounce.current);
+
+    const query = placeQuery.trim();
+    if (query.length < 2) {
+      setResults([]);
+      setSearching(false);
+      return;
+    }
+
+    setSearching(true);
+    debounce.current = setTimeout(async () => {
+      const id = ++requestId.current;
+      try {
+        const found = await searchPlaces(query);
+        // Ignore a response that a newer keystroke has already superseded.
+        if (id === requestId.current) {
+          setResults(found);
+          setError(null);
+        }
+      } catch (err) {
+        if (id === requestId.current) {
+          setResults([]);
+          setError(err instanceof Error ? err.message : 'Place search failed');
+        }
+      } finally {
+        if (id === requestId.current) setSearching(false);
+      }
+    }, 250);
+
+    return () => {
+      if (debounce.current) clearTimeout(debounce.current);
+    };
+  }, [placeQuery, place]);
+
+  const selectPlace = useCallback((selected: Place) => {
+    setPlace(selected);
+    setPlaceQuery(`${selected.name}, ${selected.admin}`);
+    setResults([]);
+  }, []);
+
+  const dateValid = isRealDate(date);
+  const timeValid = isRealTime(time);
+  const ready = dateValid && timeValid && place !== null;
+
+  const submit = useCallback(async () => {
+    if (!ready || !place) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await saveBirthDetails({
+        date,
+        time,
+        latitude: place.latitude,
+        longitude: place.longitude,
+        place: `${place.name}, ${place.admin}`,
+      });
+      router.replace('/chart');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save your details');
+      setSaving(false);
+    }
+  }, [ready, place, date, time, router]);
+
+  return (
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <ScrollView
+        contentContainerStyle={[
+          styles.content,
+          { paddingTop: insets.top + space.xl, paddingBottom: insets.bottom + space.xl },
+        ]}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Text style={styles.kicker}>Kosmiq</Text>
+        <Text style={styles.title}>Your birth chart{'\n'}starts with three facts.</Text>
+        <Text style={styles.subtitle}>
+          Everything is computed from the Swiss Ephemeris — the same astronomical data
+          used by observatories. No guesswork.
+        </Text>
+
+        <View style={styles.field}>
+          <Label>Date of birth</Label>
+          <TextInput
+            style={[styles.input, date.length > 0 && !dateValid && styles.inputError]}
+            value={date}
+            onChangeText={setDate}
+            placeholder="YYYY-MM-DD"
+            placeholderTextColor={colors.textFaint}
+            keyboardType="numbers-and-punctuation"
+            autoCorrect={false}
+            maxLength={10}
+          />
+          {date.length > 0 && !dateValid ? (
+            <Text style={styles.hintError}>Use YYYY-MM-DD, e.g. 1998-04-23</Text>
+          ) : null}
+        </View>
+
+        <View style={styles.field}>
+          <Label>Time of birth</Label>
+          <TextInput
+            style={[styles.input, time.length > 0 && !timeValid && styles.inputError]}
+            value={time}
+            onChangeText={setTime}
+            placeholder="HH:MM  (24-hour)"
+            placeholderTextColor={colors.textFaint}
+            keyboardType="numbers-and-punctuation"
+            autoCorrect={false}
+            maxLength={5}
+          />
+          <Text style={time.length > 0 && !timeValid ? styles.hintError : styles.hint}>
+            {time.length > 0 && !timeValid
+              ? 'Use 24-hour HH:MM, e.g. 07:42'
+              : 'Local clock time where you were born. The lagna shifts a whole sign every ~2 hours.'}
+          </Text>
+        </View>
+
+        <View style={styles.field}>
+          <Label>Place of birth</Label>
+          <View>
+            <TextInput
+              style={styles.input}
+              value={placeQuery}
+              onChangeText={(text) => {
+                setPlaceQuery(text);
+                setPlace(null);
+              }}
+              placeholder="Search a city"
+              placeholderTextColor={colors.textFaint}
+              autoCorrect={false}
+            />
+            {searching ? (
+              <ActivityIndicator style={styles.inputSpinner} color={colors.textFaint} />
+            ) : null}
+          </View>
+
+          {results.length > 0 ? (
+            <View style={styles.results}>
+              {results.map((item) => (
+                <Pressable
+                  key={`${item.name}-${item.latitude}-${item.longitude}`}
+                  accessibilityRole="button"
+                  onPress={() => selectPlace(item)}
+                  style={({ pressed }) => [styles.result, pressed && styles.resultPressed]}
+                >
+                  <Text style={styles.resultName}>{item.name}</Text>
+                  <Text style={styles.resultMeta}>
+                    {item.admin} · {item.country}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
+
+          {place ? (
+            <Text style={styles.hint}>
+              {place.latitude.toFixed(4)}°, {place.longitude.toFixed(4)}° — timezone
+              resolved automatically, including historical offsets.
+            </Text>
+          ) : null}
+        </View>
+
+        {error ? (
+          <View style={styles.errorSlot}>
+            <ErrorNote message={error} />
+          </View>
+        ) : null}
+
+        <View style={styles.actions}>
+          <Button
+            title="Cast my chart"
+            onPress={submit}
+            disabled={!ready}
+            loading={saving}
+          />
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
+}
+
+const styles = StyleSheet.create({
+  flex: { flex: 1, backgroundColor: colors.bg },
+  content: { paddingHorizontal: space.lg, gap: space.sm },
+  kicker: { ...type.label, color: colors.accent, marginBottom: space.md },
+  title: { ...type.display, color: colors.text, marginBottom: space.sm },
+  subtitle: {
+    ...type.body,
+    color: colors.textMuted,
+    lineHeight: 22,
+    marginBottom: space.xl,
+  },
+  field: { marginBottom: space.lg },
+  input: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+    paddingHorizontal: space.md,
+    paddingVertical: space.md,
+    color: colors.text,
+    fontSize: 16,
+  },
+  inputError: { borderColor: colors.combust },
+  inputSpinner: { position: 'absolute', right: space.md, top: 0, bottom: 0 },
+  hint: { ...type.mono, color: colors.textFaint, marginTop: space.sm, lineHeight: 18 },
+  hintError: { ...type.mono, color: colors.combust, marginTop: space.sm },
+  results: {
+    marginTop: space.sm,
+    backgroundColor: colors.surfaceRaised,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: 'hidden',
+  },
+  result: {
+    paddingHorizontal: space.md,
+    paddingVertical: space.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  resultPressed: { backgroundColor: colors.accentDim },
+  resultName: { ...type.body, color: colors.text, fontWeight: '600' },
+  resultMeta: { ...type.mono, color: colors.textFaint, marginTop: 2 },
+  errorSlot: { marginBottom: space.md },
+  actions: { marginTop: space.md },
+});

@@ -1,0 +1,30 @@
+[project]
+name = "jyotish-backend"
+version = "0.1.0"
+description = "Deterministic Vedic astrology engine + API"
+# No upper bound: every dependency is pure Python or ships current wheels, so
+# the engine is no longer pinned to a CPython version by a C extension.
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "skyfield>=1.49",
+    "pydantic>=2.9",
+    "timezonefinder>=6.5",
+    "google-genai>=2.18",
+    "python-dotenv>=1.0",
+]
+
+# Without this, setuptools' flat-layout autodiscovery sees `data/` (the
+# ephemeris kernel) as a second top-level package and refuses to build.
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "httpx>=0.27",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
