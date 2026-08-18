@@ -12,7 +12,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -136,10 +135,10 @@ export default function Onboarding() {
   }, [ready, place, date, time, router]);
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    // Android needs `padding` as much as iOS does here: with edge-to-edge the
+    // window no longer resizes for the keyboard, and the place field — the last
+    // one in the form — sat underneath it along with its search results.
+    <KeyboardAvoidingView style={styles.flex} behavior="padding">
       <ScrollView
         contentContainerStyle={[
           styles.content,
@@ -150,8 +149,8 @@ export default function Onboarding() {
         <Text style={styles.kicker}>Kosmiq</Text>
         <Text style={styles.title}>Your birth chart{'\n'}starts with three facts.</Text>
         <Text style={styles.subtitle}>
-          Everything is computed from the Swiss Ephemeris — the same astronomical data
-          used by observatories. No guesswork.
+          Everything is computed from NASA JPL's planetary ephemeris — the same
+          astronomical data observatories use. No guesswork.
         </Text>
 
         <View style={styles.field}>

@@ -213,3 +213,81 @@ class PlaceOut(BaseModel):
     @property
     def label(self) -> str:
         return f"{self.name}, {self.admin}"
+
+
+# --- Course -----------------------------------------------------------------
+
+
+class CourseEntryOut(BaseModel):
+    """One row of the course index. Deliberately small: the index is fetched on
+    every visit to the Learn screen, the chapters are not."""
+
+    slug: str
+    number: int
+    part: str
+    title: str
+    summary: str
+    minutes: int
+    level: Literal["basic", "intermediate"]
+
+
+class CourseIndexOut(BaseModel):
+    language: str
+    chapters: list[CourseEntryOut]
+    total_minutes: int
+
+
+class CourseSectionOut(BaseModel):
+    heading: str
+    body: list[str]
+    aside: str | None = None
+
+
+class ChapterOut(BaseModel):
+    slug: str
+    number: int
+    part: str
+    title: str
+    summary: str
+    minutes: int
+    level: Literal["basic", "intermediate"]
+    language: str
+    sections: list[CourseSectionOut]
+    next_slug: str | None = None
+    in_your_chart: str | None = Field(
+        default=None,
+        description=(
+            "The chapter's idea located in the requested chart, computed by the "
+            "engine. Null when no birth details were sent, or when this chart "
+            "has no example of the idea — an honest gap, never an invented one."
+        ),
+    )
+
+
+class ChapterRequest(BaseModel):
+    """Birth details are optional: the chapter reads without them, it is only
+    the personalised line that needs a chart."""
+
+    birth: BirthDetails | None = None
+
+
+# --- Today ------------------------------------------------------------------
+
+
+class TodayResponse(BaseModel):
+    """The sky right now, plus where the reader is in their own timeline.
+
+    Entirely deterministic — no model, no cost, no quota. That is what makes it
+    safe to open several times a day.
+    """
+
+    as_of: dt.datetime
+    timezone: str
+    place: str | None
+    panchang: PanchangResponse
+    moon_rashi: str
+    moon_nakshatra: str
+    sun_rashi: str
+    active: list[DashaPeriodOut]
+    birth_moon_rashi: str
+    birth_nakshatra: str

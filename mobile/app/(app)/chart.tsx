@@ -20,12 +20,13 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { fetchReading } from '../src/api/client';
-import { clearBirthDetails, loadBirthDetails } from '../src/api/storage';
-import type { BirthDetails, DashaPeriod, Reading } from '../src/api/types';
-import { KundliChart } from '../src/components/KundliChart';
-import { Button, Card, Chip, ErrorNote, Label, Row } from '../src/components/ui';
-import { colors, space, type } from '../src/theme';
+import { fetchReading } from '../../src/api/client';
+import { loadBirthDetails } from '../../src/api/storage';
+import type { BirthDetails, DashaPeriod, Reading } from '../../src/api/types';
+import { KundliChart } from '../../src/components/KundliChart';
+import { ScreenHeader } from '../../src/components/ScreenHeader';
+import { Button, Card, Chip, ErrorNote, Label, Row } from '../../src/components/ui';
+import { colors, space, type } from '../../src/theme';
 
 function formatDate(iso: string): string {
   const date = new Date(iso);
@@ -106,11 +107,6 @@ export default function ChartScreen() {
     setRefreshing(false);
   }, [details, load]);
 
-  const startOver = useCallback(async () => {
-    await clearBirthDetails();
-    router.replace('/onboarding');
-  }, [router]);
-
   if (loading) {
     return (
       <View style={styles.loading}>
@@ -121,11 +117,13 @@ export default function ChartScreen() {
   }
 
   return (
-    <ScrollView
+    <View style={styles.flex}>
+      <ScreenHeader bordered={false} />
+      <ScrollView
       style={styles.flex}
       contentContainerStyle={[
         styles.content,
-        { paddingTop: insets.top + space.lg, paddingBottom: insets.bottom + space.xxl },
+        { paddingTop: space.md, paddingBottom: insets.bottom + space.xxl },
       ]}
       refreshControl={
         <RefreshControl
@@ -159,6 +157,13 @@ export default function ChartScreen() {
             <KundliChart chart={reading.chart} />
             <Text style={styles.caption}>
               North Indian chart · numbers are rashis, not houses
+            </Text>
+          </View>
+
+          <View style={styles.section}>
+            <Button title="Read my chart in words" onPress={() => router.push('/reading')} />
+            <Text style={styles.caption}>
+              Explained in plain language, then checked back against the numbers above.
             </Text>
           </View>
 
@@ -244,12 +249,10 @@ export default function ChartScreen() {
             </Text>
           </View>
 
-          <View style={styles.section}>
-            <Button title="Use different birth details" onPress={startOver} variant="ghost" />
-          </View>
         </>
       ) : null}
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 

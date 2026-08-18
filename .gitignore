@@ -23,3 +23,7 @@ dist/
 .DS_Store
 .idea/
 .vscode/
+
+# Supabase keys — never committed
+mobile/.env
+mobile/.env.local

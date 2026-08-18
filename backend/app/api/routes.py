@@ -9,20 +9,26 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
-from .. import ai, places
+from .. import ai, course, places
 from ..ai import grounding
 from ..astro import build_chart, navamsa_chart, panchang_for, vimshottari
 from ..astro.chart import Chart, Placement
 from ..astro.dasha import DashaPeriod
 from ..schemas import (
     BirthDetails,
+    ChapterOut,
+    ChapterRequest,
     ChartMeta,
     ChartResponse,
     ChatRequest,
+    CourseEntryOut,
+    CourseIndexOut,
+    CourseSectionOut,
     DashaPeriodOut,
     DashaResponse,
     GrahaOut,
@@ -32,6 +38,7 @@ from ..schemas import (
     PlaceOut,
     PlacementOut,
     ReadingResponse,
+    TodayResponse,
 )
 
 router = APIRouter()
@@ -292,3 +299,133 @@ def place_search(
     limit: int = Query(default=10, ge=1, le=50),
 ) -> list[PlaceOut]:
     return places.search(q, limit)
+
+
+# --- Today ------------------------------------------------------------------
+
+
+@router.post("/today", response_model=TodayResponse, summary="The sky now, and your period")
+def today(details: BirthDetails) -> TodayResponse:
+    """Panchang for this moment at the reader's place, plus their active dasha.
+
+    Two charts are cast, not one: the natal chart, which the dasha timeline runs
+    from, and a chart for *now* at the same coordinates, which is where today's
+    panchang comes from. A panchang is a property of a moment and a place, and
+    the reader's birth place is the only location the app knows.
+
+    Deterministic all the way down — no model, no quota, no cost. That is the
+    point: this is the screen a user can open several times a day.
+    """
+    natal = _build(details)
+
+    now_utc = dt.datetime.now(dt.timezone.utc)
+    now_local = now_utc.astimezone(ZoneInfo(natal.timezone)).replace(tzinfo=None)
+    sky = build_chart(now_local, details.latitude, details.longitude, natal.timezone)
+
+    moon = sky.grahas["Moon"]
+    sun = sky.grahas["Sun"]
+
+    return TodayResponse(
+        as_of=now_utc,
+        timezone=natal.timezone,
+        place=details.place,
+        panchang=_panchang_out(sky),
+        moon_rashi=moon.placement.rashi,
+        moon_nakshatra=moon.placement.nakshatra,
+        sun_rashi=sun.placement.rashi,
+        active=[
+            _period_out(p) for p in vimshottari(natal, levels=3).at(now_utc)
+        ],
+        birth_moon_rashi=natal.moon_rashi,
+        birth_nakshatra=natal.janma_nakshatra,
+    )
+
+
+# --- Course -----------------------------------------------------------------
+#
+# Content lives here rather than in the app bundle: thirty chapters in two
+# languages would inflate every install for material read a chapter at a time,
+# and a correction to teaching material should not need an app release.
+
+
+def _language(value: str) -> str:
+    return value if value in course.LANGUAGES else "en"
+
+
+@router.get("/course", response_model=CourseIndexOut, summary="Course index")
+def course_index(
+    language: str = Query(default="en", description="en or hi"),
+) -> CourseIndexOut:
+    lang = _language(language)
+    return CourseIndexOut(
+        language=lang,
+        chapters=[
+            CourseEntryOut(
+                slug=chapter.slug,
+                number=number,
+                part=course.pick(chapter.part, lang),
+                title=course.pick(chapter.title, lang),
+                summary=course.pick(chapter.summary, lang),
+                minutes=chapter.minutes,
+                level=chapter.level,
+            )
+            for number, chapter in enumerate(course.CHAPTERS, start=1)
+        ],
+        total_minutes=sum(c.minutes for c in course.CHAPTERS),
+    )
+
+
+@router.post("/course/{slug}", response_model=ChapterOut, summary="One chapter")
+def course_chapter(
+    slug: str,
+    payload: ChapterRequest,
+    language: str = Query(default="en", description="en or hi"),
+) -> ChapterOut:
+    """One chapter, optionally located in the reader's own chart.
+
+    `in_your_chart` is computed by the engine from the birth details sent with
+    the request — the same arithmetic the chart screen draws. No model is
+    involved anywhere in this endpoint, which is why it cannot be wrong in the
+    way generated text can be wrong.
+    """
+    chapter = course.CHAPTERS_BY_SLUG.get(slug)
+    if chapter is None:
+        raise HTTPException(status_code=404, detail=f"no chapter named {slug!r}")
+
+    lang = _language(language)
+    index = course.CHAPTERS.index(chapter)
+    following = course.CHAPTERS[index + 1] if index + 1 < len(course.CHAPTERS) else None
+
+    personalised: str | None = None
+    if payload.birth is not None and chapter.personalise is not None:
+        chart = _build(payload.birth)
+        text = course.apply_personalisation(
+            chapter,
+            chart,
+            panchang_for(chart),
+            vimshottari(chart, levels=3),
+            payload.birth.place,
+        )
+        if text is not None:
+            personalised = course.pick(text, lang)
+
+    return ChapterOut(
+        slug=chapter.slug,
+        number=index + 1,
+        part=course.pick(chapter.part, lang),
+        title=course.pick(chapter.title, lang),
+        summary=course.pick(chapter.summary, lang),
+        minutes=chapter.minutes,
+        level=chapter.level,
+        language=lang,
+        sections=[
+            CourseSectionOut(
+                heading=course.pick(section.heading, lang),
+                body=[course.pick(paragraph, lang) for paragraph in section.body],
+                aside=course.pick(section.aside, lang) if section.aside else None,
+            )
+            for section in chapter.sections
+        ],
+        next_slug=following.slug if following else None,
+        in_your_chart=personalised,
+    )

@@ -108,3 +108,84 @@ export type Place = {
   latitude: number;
   longitude: number;
 };
+
+/**
+ * Hinglish is the backend's default because it is how the target users talk.
+ */
+export type Language = 'en' | 'hi' | 'hinglish';
+
+export type Interpretation = {
+  text: string;
+  language: Language;
+  /**
+   * False when the text contradicts the computed chart. Checked after
+   * generation rather than requested of the model, so it is a measurement and
+   * the app should show it rather than assume it.
+   */
+  grounded: boolean;
+  contradictions: string[];
+};
+
+export type ChatTurn = {
+  role: 'user' | 'assistant';
+  content: string;
+};
+
+// --- Course ----------------------------------------------------------------
+//
+// Chapters live on the server. The app holds an index and whatever chapters the
+// reader has opened, cached on the device — see `src/api/course.ts`.
+
+export type CourseLanguage = 'en' | 'hi';
+
+export type CourseEntry = {
+  slug: string;
+  number: number;
+  part: string;
+  title: string;
+  summary: string;
+  minutes: number;
+  level: 'basic' | 'intermediate';
+};
+
+export type CourseIndex = {
+  language: CourseLanguage;
+  chapters: CourseEntry[];
+  total_minutes: number;
+};
+
+export type ChapterSection = {
+  heading: string;
+  body: string[];
+  aside: string | null;
+};
+
+export type CourseChapter = {
+  slug: string;
+  number: number;
+  part: string;
+  title: string;
+  summary: string;
+  minutes: number;
+  level: 'basic' | 'intermediate';
+  language: CourseLanguage;
+  sections: ChapterSection[];
+  next_slug: string | null;
+  /** Computed from the chart by the engine. Null when there was no example. */
+  in_your_chart: string | null;
+};
+
+// --- Today -----------------------------------------------------------------
+
+export type Today = {
+  as_of: string;
+  timezone: string;
+  place: string | null;
+  panchang: Panchang;
+  moon_rashi: string;
+  moon_nakshatra: string;
+  sun_rashi: string;
+  active: DashaPeriod[];
+  birth_moon_rashi: string;
+  birth_nakshatra: string;
+};

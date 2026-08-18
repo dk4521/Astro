@@ -18,6 +18,13 @@ RASHIS_EN: tuple[str, ...] = (
     "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces",
 )
 
+# Devanagari, for the same reason `GRAHA_HI` exists: a Hindi reading writes these
+# names in script, and `grounding` cannot check a claim it cannot spell.
+RASHIS_HI: tuple[str, ...] = (
+    "मेष", "वृषभ", "मिथुन", "कर्क", "सिंह", "कन्या",
+    "तुला", "वृश्चिक", "धनु", "मकर", "कुंभ", "मीन",
+)
+
 RASHI_LORDS: tuple[str, ...] = (
     "Mars", "Venus", "Mercury", "Moon", "Sun", "Mercury",
     "Venus", "Mars", "Jupiter", "Saturn", "Saturn", "Jupiter",
@@ -43,6 +50,15 @@ NAKSHATRAS: tuple[str, ...] = (
     "Jyeshtha", "Mula", "Purva Ashadha", "Uttara Ashadha", "Shravana",
     "Dhanishta", "Shatabhisha", "Purva Bhadrapada", "Uttara Bhadrapada",
     "Revati",
+)
+
+NAKSHATRAS_HI: tuple[str, ...] = (
+    "अश्विनी", "भरणी", "कृत्तिका", "रोहिणी", "मृगशिरा", "आर्द्रा",
+    "पुनर्वसु", "पुष्य", "आश्लेषा", "मघा", "पूर्वा फाल्गुनी",
+    "उत्तरा फाल्गुनी", "हस्त", "चित्रा", "स्वाति", "विशाखा", "अनुराधा",
+    "ज्येष्ठा", "मूल", "पूर्वाषाढ़ा", "उत्तराषाढ़ा", "श्रवण",
+    "धनिष्ठा", "शतभिषा", "पूर्वा भाद्रपद", "उत्तरा भाद्रपद",
+    "रेवती",
 )
 
 # Vimshottari lord of each nakshatra, repeating every 9 starting at Ashwini.

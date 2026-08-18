@@ -198,6 +198,92 @@ def test_sanskrit_graha_names_are_recognised(chart):
     assert grounding.check("Shani Karka mein hai.", chart) == []
 
 
+def test_devanagari_rashi_is_checked(chart):
+    """`hi` is a supported language, so a Hindi reading must be checkable.
+
+    Before the Devanagari aliases existed this returned nothing: the check did
+    not fail, it silently did not run, and `/v1/interpret` reported
+    `grounded: true` for a Hindi reading that named the wrong rashi.
+    """
+    assert grounding.check("आपका चंद्रमा कर्क राशि में है।", chart) == []
+
+    found = grounding.check("आपकी कुंडली में चंद्रमा सिंह राशि में स्थित है।", chart)
+    assert [c.kind for c in found] == ["rashi"]
+    assert found[0].asserted == "Simha"
+    assert found[0].actual == "Karka"
+
+
+def test_devanagari_nakshatra_and_house_are_checked(chart):
+    """Hindi writes house numbers as ordinal words more often than digits."""
+    assert [c.kind for c in grounding.check("चंद्र रोहिणी नक्षत्र में है।", chart)] == [
+        "nakshatra"
+    ]
+    assert [c.kind for c in grounding.check("शनि सातवें भाव में बैठा है।", chart)] == [
+        "house"
+    ]
+    assert [c.kind for c in grounding.check("शनि 7वें घर में है।", chart)] == ["house"]
+    assert grounding.check("शनि तीसरे भाव में बैठा है।", chart) == []
+
+
+def test_devanagari_name_ending_in_a_matra_is_matched(chart):
+    r"""The boundary regression: `\b` does not work in this script.
+
+    Matras are combining marks, which Python does not count as word characters,
+    so a name ending in one — कन्या, धनु — has no word boundary after it and
+    `\bकन्या\b` matches nothing. Four of the twelve rashis end this way, so the
+    obvious implementation checks two thirds of the signs and silently passes
+    the rest.
+    """
+    found = grounding.check("आपका चंद्रमा कन्या राशि में है।", chart)
+    assert [c.asserted for c in found] == ["Kanya"]
+
+    # And a name must still not match inside a longer word.
+    assert grounding.check("चंद्रमा मेषास्पद शब्द में है।", chart) == []
+
+
+def test_devanagari_claim_at_the_end_of_a_sentence(chart):
+    """The danda । is punctuation, but it lives in the Devanagari block.
+
+    Excluding the whole block from the match edge — the obvious way to write
+    this — passes every test written mid-sentence and then checks nothing at the
+    end of one, which is where a placement claim usually sits.
+    """
+    assert [c.asserted for c in grounding.check("आपका चंद्रमा सिंह।", chart)] == ["Simha"]
+    assert [c.asserted for c in grounding.check("चंद्रमा कन्या।", chart)] == ["Kanya"]
+    assert grounding.check("आपका चंद्रमा कर्क।", chart) == []
+
+
+def test_hindi_states_the_placement_before_the_graha(chart):
+    """"छठे भाव में बैठे गुरु" is ordinary Hindi, not an inversion.
+
+    A graha-first checker reads only the half of a Hindi reading that happens to
+    be worded like English.
+    """
+    assert grounding.check("आपके छठे भाव में तुला राशि में बैठे गुरु।", chart) == []
+    assert [c.kind for c in grounding.check("मेष राशि में बैठे गुरु।", chart)] == ["rashi"]
+    assert [c.kind for c in grounding.check("आपके सातवें भाव में बैठे गुरु।", chart)] == [
+        "house"
+    ]
+
+    # The connector is bounded, so a house pairs with the graha it introduces and
+    # not with every graha later in the sentence. Jupiter goes unchecked here —
+    # the same recall limit the Latin patterns have, and the same reason neither
+    # raises false alarms.
+    assert grounding.check("तीसरे भाव में चंद्रमा और गुरु बैठे हैं।", chart) == []
+
+
+def test_the_same_wrong_placement_is_reported_once(chart):
+    """Two patterns can recognise one claim; that is still one contradiction."""
+    text = "चंद्रमा सिंह राशि में है। सिंह राशि में चंद्रमा बैठा है।"
+    assert len(grounding.check(text, chart)) == 1
+
+
+def test_devanagari_prose_makes_no_claim(chart):
+    """The crisis path names grahas in order to refuse; that is not a reading."""
+    assert grounding.check("कोई भी ग्रह किसी से हिंसा नहीं करवाता।", chart) == []
+    assert grounding.check("यह समय धैर्य मांगता है, इसमें कोई चेतावनी नहीं है।", chart) == []
+
+
 def test_several_errors_are_all_reported(chart):
     text = "Your Sun is in Mesha, your Moon is in Tula, and Mars is in Meena."
     assert len(grounding.check(text, chart)) == 3
@@ -408,6 +494,9 @@ def test_blocked_is_an_unavailable():
 def test_crisis_support_is_in_the_contract():
     """The crisis path is why DANGEROUS_CONTENT is relaxed — pin both together."""
     assert "14416" in SYSTEM_PROMPT       # Tele-MANAS
+    assert "9820466726" in SYSTEM_PROMPT  # AASRA
+    assert "181" in SYSTEM_PROMPT         # Women Helpline
+    assert "112" in SYSTEM_PROMPT         # emergency, India
     assert "crisis" in SYSTEM_PROMPT.lower()
 
     from app.ai.client import GeminiClient
@@ -416,6 +505,20 @@ def test_crisis_support_is_in_the_contract():
     source = inspect.getsource(GeminiClient.__init__)
     assert "HARM_CATEGORY_DANGEROUS_CONTENT" in source
     assert "BLOCK_ONLY_HIGH" in source
+
+
+def test_crisis_overrides_the_chart_question():
+    """The live check found the model answering the chart question anyway.
+
+    `scripts/check_crisis_path.py` caught a full dasha reading appended to an
+    otherwise correct crisis reply — acknowledgement, helpline, then "Jupiter
+    sits in your 6th house". The contract now says the support is the whole
+    reply; this pins that it still says so, since the sentence is the only
+    defence and deleting it would break nothing visible offline.
+    """
+    contract = SYSTEM_PROMPT.lower()
+    assert "overrides every other instruction" in contract
+    assert "the support is the entire reply" in contract
 
 
 # --- Model fallback and thinking level --------------------------------------
