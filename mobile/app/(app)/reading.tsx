@@ -405,10 +405,6 @@ export default function ReadingScreen() {
         }}
       >
         <Text style={styles.kicker}>Your reading</Text>
-        <Text style={styles.intro}>
-          Every position below was computed from your birth moment before the words were
-          written. The language explains that data; it never calculates it.
-        </Text>
 
         {openingLoading ? (
           <View style={styles.waiting}>
@@ -416,7 +412,7 @@ export default function ReadingScreen() {
             <Text style={styles.waitingText}>Reading your chart…</Text>
             {slow ? (
               <Text style={styles.waitingSlow}>
-                The model is busy — free-tier capacity can take up to a minute.
+                Still working. This can take up to a minute.
               </Text>
             ) : null}
           </View>
@@ -542,13 +538,6 @@ const styles = StyleSheet.create({
   langTextActive: { color: colors.accentSoft },
   content: { paddingHorizontal: space.lg, paddingTop: space.lg },
   kicker: { ...type.label, color: colors.accent },
-  intro: {
-    ...type.mono,
-    color: colors.textFaint,
-    lineHeight: 19,
-    marginTop: space.sm,
-    marginBottom: space.lg,
-  },
   waiting: { alignItems: 'center', gap: space.sm, paddingVertical: space.xl },
   waitingText: { ...type.body, color: colors.textMuted },
   waitingSlow: {

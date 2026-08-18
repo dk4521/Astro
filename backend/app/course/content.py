@@ -353,14 +353,14 @@ _GRAHAS: tuple[Chapter, ...] = (
                 heading={"en": 'Where the eclipse comes from', "hi": 'ग्रहण कहाँ से आता है'},
                 body=(
                     {"en": "The Moon's orbit is tilted about five degrees against the Sun's apparent path. The two points where they cross are Rahu and Ketu. There is nothing there to see. When the Moon happens to be at one of them at new or full moon, you get an eclipse — which is why the tradition describes them as swallowing the lights.", "hi": 'चंद्रमा की कक्षा सूर्य के आभासी मार्ग से क़रीब पाँच अंश झुकी है। जहाँ दोनों कटते हैं, वे दो बिंदु राहु और केतु हैं। वहाँ देखने को कुछ नहीं है। जब अमावस्या या पूर्णिमा पर चंद्रमा उन्हीं में से किसी बिंदु पर हो, तब ग्रहण होता है — इसीलिए परंपरा कहती है कि वे प्रकाश को निगल लेते हैं।'},
-                    {"en": 'They are always exactly 180 degrees apart, because they are two ends of one line. This engine computes Rahu and derives Ketu as its exact opposite; it never calculates them separately, because they cannot disagree.', "hi": 'वे हमेशा ठीक 180 अंश दूर रहते हैं, क्योंकि वे एक ही रेखा के दो सिरे हैं। यह engine राहु गिनता है और केतु उसका ठीक उल्टा निकालता है; उन्हें अलग-अलग कभी नहीं गिनता, क्योंकि उनमें मतभेद हो ही नहीं सकता।'},
+                    {"en": 'They are always exactly 180 degrees apart, because they are two ends of one line. Locate one and you have located the other — they cannot disagree.', "hi": 'वे हमेशा ठीक 180 अंश दूर रहते हैं, क्योंकि वे एक ही रेखा के दो सिरे हैं। एक का पता चल गया तो दूसरे का अपने आप — उनमें मतभेद हो ही नहीं सकता।'},
                 ),
                 aside={"en": 'They always move backwards through the zodiac, so your chart marks them retrograde. That is their normal state, not an anomaly.', "hi": 'वे राशिचक्र में सदा पीछे की ओर चलते हैं, इसलिए कुंडली उन्हें वक्री दिखाती है। यह उनकी सामान्य दशा है, कोई विचलन नहीं।'},
             ),
             Section(
                 heading={"en": 'Mean and true', "hi": 'मध्यम और स्पष्ट'},
                 body=(
-                    {"en": 'There are two conventions: the mean node, a smooth average, and the true node, which wobbles. They differ by a few arc-minutes. This engine uses the mean node, the mainstream Indian convention — and states so, because two apps using different conventions will disagree slightly and neither is lying.', "hi": 'दो परिपाटियाँ हैं: मध्यम राहु, जो सहज औसत है, और स्पष्ट राहु, जो डोलता है। दोनों में कुछ कला का अंतर होता है। यह engine मध्यम राहु इस्तेमाल करता है, जो मुख्यधारा की भारतीय परिपाटी है — और यह बताता भी है, क्योंकि अलग परिपाटी वाली दो ऐप्स में थोड़ा अंतर आएगा और उनमें से कोई झूठ नहीं बोल रहा।'},
+                    {"en": 'There are two conventions: the mean node, a smooth average, and the true node, which wobbles. They differ by a few arc-minutes. Mainstream Indian practice reads the mean node — which is why two charts drawn on different conventions disagree slightly, and neither of them is wrong.', "hi": 'दो परिपाटियाँ हैं: मध्यम राहु, जो सहज औसत है, और स्पष्ट राहु, जो डोलता है। दोनों में कुछ कला का अंतर होता है। मुख्यधारा की भारतीय परंपरा मध्यम राहु पढ़ती है — इसीलिए अलग परिपाटी से बनी दो कुंडलियों में थोड़ा अंतर आता है, और उनमें से कोई ग़लत नहीं होती।'},
                 ),
             ),
         ),
@@ -536,7 +536,6 @@ _HOUSES_AND_NAKSHATRAS: tuple[Chapter, ...] = (
                     {"en": 'Each nakshatra divides into four padas of 3 degrees 20 minutes. That gives 108 padas in the circle — the same 108 that recurs throughout Indian tradition, and not by coincidence.', "hi": 'हर नक्षत्र चार पादों में बँटता है, हर पाद 3 अंश 20 कला का। इससे पूरे चक्र में 108 पाद बनते हैं — वही 108 जो भारतीय परंपरा में बार-बार लौटता है, और संयोग से नहीं।'},
                     {"en": 'The pada decides the syllable a child is traditionally named with, and it feeds the navamsa — the divisional chart read for marriage.', "hi": 'पाद से ही वह अक्षर तय होता है जिससे परंपरा में बच्चे का नाम रखा जाता है, और यही नवांश बनाता है — विवाह के लिए देखी जाने वाली विभाग-कुंडली।'},
                 ),
-                aside={"en": 'Because 360/27 cannot be written exactly in binary, naive code puts longitudes landing on a boundary in the wrong nakshatra. This engine derives every subdivision from one snapped index — a bug that produces a plausible wrong chart rather than an error.', "hi": 'चूँकि 360/27 को द्विआधारी में ठीक-ठीक नहीं लिखा जा सकता, लापरवाह कोड सीमा पर पड़े देशांतर को ग़लत नक्षत्र में डाल देता है। यह engine हर उपविभाजन एक ही संरेखित सूचकांक से निकालता है — यह वह दोष है जो त्रुटि नहीं, बल्कि विश्वसनीय दिखने वाली ग़लत कुंडली बनाता है।'},
             ),
         ),
         personalise=P.pada_navamsa,
@@ -601,7 +600,7 @@ _TIME_AND_PRACTICE: tuple[Chapter, ...] = (
                 body=(
                     {"en": 'A dasha marks which theme the tradition considers foreground at a given time. It is not a calendar of events, and no honest reading will tell you what will happen during one.', "hi": 'दशा इतना बताती है कि परंपरा किसी समय किस विषय को आगे मानती है। यह घटनाओं का पंचांग नहीं है, और कोई ईमानदार व्याख्या यह नहीं बताएगी कि उसमें क्या होगा।'},
                 ),
-                aside={"en": 'This engine uses a 365.25-day year, matching mainstream implementations. Texts using a 360-day year produce dates that drift — one reason two panchangs disagree about when a period turns.', "hi": 'यह engine 365.25 दिन का वर्ष लेता है, जो मुख्यधारा की गणनाओं से मेल खाता है। 360 दिन का वर्ष लेने वाले ग्रंथों की तिथियाँ खिसक जाती हैं — दो पंचांग दशा-परिवर्तन पर असहमत क्यों होते हैं, यह उसका एक कारण है।'},
+                aside={"en": 'Vimshottari is counted in years of 365.25 days. Texts that use a 360-day year produce dates that drift — one reason two panchangs disagree about exactly when a period turns.', "hi": 'विंशोत्तरी 365.25 दिन के वर्ष से गिनी जाती है। 360 दिन का वर्ष लेने वाले ग्रंथों की तिथियाँ खिसक जाती हैं — दो पंचांग दशा-परिवर्तन की तारीख़ पर असहमत क्यों होते हैं, यह उसका एक कारण है।'},
             ),
         ),
         personalise=P.dasha_now,
@@ -698,7 +697,7 @@ _TIME_AND_PRACTICE: tuple[Chapter, ...] = (
                     {"en": 'Divide each 30-degree sign into nine parts of 3 degrees 20 minutes and you get the navamsa — the same width as a pada, which is not a coincidence. Each part maps to a sign, producing a second chart from the same longitudes.', "hi": 'हर 30 अंश की राशि को 3 अंश 20 कला के नौ हिस्सों में बाँटिए और नवांश मिलता है — पाद के बराबर चौड़ाई, और यह संयोग नहीं है। हर हिस्सा एक राशि से जुड़ता है, जिससे उन्हीं देशांतरों से दूसरी कुंडली बनती है।'},
                     {"en": 'The navamsa is traditionally read for marriage and for the strength of a placement. It is not independent evidence: it is the same measurement viewed at higher magnification, so a shaky birth time makes it shakier, not steadier.', "hi": 'नवांश परंपरा में विवाह और स्थिति के बल के लिए देखा जाता है। यह स्वतंत्र प्रमाण नहीं है: वही माप अधिक आवर्धन पर है, इसलिए डगमगाता जन्म-समय उसे और डगमगाता करता है, स्थिर नहीं।'},
                 ),
-                aside={"en": 'This app computes D9. Higher divisions (D10 and friends) need per-sign starting rules the engine deliberately does not encode yet, rather than guess.', "hi": 'यह ऐप D9 गिनती है। इससे ऊँचे विभाग (D10 आदि) के लिए हर राशि के अलग आरंभ-नियम चाहिए, जिन्हें engine ने जानबूझकर अभी नहीं भरा — अंदाज़े से भरने के बजाय।'},
+                aside={"en": 'Of the divisional charts, the navamsa is by far the most widely read. The higher divisions — D10 for work, D12 for parents — are specialist tools, and schools differ on how to construct them.', "hi": 'विभाग-कुंडलियों में नवांश ही सबसे ज़्यादा पढ़ा जाता है। ऊँचे विभाग — कर्म के लिए D10, माता-पिता के लिए D12 — विशेषज्ञों के औज़ार हैं, और उन्हें बनाने के तरीक़े पर परंपराएँ आपस में अलग-अलग हैं।'},
             ),
         ),
         personalise=P.navamsa_lagna,

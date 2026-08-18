@@ -100,8 +100,7 @@ function Sidebar() {
       </View>
 
       <Text style={styles.footer}>
-        Every number in this app is computed from your birth moment. The language
-        layer explains it and never calculates it.
+        Every number here comes from your birth moment.
       </Text>
     </DrawerContentScrollView>
   );

@@ -232,7 +232,7 @@ export default function Settings() {
             <Row
               label="Your reading"
               value="Kept for the day"
-              hint="Generating one costs a model request, so the same chart and language is not asked twice in a day"
+              hint="Saved for the day, so opening it again is instant"
             />
             <Row label="Chat history" value={syncing ? 'Your account' : 'Not stored'} />
             <Row label="Account" value={user ? 'Signed in' : 'None'} />

@@ -117,11 +117,6 @@ export default function ChapterScreen() {
                   {lang === 'hi' ? 'आपकी कुंडली में' : 'IN YOUR CHART'}
                 </Text>
                 <Text style={styles.yoursText}>{chapter.in_your_chart}</Text>
-                <Text style={styles.yoursFoot}>
-                  {lang === 'hi'
-                    ? 'engine ने गिना है, किसी model ने लिखा नहीं।'
-                    : 'Computed by the engine, not written by a model.'}
-                </Text>
               </View>
             ) : null}
 
@@ -189,7 +184,6 @@ const styles = StyleSheet.create({
   },
   yoursLabel: { ...type.label, color: colors.accentSoft },
   yoursText: { ...type.body, color: colors.text, lineHeight: 24 },
-  yoursFoot: { ...type.mono, color: colors.textFaint },
   actions: { marginTop: space.xxl, gap: space.md },
   readNote: { ...type.mono, color: colors.textFaint, textAlign: 'center' },
   back: { alignItems: 'center', paddingVertical: space.sm },
