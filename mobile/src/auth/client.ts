@@ -25,6 +25,13 @@ import { AppState } from 'react-native';
 
 type Extra = { supabaseUrl?: string; supabaseAnonKey?: string };
 
+/**
+ * Supabase renamed its client-side key: newer projects issue a
+ * `sb_publishable_…` key where older ones issued an anon JWT. Both are the same
+ * thing for our purposes — public by design, safe in the bundle, useless
+ * without the RLS policies in `supabase/schema.sql`.
+ */
+
 function setting(envValue: string | undefined, key: keyof Extra): string | null {
   const fromEnv = envValue?.trim();
   if (fromEnv) return fromEnv;
@@ -35,7 +42,9 @@ function setting(envValue: string | undefined, key: keyof Extra): string | null 
 }
 
 const URL_VALUE = setting(process.env.EXPO_PUBLIC_SUPABASE_URL, 'supabaseUrl');
-const ANON_KEY = setting(process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY, 'supabaseAnonKey');
+const ANON_KEY =
+  setting(process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY, 'supabaseAnonKey') ??
+  setting(process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY, 'supabaseAnonKey');
 
 /** Whether accounts are available in this build at all. */
 export function isConfigured(): boolean {
