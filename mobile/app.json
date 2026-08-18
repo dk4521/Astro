@@ -2,7 +2,7 @@
   "expo": {
     "name": "Kosmiq",
     "slug": "kosmiq",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "kosmiq",
@@ -33,9 +33,6 @@
     },
     "plugins": [
       "expo-router"
-    ],
-    "extra": {
-      "apiBaseUrl": "http://localhost:8000"
-    }
+    ]
   }
 }

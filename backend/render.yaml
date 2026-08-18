@@ -13,8 +13,17 @@ services:
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     envVars:
+      # `sync: false` means Render asks for this once in the dashboard and never
+      # keeps it in this file, which is committed. Without it the service still
+      # starts and every deterministic endpoint works — chart, panchang, dasha,
+      # today, the course. Only /v1/interpret and /v1/chat fail, with a 503 that
+      # names this variable, so a deploy missing it looks like an app whose
+      # readings are broken rather than an app that is down.
+      - key: GEMINI_API_KEY
+        sync: false
       - key: CORS_ORIGINS
         # Narrow this before launch. The mobile app sends no credentials, so a
         # wide value is not a session risk, but it does leave the API open to
-        # use from any web origin.
+        # use from any web origin — and every request from one spends this
+        # project's model quota.
         value: "*"

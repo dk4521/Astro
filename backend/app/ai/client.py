@@ -129,6 +129,24 @@ def _system_instruction(suffix: str | None) -> str:
     return f"{SYSTEM_PROMPT}\n\n{suffix}" if suffix else SYSTEM_PROMPT
 
 
+def cache_fingerprint() -> str:
+    """Everything outside the request body that can change an answer.
+
+    Part of the cache key, so editing the prompt contract, swapping the model or
+    turning the temperature up invalidates stored answers without anyone having
+    to remember to clear anything. Cheap to compute and hashed by the caller, so
+    the length of the system prompt does not matter here.
+    """
+    return "\u0000".join(
+        [
+            *_model_chain(),
+            SYSTEM_PROMPT,
+            f"temperature={TEMPERATURE}",
+            f"thinking={THINKING_LEVEL}",
+        ]
+    )
+
+
 class GeminiClient:
     """Live client. Constructed lazily so importing this module needs no key."""
 

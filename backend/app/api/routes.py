@@ -3,6 +3,12 @@
 Every endpoint here is a pure function of its request body. Nothing is stored,
 nothing is random, and no model is called — which is what lets the whole API be
 cached aggressively and lets a chart be reproduced from its inputs alone.
+
+The two interpretation endpoints are the exception, and the only ones that cost
+anything: they go through `ai.cache`, which reuses an answer when the exact same
+request has already been made. `/v1/interpret` reports which it was in `X-Cache`,
+so a slow first reading and an instant second one can be told apart from outside
+the process.
 """
 
 from __future__ import annotations
@@ -11,7 +17,7 @@ import datetime as dt
 import json
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Response
 from fastapi.responses import StreamingResponse
 
 from .. import ai, course, places
@@ -227,7 +233,7 @@ def _require_interpreter() -> None:
     response_model=InterpretResponse,
     summary="Explain a chart in plain language",
 )
-def interpret(payload: InterpretRequest) -> InterpretResponse:
+def interpret(payload: InterpretRequest, response: Response) -> InterpretResponse:
     """A first reading of the chart.
 
     Everything factual in the response was computed before the model saw it;
@@ -241,6 +247,8 @@ def interpret(payload: InterpretRequest) -> InterpretResponse:
         result = ai.reading(chart, language=payload.language)
     except ai.InterpretationUnavailable as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    response.headers["X-Cache"] = "hit" if result.cached else "miss"
 
     return InterpretResponse(
         text=result.text,
@@ -295,9 +303,14 @@ def chat(payload: ChatRequest) -> StreamingResponse:
 
 @router.get("/places", response_model=list[PlaceOut], summary="Search birth places")
 def place_search(
+    response: Response,
     q: str = Query(min_length=1, max_length=100),
     limit: int = Query(default=10, ge=1, le=50),
 ) -> list[PlaceOut]:
+    # A gazetteer of populated places, shipped with the service. Cities do not
+    # move, so this is as cacheable as a static file — and onboarding fires a
+    # request every 250 ms while someone types a city name.
+    response.headers["Cache-Control"] = "public, max-age=86400"
     return places.search(q, limit)
 
 
@@ -354,8 +367,13 @@ def _language(value: str) -> str:
 
 @router.get("/course", response_model=CourseIndexOut, summary="Course index")
 def course_index(
+    response: Response,
     language: str = Query(default="en", description="en or hi"),
 ) -> CourseIndexOut:
+    # Shorter than the gazetteer because chapter titles are edited: an hour is
+    # long enough to spare the repeat fetches the Learn screen makes on every
+    # visit, and short enough that a corrected typo appears the same morning.
+    response.headers["Cache-Control"] = "public, max-age=3600"
     lang = _language(language)
     return CourseIndexOut(
         language=lang,

@@ -1,7 +1,7 @@
 -- Kosmiq — Supabase schema
 --
--- Run this in the SQL editor of a fresh project. It creates the three tables
--- the app will sync into, and locks every one of them to its owner.
+-- Run this in the SQL editor of a fresh project. It creates the five tables the
+-- app syncs into, and locks every one of them to its owner.
 --
 -- Birth details are the most personal thing this product holds: a date, a
 -- minute and a place is enough to identify someone. So row-level security is
@@ -128,6 +128,13 @@ alter table public.messages enable row level security;
 
 create policy "read own conversations"   on public.conversations for select using (auth.uid() = user_id);
 create policy "insert own conversations" on public.conversations for insert with check (auth.uid() = user_id);
+-- `language` is the one mutable column here: the reading screen switches
+-- language mid-thread, so the row has to be able to follow. Without this policy
+-- the update is not rejected, it simply matches no row — a silent no-op that
+-- leaves the column quietly claiming a language the conversation stopped being
+-- held in. Found by running the sync layer against a real project, not by
+-- reading the schema.
+create policy "update own conversations" on public.conversations for update using (auth.uid() = user_id);
 create policy "delete own conversations" on public.conversations for delete using (auth.uid() = user_id);
 
 create policy "read own messages"   on public.messages for select using (auth.uid() = user_id);

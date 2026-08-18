@@ -11,6 +11,12 @@
  * backend folds the chart brief into the first history turn whatever its role,
  * so an assistant turn in position zero would be replayed as if the user had
  * written it — see `streamChat` in `src/api/client.ts`.
+ *
+ * With an account, the conversation is stored and read back (`src/sync/chat.ts`)
+ * — it is the one thing here that cannot be recomputed. The opening reading is
+ * not stored: it is generated fresh from the chart in whichever language is
+ * selected, so a saved copy would only be a stale duplicate. Signed out, the
+ * conversation lives as long as the screen does, exactly as it always has.
  */
 
 import { useRouter } from 'expo-router';
@@ -27,13 +33,22 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { fetchInterpretation, streamChat } from '../../src/api/client';
+import { streamChat } from '../../src/api/client';
+import { loadInterpretation } from '../../src/api/reading';
 import { loadBirthDetails } from '../../src/api/storage';
+import { useSync } from '../../src/sync/context';
 import type { BirthDetails, ChatTurn, Language } from '../../src/api/types';
 import { RichText } from '../../src/components/RichText';
 import { ScreenHeader } from '../../src/components/ScreenHeader';
 import { Button, ErrorNote, Label } from '../../src/components/ui';
 import { colors, radius, space, type } from '../../src/theme';
+
+/**
+ * The most turns `/v1/chat` will accept — `ChatRequest.history` in
+ * `backend/app/schemas.py`. A restored conversation can be longer than the
+ * model is allowed to see, so what goes up is the tail of it.
+ */
+const HISTORY_TURNS = 40;
 
 const LANGUAGES: { value: Language; label: string }[] = [
   { value: 'hinglish', label: 'Hinglish' },
@@ -109,6 +124,7 @@ function GroundingNote({
 export default function ReadingScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { enabled: syncing, chartId, loadChatHistory, recordTurn } = useSync();
 
   const [details, setDetails] = useState<BirthDetails | null>(null);
   const [language, setLanguage] = useState<Language>('hinglish');
@@ -131,6 +147,10 @@ export default function ReadingScreen() {
   // showing Hinglish under a selected हिंदी pill. Same guard the place search
   // in `onboarding.tsx` uses.
   const openingRequest = useRef(0);
+  // Which chart's history has been read back. The sync context hands out a new
+  // `loadChatHistory` whenever its status changes, and re-running the restore
+  // would wipe whatever has been asked since.
+  const restoredFor = useRef<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -148,6 +168,31 @@ export default function ReadingScreen() {
     };
   }, [router]);
 
+  // Past turns, once. They arrive after the first paint, which is right: the
+  // reading is what this screen is for, and the transcript below it can fill in.
+  useEffect(() => {
+    if (!syncing || !chartId || restoredFor.current === chartId) return;
+    restoredFor.current = chartId;
+
+    let cancelled = false;
+    loadChatHistory().then((turns) => {
+      if (cancelled || turns.length === 0) return;
+      setMessages(
+        turns.map((turn) => ({
+          id: nextId.current++,
+          role: turn.role,
+          text: turn.content,
+          grounded: turn.grounded,
+          contradictions: turn.contradictions,
+        })),
+      );
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [syncing, chartId, loadChatHistory]);
+
   const loadOpening = useCallback(
     async (birth: BirthDetails, lang: Language) => {
       const id = ++openingRequest.current;
@@ -155,10 +200,12 @@ export default function ReadingScreen() {
       setError(null);
       // A reading was measured between 2s and 80s on the free tier. A spinner
       // that says nothing for a minute reads as a hang, so say what is going on.
+      // Only a first reading waits at all: the same chart, language and day come
+      // back from the device (`src/api/reading.ts`) before this timer starts.
       const slowTimer = setTimeout(() => setSlow(true), 10_000);
 
       try {
-        const result = await fetchInterpretation(birth, lang);
+        const result = await loadInterpretation(birth, lang);
         if (id !== openingRequest.current) return;
         setOpening({
           id: 0,
@@ -216,7 +263,8 @@ export default function ReadingScreen() {
       // The history is the conversation only — never the opening reading.
       const history: ChatTurn[] = messages
         .filter((message) => message.text.trim().length > 0)
-        .map((message) => ({ role: message.role, content: message.text }));
+        .map((message) => ({ role: message.role, content: message.text }))
+        .slice(-HISTORY_TURNS);
 
       const askedId = nextId.current++;
       const answerId = nextId.current++;
@@ -226,6 +274,11 @@ export default function ReadingScreen() {
         { id: askedId, role: 'user', text: trimmed },
         { id: answerId, role: 'assistant', text: '', streaming: true },
       ]);
+
+      // Recorded before the answer exists, because it was asked whether or not
+      // one arrives. Inserts are queued in call order by the sync context, so
+      // this lands ahead of the reply it belongs to.
+      void recordTurn({ role: 'user', content: trimmed }, language);
 
       const controller = new AbortController();
       abort.current = controller;
@@ -237,20 +290,33 @@ export default function ReadingScreen() {
           ),
         );
 
+      // Accumulated here as well as in state: the verdict and the final text
+      // are needed together when the stream ends, and a `setMessages` updater
+      // cannot be read back synchronously.
+      let answer = '';
+      // Left uninitialised on purpose: `= null` would narrow it to `null` for
+      // the read below, since TypeScript does not track the assignment made
+      // inside `onVerdict`.
+      let verdict: { grounded: boolean; contradictions: string[] } | undefined;
+
       try {
         await streamChat(
           { birth: details, question: trimmed, language, history },
           {
-            onToken: (chunk) =>
+            onToken: (chunk) => {
+              answer += chunk;
               setMessages((current) =>
                 current.map((message) =>
                   message.id === answerId
                     ? { ...message, text: message.text + chunk }
                     : message,
                 ),
-              ),
-            onVerdict: (verdict) =>
-              update({ grounded: verdict.grounded, contradictions: verdict.contradictions }),
+              );
+            },
+            onVerdict: (next) => {
+              verdict = next;
+              update({ grounded: next.grounded, contradictions: next.contradictions });
+            },
           },
           controller.signal,
         );
@@ -264,11 +330,27 @@ export default function ReadingScreen() {
             (message) => message.id !== answerId || message.text.trim().length > 0,
           ),
         );
+
+        // A partial answer is still stored, with whatever verdict it got. An
+        // answer that was cut short is part of what happened, and dropping it
+        // would leave the question above it looking unanswered.
+        if (answer.trim().length > 0) {
+          void recordTurn(
+            {
+              role: 'assistant',
+              content: answer,
+              grounded: verdict?.grounded,
+              contradictions: verdict?.contradictions,
+            },
+            language,
+          );
+        }
+
         abort.current = null;
         setSending(false);
       }
     },
-    [details, language, messages, sending],
+    [details, language, messages, sending, recordTurn],
   );
 
   const retry = useCallback(() => {

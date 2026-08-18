@@ -7,6 +7,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from . import ai
 from .api.routes import router
 from .astro import EPHEMERIS_MODE
 
@@ -35,10 +36,25 @@ app.add_middleware(
 app.include_router(router, prefix="/v1")
 
 
-@app.get("/health", summary="Liveness and ephemeris provenance")
-def health() -> dict[str, str]:
+@app.get("/health", summary="Liveness, ephemeris provenance, and cache reuse")
+def health() -> dict[str, object]:
+    """Also the only window onto the interpretation cache.
+
+    Worth watching rather than assuming: the free tier allows 20 requests per
+    model per day, so `ratio` is the number that says whether the service can
+    survive its own users. It resets when the process does — the cache is in
+    memory, and on a free instance that means every cold start.
+    """
+    stats = ai.cache.stats()
     return {
         "status": "ok",
         "ephemeris_mode": EPHEMERIS_MODE,
         "ayanamsa": "Lahiri (Chitrapaksha)",
+        "cache": {
+            "hits": stats.hits,
+            "misses": stats.misses,
+            "entries": stats.entries,
+            "capacity": stats.capacity,
+            "ratio": round(stats.ratio, 3),
+        },
     }

@@ -4,6 +4,19 @@
  * The base URL is resolved rather than hard-coded: a phone running Expo Go
  * cannot reach the laptop's `localhost`, so in development we fall back to the
  * host that served the JS bundle, which is the laptop's LAN address.
+ *
+ * In a release build there is exactly one way to set it — `EXPO_PUBLIC_API_URL`,
+ * supplied by the build profile in `eas.json`. There used to be a second, an
+ * `extra.apiBaseUrl` in `app.json`, and two settings that can disagree is worse
+ * than one: the `app.json` copy said `http://localhost:8000`, which in a store
+ * build points the phone at itself. That failure is silent in the worst way —
+ * the app installs, opens, and then every screen that needs the server fails
+ * with an ordinary network error that says nothing about why.
+ *
+ * `API_NOT_CONFIGURED` below is the fix for that: it does not stop the build,
+ * because a wrong URL is a deployment mistake rather than a reason to refuse to
+ * launch, but the settings screen names it instead of leaving someone reading
+ * timeouts.
  */
 
 import Constants from 'expo-constants';
@@ -28,14 +41,14 @@ import type {
 
 const DEFAULT_PORT = 8000;
 
+/** An address that only ever resolves on the machine asking for it. */
+const LOOPBACK = /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])(:|\/|$)/i;
+
 function resolveBaseUrl(): string {
   const configured = process.env.EXPO_PUBLIC_API_URL?.trim();
   if (configured) return configured.replace(/\/$/, '');
 
-  const fromExtra = (Constants.expoConfig?.extra as { apiBaseUrl?: string } | undefined)
-    ?.apiBaseUrl;
-
-  // In dev, rewrite a localhost default to the packager's host so a physical
+  // In dev, rewrite the localhost default to the packager's host so a physical
   // device on the same network reaches the laptop instead of itself.
   const hostUri = Constants.expoConfig?.hostUri;
   if (__DEV__ && hostUri) {
@@ -43,10 +56,19 @@ function resolveBaseUrl(): string {
     if (host) return `http://${host}:${DEFAULT_PORT}`;
   }
 
-  return (fromExtra ?? `http://localhost:${DEFAULT_PORT}`).replace(/\/$/, '');
+  return `http://localhost:${DEFAULT_PORT}`;
 }
 
 export const API_BASE_URL = resolveBaseUrl();
+
+/**
+ * True when a release build was made without `EXPO_PUBLIC_API_URL`.
+ *
+ * There is no legitimate way for a shipped app to be pointing at a loopback
+ * address: it is the phone talking to itself, and nothing served from the
+ * backend — a chart, a reading, the course, place search — can answer.
+ */
+export const API_NOT_CONFIGURED = !__DEV__ && LOOPBACK.test(API_BASE_URL);
 
 export class ApiError extends Error {
   constructor(

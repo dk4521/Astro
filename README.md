@@ -13,15 +13,16 @@ structurally impossible rather than merely unlikely.
 
 | Piece | State |
 | --- | --- |
-| Astrology engine (ephemeris, chart, dasha, panchang) | Built, 118 tests passing |
+| Astrology engine (ephemeris, chart, dasha, panchang) | Built, 153 tests passing |
 | REST API (FastAPI) | Built, running locally |
 | Mobile app (Expo, TypeScript) | Sidebar over today, chart, reading/chat, course and settings; driven end to end on an Android device |
 | Learning course | 30 chapters, English and Hindi, served from the backend |
 | Today | Panchang for this moment plus the active dasha — no model, no quota |
 | AI interpretation layer | Built on Gemini, verified against the live API |
 | Crisis-support path | Checked live, one breach found and closed; re-check pending on two models |
-| Accounts | Email sign-in/sign-up built and optional; schema written; nothing syncs yet |
-| Caching | Not started |
+| Accounts | Email sign-in/sign-up, optional |
+| Sync | Chart, course progress and chat history mirrored to Supabase; checked end to end against a live project |
+| Caching | Two layers, device and server; measured 14.0s → 0.075s on a live repeat |
 
 ## Layout
 
@@ -31,11 +32,12 @@ backend/          FastAPI service and the deterministic engine
   app/astro/      The engine. No I/O, no AI, no randomness.
   app/api/        HTTP surface
   app/ai/         Interpretation layer. Translates engine output; never computes.
-  tests/          118 tests, including known-chart and grounding checks
+  tests/          153 tests, including known-chart, grounding and cache checks
   app/course/     the course — 30 chapters of prose, in two languages
 mobile/           Expo app (React Native + TypeScript)
   app/            expo-router screens; (app)/ sits behind the drawer
   src/            theme, API client, components
+  src/sync/       the account mirror — see supabase/README.md
 ```
 
 ## Running it
@@ -49,7 +51,7 @@ uv venv                               # or: python3 -m venv .venv
 uv pip install -e ".[dev]"
 cp .env.example .env                  # then paste your GEMINI_API_KEY into it
 python scripts/fetch_ephemeris.py     # 32 MB JPL kernel, one time
-./.venv/bin/python -m pytest          # 118 tests
+./.venv/bin/python -m pytest          # 153 tests
 ./.venv/bin/python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
@@ -240,11 +242,64 @@ model per day** (`GenerateRequestsPerDayPerProjectPerModel`). It is the ceiling 
 day of live testing actually hits — the 503s are noisy and survivable, the daily
 cap ends a verification run halfway through and returns 429 for the rest of the
 day. Budget live checks per model, and note that the fallback chain spends three
-separate daily allowances, not one. A 400 propagates immediately,
+separate daily allowances, not one. This limit is why caching exists here at all;
+see **Caching** below. A 400 propagates immediately,
 since a malformed request fails identically everywhere. Streaming fails over only
 *before* the first token — once text has reached the reader, another model cannot
 continue mid-sentence, so a mid-stream capacity drop surfaces as an `error` event
 after partial text.
+
+## Caching
+
+Two layers, for two different failures.
+
+**On the device** (`mobile/src/api/reading.ts`) the opening reading is kept for
+the day, keyed by chart, language and UTC date. This is the layer that protects
+a real user: it survives cold starts, redeploys and a backend that spun down
+overnight, and without it one person opening the app four times would spend a
+fifth of a model's daily allowance re-reading text they already have.
+
+**On the server** (`backend/app/ai/cache.py`) answers are keyed by a SHA-256 of
+the entire request — every message, the system instruction, the language
+directive, the model chain and the sampling settings. That key is what makes the
+cache honest: it cannot serve an answer produced from different facts or a
+different prompt, because those hash differently, so editing `prompts.py` or
+swapping the model invalidates everything without anyone remembering to. It is
+in-process, so a free-tier cold start starts cold — that is the reason the device
+layer exists rather than a reason to skip this one, which is the only place two
+requests that are identical across users can be served for free.
+
+The lifetime falls out of the key rather than being configured. The fact brief
+carries `as of:` at day precision, so tomorrow's request for the same chart
+hashes differently and misses on its own; `ASTRO_CACHE_TTL` is a memory bound,
+not a correctness device. `ASTRO_CACHE_SIZE=0` disables the whole thing, which is
+the switch to reach for when a reading looks wrong and you need to know whether
+you are debugging the model or a stored answer.
+
+**Nothing that failed grounding is ever stored**, in either layer. Caching bets
+that the same request deserves the same reply, and that bet is off for a reply
+already known to contradict the chart it describes — storing it would turn one
+bad reading into the same bad reading all day. The retry costs a request the
+reader was going to spend anyway. For the same reason a stream that was
+interrupted or abandoned is not stored: half an answer must never be served as
+a whole one.
+
+Measured against the live API, same chart and language, back to back:
+
+| | Wall time | `X-Cache` | Model requests spent |
+| --- | --- | --- | --- |
+| First call | 13.98 s | `miss` | 1 |
+| Second call | 0.075 s | `hit` | 0 |
+
+`/health` reports `hits`, `misses`, `entries` and `ratio`, which is worth
+watching rather than assuming — on 20 requests a day, the hit ratio is the number
+that says whether the service can survive its own users.
+
+`/v1/places` and `/v1/course` carry ordinary `Cache-Control` headers too
+(a day and an hour): both are pure lookups, and onboarding fires a place search
+every 250 ms while someone types a city name.
+
+## Safety categories
 
 Two Gemini safety categories are relaxed to `BLOCK_ONLY_HIGH`:
 `DANGEROUS_CONTENT`, because the crisis path deliberately engages with self-harm in
@@ -388,12 +443,64 @@ stopped with the foreground state, since a background timer is throttled anyway.
 
 ## Deployment
 
-`backend/render.yaml` is a Render blueprint. It fetches the ephemeris kernel during
-the build, so cold starts do not pay for a 32 MB download. Narrow `CORS_ORIGINS`
-before launch.
+Vercel is no longer needed — this is a mobile app, not a website. The backend goes
+to Render, the app goes through EAS Build to the Play Store and App Store.
 
-Vercel is no longer needed — this is a mobile app, not a website. Distribution goes
-through EAS Build to the Play Store and App Store.
+### Backend
+
+[render.yaml](backend/render.yaml) is a Render blueprint. It fetches the ephemeris
+kernel during the build, so cold starts do not pay for a 32 MB download.
+
+`GEMINI_API_KEY` is declared `sync: false`: Render asks for it once in the
+dashboard rather than keeping it in a committed file. A deploy without it still
+serves every deterministic endpoint and fails only the two that call a model, with
+a 503 that names the variable — so the symptom is an app whose readings are broken,
+not an app that is down.
+
+Narrow `CORS_ORIGINS` before launch. The app sends no credentials, so a wide value
+is not a session risk, but every request from a web origin spends this project's
+model quota.
+
+The free instance spins down when idle. That is what the device-side half of
+**Caching** above is for; the server-side half starts cold on every wake.
+
+### App
+
+[eas.json](mobile/eas.json) has three profiles: `development` (dev client),
+`preview` (an internal APK for putting on a real phone) and `production`.
+
+**`mobile/.env` does not reach an EAS build.** It is gitignored — correctly, it
+holds the Supabase project keys — and EAS builds from git in the cloud, so
+anything only in that file is simply absent. Three variables have to exist as EAS
+environment variables in each environment you build:
+
+| Variable | Absent in a build means |
+| --- | --- |
+| `EXPO_PUBLIC_API_URL` | The app points at `localhost` — the phone talking to itself |
+| `EXPO_PUBLIC_SUPABASE_URL` | Accounts and sync silently disappear; the app runs device-only |
+| `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Same |
+
+```bash
+eas env:create --environment production --name EXPO_PUBLIC_API_URL --value https://your-service.onrender.com
+```
+
+All three are `EXPO_PUBLIC_`, which means they are inlined into the JS bundle and
+readable by anyone who unzips it. That is correct for all three — a backend URL is
+public by definition and the Supabase publishable key is designed to be shipped,
+which is exactly why the RLS policies in [supabase/schema.sql](supabase/schema.sql)
+are not optional. Do not mark them secret; there is nothing secret to protect, and
+`GEMINI_API_KEY` — the one real secret — lives on the server and is never sent to
+the app.
+
+The first two of those failures used to be silent. The `EXPO_PUBLIC_API_URL` one
+still installs and opens and then fails every screen with an ordinary network
+error, so `API_NOT_CONFIGURED` in [client.ts](mobile/src/api/client.ts) detects a
+release build resolving to a loopback address and the settings screen says so
+under **API** rather than leaving someone reading timeouts.
+
+Before the first store build: turn Supabase email confirmation back on
+(see [supabase/README.md](supabase/README.md)), and run the pending
+`update own conversations` policy if that project predates the sync layer.
 
 ## Next
 
@@ -406,10 +513,6 @@ through EAS Build to the Play Store and App Store.
 2. Prompt tuning on Gemini: readings run long (~2000 chars vs the "two to four
    short paragraphs" the contract asks for) and use bullet lists the contract
    tells it to avoid.
-3. Sync into Supabase. The tables and the auth exist; nothing writes to them
-   yet. Birth details and course progress are still device-local and chat
-   history is not stored at all.
-4. Daily-horoscope caching — generate once per day per user segment, not per request.
-5. Replace the bundled city list with a real geocoder if coverage becomes a problem.
-6. Divisional charts beyond D9 (D10 and friends need per-sign starting rules that
+3. Replace the bundled city list with a real geocoder if coverage becomes a problem.
+4. Divisional charts beyond D9 (D10 and friends need per-sign starting rules that
    `divisional_sign` deliberately does not encode yet).

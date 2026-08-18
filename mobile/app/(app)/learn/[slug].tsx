@@ -13,6 +13,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 
 import { loadChapter } from '../../../src/api/course';
 import { loadBirthDetails, loadProgress, markChapterRead } from '../../../src/api/storage';
+import { useSync } from '../../../src/sync/context';
 import type { CourseChapter, CourseLanguage } from '../../../src/api/types';
 import { ScreenHeader } from '../../../src/components/ScreenHeader';
 import { Button, ErrorNote } from '../../../src/components/ui';
@@ -21,6 +22,7 @@ import { colors, radius, space, type } from '../../../src/theme';
 export default function ChapterScreen() {
   const router = useRouter();
   const { slug, language } = useLocalSearchParams<{ slug: string; language?: string }>();
+  const { pushChapterRead } = useSync();
   const lang: CourseLanguage = language === 'hi' ? 'hi' : 'en';
 
   const [chapter, setChapter] = useState<CourseChapter | null>(null);
@@ -50,6 +52,9 @@ export default function ChapterScreen() {
   const finish = async () => {
     if (!chapter) return;
     await markChapterRead(chapter.slug);
+    // Fire and forget, like every other push here: the tick is already saved on
+    // the device, and the union merge notices anything that did not make it up.
+    void pushChapterRead(chapter.slug);
     setRead(true);
     if (chapter.next_slug) router.replace(`/learn/${chapter.next_slug}?language=${lang}`);
     else router.replace('/learn');

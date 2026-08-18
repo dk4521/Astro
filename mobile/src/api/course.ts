@@ -13,37 +13,13 @@
  * be answered from a stale entry.
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
+import { COURSE_NAMESPACE, birthKey, readCache, writeCache } from './cache';
 import { fetchChapter, fetchCourseIndex } from './client';
 import type { BirthDetails, CourseChapter, CourseIndex, CourseLanguage } from './types';
 
-const INDEX_KEY = (language: string) => `kosmiq.course.index.${language}.v1`;
+const INDEX_KEY = (language: string) => `${COURSE_NAMESPACE}index.${language}.v1`;
 const CHAPTER_KEY = (slug: string, language: string, birth: string) =>
-  `kosmiq.course.chapter.${slug}.${language}.${birth}.v1`;
-
-/** Enough of the birth details to notice a different chart, and nothing more. */
-function birthKey(birth: BirthDetails | null): string {
-  if (!birth) return 'none';
-  return `${birth.date}T${birth.time}@${birth.latitude.toFixed(3)},${birth.longitude.toFixed(3)}`;
-}
-
-async function readCache<T>(key: string): Promise<T | null> {
-  try {
-    const raw = await AsyncStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : null;
-  } catch {
-    return null;
-  }
-}
-
-async function writeCache(key: string, value: unknown): Promise<void> {
-  try {
-    await AsyncStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    // A full disk should not stop someone reading; the network copy still works.
-  }
-}
+  `${COURSE_NAMESPACE}chapter.${slug}.${language}.${birth}.v1`;
 
 /**
  * The index, network first.
@@ -86,9 +62,4 @@ export async function loadChapter(
   return chapter;
 }
 
-/** Drop every cached chapter and index. Used when birth details change. */
-export async function clearCourseCache(): Promise<void> {
-  const keys = await AsyncStorage.getAllKeys();
-  const ours = keys.filter((key) => key.startsWith('kosmiq.course.'));
-  if (ours.length) await AsyncStorage.multiRemove(ours);
-}
+

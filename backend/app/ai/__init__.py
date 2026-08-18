@@ -6,6 +6,7 @@ describe — so a fabricated placement is detectable rather than merely
 discouraged.
 """
 
+from . import cache
 from .client import InterpretationUnavailable, is_configured, set_client
 from .facts import build_brief
 from .interpret import Interpretation, Turn, answer, reading, stream_answer
@@ -16,6 +17,7 @@ __all__ = [
     "Turn",
     "answer",
     "build_brief",
+    "cache",
     "is_configured",
     "reading",
     "set_client",

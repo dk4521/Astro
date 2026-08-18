@@ -13,6 +13,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AuthProvider } from '../src/auth/context';
+import { SyncProvider } from '../src/sync/context';
 import { colors } from '../src/theme';
 
 export default function RootLayout() {
@@ -23,13 +24,17 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <StatusBar style="light" />
         <AuthProvider>
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: colors.bg },
-              animation: 'fade',
-            }}
-          />
+          {/* Inside AuthProvider because it mirrors whoever is signed in, and
+              above the routes because `index` waits on its first pass. */}
+          <SyncProvider>
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                contentStyle: { backgroundColor: colors.bg },
+                animation: 'fade',
+              }}
+            />
+          </SyncProvider>
         </AuthProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

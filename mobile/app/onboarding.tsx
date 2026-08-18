@@ -23,6 +23,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { searchPlaces } from '../src/api/client';
 import { saveBirthDetails } from '../src/api/storage';
+import { useSync } from '../src/sync/context';
 import type { Place } from '../src/api/types';
 import { Button, ErrorNote, Label } from '../src/components/ui';
 import { colors, radius, space, type } from '../src/theme';
@@ -54,6 +55,7 @@ function isRealTime(value: string): boolean {
 export default function Onboarding() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { pushBirth } = useSync();
 
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
@@ -120,19 +122,24 @@ export default function Onboarding() {
     setSaving(true);
     setError(null);
     try {
-      await saveBirthDetails({
+      const details = {
         date,
         time,
         latitude: place.latitude,
         longitude: place.longitude,
         place: `${place.name}, ${place.admin}`,
-      });
+      };
+      await saveBirthDetails(details);
+      // Not awaited: the device already has the details, and the chart is what
+      // this button promised. A failed upload is picked up by the next sync
+      // rather than made into a reason to sit on a spinner.
+      void pushBirth(details);
       router.replace('/chart');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save your details');
       setSaving(false);
     }
-  }, [ready, place, date, time, router]);
+  }, [ready, place, date, time, router, pushBirth]);
 
   return (
     // Android needs `padding` as much as iOS does here: with edge-to-edge the
