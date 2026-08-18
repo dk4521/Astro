@@ -33,6 +33,13 @@
     },
     "plugins": [
       "expo-router"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "448741dd-dfd2-4196-aaac-5252fd05fc20"
+      }
+    },
+    "owner": "deepakss646"
   }
 }
