@@ -129,6 +129,17 @@ TITHI_NAMES: tuple[str, ...] = (
     "Trayodashi", "Chaturdashi", "Purnima/Amavasya",
 )
 
+# Devanagari for each of the five limbs, index-parallel to the tables above, so
+# a Hindi reading never has to fall back to a transliteration. The engine
+# computes in English names; these are the only place the Hindi spelling lives.
+TITHI_NAMES_HI: tuple[str, ...] = (
+    "प्रतिपदा", "द्वितीया", "तृतीया", "चतुर्थी", "पंचमी", "षष्ठी",
+    "सप्तमी", "अष्टमी", "नवमी", "दशमी", "एकादशी", "द्वादशी",
+    "त्रयोदशी", "चतुर्दशी", "पूर्णिमा/अमावस्या",
+)
+
+PAKSHA_HI: dict[str, str] = {"Shukla": "शुक्ल", "Krishna": "कृष्ण"}
+
 YOGA_NAMES: tuple[str, ...] = (
     "Vishkambha", "Priti", "Ayushman", "Saubhagya", "Shobhana", "Atiganda",
     "Sukarma", "Dhriti", "Shula", "Ganda", "Vriddhi", "Dhruva", "Vyaghata",
@@ -136,11 +147,49 @@ YOGA_NAMES: tuple[str, ...] = (
     "Siddha", "Sadhya", "Shubha", "Shukla", "Brahma", "Indra", "Vaidhriti",
 )
 
+YOGA_NAMES_HI: tuple[str, ...] = (
+    "विष्कंभ", "प्रीति", "आयुष्मान", "सौभाग्य", "शोभन", "अतिगंड",
+    "सुकर्मा", "धृति", "शूल", "गंड", "वृद्धि", "ध्रुव", "व्याघात",
+    "हर्षण", "वज्र", "सिद्धि", "व्यतीपात", "वरीयान", "परिघ", "शिव",
+    "सिद्ध", "साध्य", "शुभ", "शुक्ल", "ब्रह्म", "ऐंद्र", "वैधृति",
+)
+
+# Keyed by name rather than index: the karana index runs 0-59 over the month
+# but only eleven distinct names exist, and `panchang` already resolves which.
+KARANA_HI: dict[str, str] = {
+    "Bava": "बव",
+    "Balava": "बालव",
+    "Kaulava": "कौलव",
+    "Taitila": "तैतिल",
+    "Gara": "गर",
+    "Vanija": "वणिज",
+    "Vishti": "विष्टि",
+    "Kimstughna": "किंस्तुघ्न",
+    "Shakuni": "शकुनि",
+    "Chatushpada": "चतुष्पाद",
+    "Naga": "नाग",
+}
+
 VARA_NAMES: tuple[str, ...] = (
     "Ravivara", "Somavara", "Mangalavara", "Budhavara",
     "Guruvara", "Shukravara", "Shanivara",
 )
 
+VARA_NAMES_HI: tuple[str, ...] = (
+    "रविवार", "सोमवार", "मंगलवार", "बुधवार",
+    "गुरुवार", "शुक्रवार", "शनिवार",
+)
+
 VARA_LORDS: tuple[str, ...] = (
     "Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn",
 )
+
+
+# --- Ayanamsa ---------------------------------------------------------------
+
+# Keyed by the label the engine stamps on a chart, so a Hindi reading can name
+# the correction it used. Unknown keys fall back to the English label rather
+# than to nothing.
+AYANAMSA_NAMES_HI: dict[str, str] = {
+    "Lahiri (Chitrapaksha)": "लाहिड़ी (चित्रपक्ष)",
+}

@@ -34,6 +34,7 @@ backend/          FastAPI service and the deterministic engine
   app/ai/         Interpretation layer. Translates engine output; never computes.
   tests/          153 tests, including known-chart, grounding and cache checks
   app/course/     the course — 30 chapters of prose, in two languages
+  app/places_data.py  ~3,000 places, India tier-1 to tier-3; built by scripts/
 mobile/           Expo app (React Native + TypeScript)
   app/            expo-router screens; (app)/ sits behind the drawer
   src/            theme, API client, components
