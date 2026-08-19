@@ -6,6 +6,7 @@
  * validating something the other does.
  */
 
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -18,7 +19,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Button, ErrorNote, Label } from './ui';
+import { BackButton, Button, ErrorNote, Label } from './ui';
 import { colors, radius, space, type } from '../theme';
 
 // Deliberately loose. Rejecting an address the server would have accepted is a
@@ -36,7 +37,7 @@ export function AuthForm({
   notice,
 }: {
   title: string;
-  subtitle: string;
+  subtitle?: string;
   action: string;
   onSubmit: (email: string, password: string) => Promise<string | null>;
   footer: { text: string; link: string; onPress: () => void };
@@ -44,6 +45,10 @@ export function AuthForm({
   notice?: string | null;
 }) {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
+  // Hidden on a first run that landed here directly — an arrow that goes
+  // nowhere is worse than no arrow.
+  const canGoBack = router.canGoBack();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -75,9 +80,15 @@ export function AuthForm({
         ]}
         keyboardShouldPersistTaps="handled"
       >
+        {canGoBack ? (
+          <View style={styles.backRow}>
+            <BackButton onPress={() => router.back()} />
+          </View>
+        ) : null}
+
         <Text style={styles.kicker}>Kosmiq</Text>
         <Text style={styles.title}>{title}</Text>
-        <Text style={styles.subtitle}>{subtitle}</Text>
+        {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
 
         {notice ? (
           <View style={styles.notice}>
@@ -163,11 +174,20 @@ export function AuthForm({
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.bg },
+  flex: { flex: 1, backgroundColor: 'transparent' },
   content: { paddingHorizontal: space.lg },
+  // Pulled left so the arrow lines up with the text below it, not with its
+  // own padding box.
+  backRow: { marginLeft: -space.sm, marginBottom: space.md },
   kicker: { ...type.label, color: colors.accent },
-  title: { ...type.display, color: colors.text, marginTop: space.sm },
-  subtitle: { ...type.body, color: colors.textMuted, lineHeight: 22, marginTop: space.sm, marginBottom: space.xl },
+  title: { ...type.display, color: colors.text, marginTop: space.sm, marginBottom: space.xl },
+  subtitle: {
+    ...type.body,
+    color: colors.textMuted,
+    lineHeight: 22,
+    marginTop: -space.lg,
+    marginBottom: space.xl,
+  },
   notice: {
     backgroundColor: colors.accentDim,
     borderRadius: radius.sm,
@@ -177,7 +197,7 @@ const styles = StyleSheet.create({
   noticeText: { ...type.body, color: colors.accentSoft, lineHeight: 21 },
   field: { marginBottom: space.lg },
   input: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.glass,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.sm,

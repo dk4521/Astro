@@ -6,103 +6,139 @@
  * swipe gesture, the back-button handling and the accessibility semantics that
  * a custom overlay would have to reimplement badly.
  *
- * The content is custom, though. The stock drawer is a white list of labels;
- * this one carries the chart summary at the top, because the first question a
- * user has in a sidebar is "whose chart am I looking at".
+ * The panel itself is glass: the drawer's own background is transparent and the
+ * colour comes from a translucent gradient inside it, so the screen you came
+ * from stays faintly visible underneath. The list is destination names and
+ * nothing else — a sidebar is for getting somewhere, and every extra line of
+ * prose in it is read once and then skipped forever.
  */
 
+import { LinearGradient } from 'expo-linear-gradient';
 import { Drawer } from 'expo-router/drawer';
 import { DrawerContentScrollView } from 'expo-router/drawer';
 import { usePathname, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Path } from 'react-native-svg';
 
 import { useAuth } from '../../src/auth/context';
-import { loadBirthDetails } from '../../src/api/storage';
-import type { BirthDetails } from '../../src/api/types';
 import { colors, radius, space, type } from '../../src/theme';
 
 type Item = {
   route: string;
   label: string;
-  hint: string;
   glyph: string;
 };
 
 const ITEMS: Item[] = [
-  { route: '/today', label: 'Today', hint: 'Panchang now, and your period', glyph: '☉' },
-  { route: '/chart', label: 'Chart', hint: 'Your computed kundli', glyph: '◈' },
-  { route: '/reading', label: 'Reading', hint: 'Explained, and ask anything', glyph: '❋' },
-  { route: '/learn', label: 'Learn', hint: 'A course, using your chart', glyph: '✦' },
-  { route: '/settings', label: 'Settings', hint: 'Birth details and data', glyph: '⚙' },
+  { route: '/today', label: 'Today', glyph: '☉' },
+  { route: '/chart', label: 'Chart', glyph: '◈' },
+  { route: '/reading', label: 'Chat', glyph: '❋' },
+  { route: '/learn', label: 'Learn', glyph: '✦' },
+  { route: '/settings', label: 'Settings', glyph: '⚙' },
 ];
+
+function PowerIcon() {
+  return (
+    <Svg width={15} height={15} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M12 2.8 V11"
+        stroke={colors.textMuted}
+        strokeWidth={2.4}
+        strokeLinecap="round"
+      />
+      <Path
+        d="M6.6 6.4 a7.6 7.6 0 1 0 10.8 0"
+        stroke={colors.textMuted}
+        strokeWidth={2.4}
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
+}
 
 function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
+  const { available, user, signOut } = useAuth();
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
-  const [details, setDetails] = useState<BirthDetails | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    loadBirthDetails().then((saved) => {
-      if (!cancelled) setDetails(saved);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   return (
-    <DrawerContentScrollView
-      contentContainerStyle={[styles.sidebar, { paddingTop: insets.top + space.lg }]}
-      style={styles.sidebarBg}
-    >
-      <Text style={styles.brand}>KOSMIQ</Text>
-      <Text style={styles.brandLine}>
-        {details?.place ?? 'Your chart'}
-      </Text>
-      {details ? (
-        <Text style={styles.brandMeta}>
-          {details.date} · {details.time}
-        </Text>
-      ) : null}
-      {user?.email ? <Text style={styles.brandAccount}>{user.email}</Text> : null}
+    <View style={styles.panel}>
+      <LinearGradient
+        colors={['rgba(34, 29, 64, 0.96)', 'rgba(18, 16, 32, 0.93)', 'rgba(9, 8, 18, 0.97)']}
+        locations={[0, 0.55, 1]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0.9, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+      {/* A single lit edge. It reads as thickness, which is what makes a
+          translucent panel look like glass rather than like low opacity. */}
+      <View style={styles.edge} pointerEvents="none" />
 
-      <View style={styles.items}>
-        {ITEMS.map((item) => {
-          // `/learn/nakshatras` should still light up the Learn row.
-          const active = pathname === item.route || pathname.startsWith(`${item.route}/`);
-          return (
-            <Pressable
-              key={item.route}
-              accessibilityRole="button"
-              accessibilityState={{ selected: active }}
-              onPress={() => router.navigate(item.route as never)}
-              style={({ pressed }) => [
-                styles.item,
-                active && styles.itemActive,
-                pressed && styles.itemPressed,
-              ]}
-            >
-              <Text style={[styles.glyph, active && styles.glyphActive]}>{item.glyph}</Text>
-              <View style={styles.itemText}>
+      <DrawerContentScrollView
+        style={styles.scroll}
+        contentContainerStyle={[
+          styles.content,
+          { paddingTop: insets.top + space.md, paddingBottom: insets.bottom + space.md },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        <Text style={styles.brand}>KOSMIQ</Text>
+
+        <View style={styles.items}>
+          {ITEMS.map((item) => {
+            // `/learn/nakshatras` should still light up the Learn row.
+            const active = pathname === item.route || pathname.startsWith(`${item.route}/`);
+            return (
+              <Pressable
+                key={item.route}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                onPress={() => router.navigate(item.route as never)}
+                style={({ pressed }) => [
+                  styles.item,
+                  active && styles.itemActive,
+                  pressed && styles.itemPressed,
+                ]}
+              >
+                <View style={[styles.marker, active && styles.markerActive]} />
+                <Text style={[styles.glyph, active && styles.glyphActive]}>{item.glyph}</Text>
                 <Text style={[styles.itemLabel, active && styles.itemLabelActive]}>
                   {item.label}
                 </Text>
-                <Text style={styles.itemHint}>{item.hint}</Text>
-              </View>
-            </Pressable>
-          );
-        })}
-      </View>
+              </Pressable>
+            );
+          })}
+        </View>
 
-      <Text style={styles.footer}>
-        Every number here comes from your birth moment.
-      </Text>
-    </DrawerContentScrollView>
+        {/* Pushes the account action to the bottom of the panel however short
+            the list above it is. */}
+        <View style={styles.spacer} />
+
+        {available ? (
+          user ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={signOut}
+              style={({ pressed }) => [styles.exit, pressed && styles.itemPressed]}
+            >
+              <PowerIcon />
+              <Text style={styles.exitLabel}>Sign out</Text>
+            </Pressable>
+          ) : (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push('/sign-in')}
+              style={({ pressed }) => [styles.exit, pressed && styles.itemPressed]}
+            >
+              <PowerIcon />
+              <Text style={styles.exitLabel}>Sign in</Text>
+            </Pressable>
+          )
+        ) : null}
+      </DrawerContentScrollView>
+    </View>
   );
 }
 
@@ -112,43 +148,89 @@ export default function AppLayout() {
       drawerContent={() => <Sidebar />}
       screenOptions={{
         headerShown: false,
+        // 'front' is what makes transparency mean anything: the panel floats
+        // over the screen rather than pushing it aside.
         drawerType: 'front',
-        drawerStyle: { backgroundColor: colors.surface, width: 300 },
-        overlayColor: 'rgba(11, 10, 20, 0.6)',
-        sceneStyle: { backgroundColor: colors.bg },
+        drawerStyle: { backgroundColor: 'transparent', width: 272 },
+        overlayColor: 'rgba(11, 10, 20, 0.55)',
+        // Transparent: the root star field is the background now.
+        sceneStyle: { backgroundColor: 'transparent' },
       }}
     />
   );
 }
 
 const styles = StyleSheet.create({
-  sidebarBg: { backgroundColor: colors.surface },
-  sidebar: { paddingHorizontal: space.md, paddingBottom: space.xl },
-  brand: { ...type.label, color: colors.accent },
-  brandLine: { ...type.heading, color: colors.text, marginTop: space.sm },
-  brandMeta: { ...type.mono, color: colors.textFaint, marginTop: 2 },
-  brandAccount: { ...type.mono, color: colors.accentSoft, marginTop: space.xs },
-  items: { marginTop: space.xl, gap: space.xs },
+  panel: {
+    flex: 1,
+    // Matches the radius the drawer container itself applies for 'front', so
+    // the gradient stops exactly where the panel is clipped.
+    borderTopRightRadius: radius.md,
+    borderBottomRightRadius: radius.md,
+    overflow: 'hidden',
+  },
+  edge: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    right: 0,
+    width: StyleSheet.hairlineWidth * 2,
+    backgroundColor: 'rgba(185, 174, 255, 0.22)',
+  },
+  scroll: { backgroundColor: 'transparent' },
+  content: {
+    flexGrow: 1,
+    paddingHorizontal: space.sm,
+  },
+  brand: {
+    ...type.label,
+    color: colors.accentSoft,
+    letterSpacing: 3,
+    paddingHorizontal: space.md,
+    marginBottom: space.xl,
+  },
+
+  items: { gap: 2 },
   item: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: space.md,
-    paddingVertical: space.md,
-    paddingHorizontal: space.md,
-    borderRadius: radius.sm,
+    height: 50,
+    paddingRight: space.md,
+    borderRadius: radius.md,
   },
-  itemActive: { backgroundColor: colors.accentDim },
-  itemPressed: { opacity: 0.7 },
-  glyph: { fontSize: 16, color: colors.textFaint, width: 20, textAlign: 'center' },
+  itemActive: { backgroundColor: 'rgba(139, 123, 247, 0.16)' },
+  itemPressed: { opacity: 0.6 },
+  // Sits in the row's left gutter so labels stay on one vertical line whether
+  // or not the row is the active one.
+  marker: {
+    width: 3,
+    height: 20,
+    borderRadius: radius.pill,
+    backgroundColor: 'transparent',
+  },
+  markerActive: { backgroundColor: colors.accent },
+  glyph: { fontSize: 15, color: colors.textFaint, width: 18, textAlign: 'center' },
   glyphActive: { color: colors.accentSoft },
-  itemText: { flex: 1 },
-  itemLabel: { ...type.body, color: colors.textMuted, fontWeight: '600' },
-  itemLabelActive: { color: colors.text },
-  itemHint: { ...type.mono, color: colors.textFaint, marginTop: 2 },
-  footer: {
-    ...type.mono,
-    color: colors.textFaint,
-    marginTop: space.xxl,
-    lineHeight: 18,
+  itemLabel: {
+    ...type.label,
+    fontSize: 12,
+    letterSpacing: 1.6,
+    color: colors.textMuted,
   },
+  itemLabelActive: { color: colors.text },
+
+  spacer: { flex: 1, minHeight: space.xl },
+  exit: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    height: 46,
+    paddingHorizontal: space.md,
+    borderRadius: radius.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(168, 162, 196, 0.28)',
+    backgroundColor: 'rgba(244, 242, 255, 0.04)',
+  },
+  exitLabel: { ...type.label, fontSize: 12, letterSpacing: 1.6, color: colors.textMuted },
 });

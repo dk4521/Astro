@@ -12,16 +12,20 @@ import { ReactNode, useCallback } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { BackButton } from './ui';
 import { colors, space, type } from '../theme';
 
 export function ScreenHeader({
   title,
   right,
   bordered = true,
+  onBack,
 }: {
   title?: string;
   right?: ReactNode;
   bordered?: boolean;
+  /** When set, the bar leads with a back arrow rather than the drawer handle. */
+  onBack?: () => void;
 }) {
   // `openDrawer` lives on the drawer navigator, which is this screen's parent.
   const navigation = useNavigation<DrawerNavigationProp<Record<string, undefined>>>();
@@ -39,6 +43,9 @@ export function ScreenHeader({
         { paddingTop: insets.top + space.sm },
       ]}
     >
+      {onBack ? (
+        <BackButton onPress={onBack} />
+      ) : (
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Open menu"
@@ -51,6 +58,7 @@ export function ScreenHeader({
         <View style={[styles.bar, styles.barShort]} />
         <View style={styles.bar} />
       </Pressable>
+      )}
 
       {title ? (
         <Text style={styles.title} numberOfLines={1}>

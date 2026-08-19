@@ -32,7 +32,6 @@ export default function SignIn() {
   return (
     <AuthForm
       title={'Welcome back.'}
-      subtitle="Sign in to keep your chart, your chat history and your course progress across devices."
       action="Sign in"
       onSubmit={submit}
       footer={{

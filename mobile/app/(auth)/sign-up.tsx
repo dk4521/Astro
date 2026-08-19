@@ -41,7 +41,6 @@ export default function SignUp() {
   return (
     <AuthForm
       title={'Make an account.'}
-      subtitle="Your birth details stay yours. An account only means they follow you to a new phone."
       action="Create account"
       onSubmit={submit}
       footer={{

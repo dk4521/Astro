@@ -5,10 +5,10 @@
  * bottom of the chart screen, where a user who mistyped their birth time had to
  * scroll past the consequences of that mistake to fix it.
  *
- * It is also the only place that answers "where is my data". That section names
- * every store by what actually holds it, including a sync that has failed —
- * telling someone their chart is safe in an account it never reached is the one
- * lie a settings screen must not tell.
+ * The screen is a sheet of glass over the night sky: the cards are translucent
+ * and the background is `StarField`, not a flat fill. Nothing here explains
+ * itself in prose any more — a row that needs a paragraph under it is a row
+ * that was named badly.
  */
 
 import { useRouter } from 'expo-router';
@@ -19,10 +19,11 @@ import { useAuth } from '../../src/auth/context';
 import { useSync } from '../../src/sync/context';
 import { clearChartCaches } from '../../src/api/cache';
 import { clearBirthDetails, clearProgress, loadBirthDetails, loadProgress } from '../../src/api/storage';
-import { API_BASE_URL, API_NOT_CONFIGURED } from '../../src/api/client';
+import { API_NOT_CONFIGURED } from '../../src/api/client';
 import type { BirthDetails } from '../../src/api/types';
+import { toDisplayDate } from '../../src/format';
 import { ScreenHeader } from '../../src/components/ScreenHeader';
-import { Button, Card, Label, Row } from '../../src/components/ui';
+import { Button, Card, ErrorNote, Label, Row } from '../../src/components/ui';
 import { colors, space, type } from '../../src/theme';
 
 /** "just now", "6 min ago" — enough to tell fresh from stuck. */
@@ -104,16 +105,23 @@ export default function Settings() {
 
   return (
     <View style={styles.flex}>
-      <ScreenHeader title="Settings" />
+      <ScreenHeader title="Settings" bordered={false} />
 
       <ScrollView contentContainerStyle={styles.content}>
+        {/* Renders nothing in a correctly built app. It survives the prose cull
+            because without it a build with no API URL fails as anonymous
+            network timeouts on every screen. */}
+        {API_NOT_CONFIGURED ? (
+          <View style={styles.section}>
+            <ErrorNote message="This build has no API address, so nothing served from the backend can load." />
+          </View>
+        ) : null}
+
         <View style={styles.section}>
           <Label>Account</Label>
           <Card>
             {!available ? (
-              <Text style={styles.empty}>
-                Accounts are not configured in this build.
-              </Text>
+              <Text style={styles.empty}>Accounts are not configured in this build.</Text>
             ) : user ? (
               <>
                 <Row label="Signed in as" value={user.email ?? 'this account'} />
@@ -131,11 +139,6 @@ export default function Settings() {
               <Text style={styles.empty}>Not signed in.</Text>
             )}
           </Card>
-          <Text style={styles.note}>
-            Signing in is optional. An account carries your chart, chat history
-            and course progress to a new phone; without one everything still
-            works and stays on this device.
-          </Text>
           {available ? (
             <View style={styles.action}>
               {user ? (
@@ -159,13 +162,6 @@ export default function Settings() {
               )}
             </View>
           ) : null}
-          {syncing ? (
-            <Text style={styles.note}>
-              Signing out leaves your chart and progress on this phone. Nothing
-              is deleted from the account either — signing back in brings both
-              copies together.
-            </Text>
-          ) : null}
         </View>
 
         <View style={styles.section}>
@@ -173,19 +169,18 @@ export default function Settings() {
           <Card>
             {details ? (
               <>
-                <Row label="Date" value={details.date} />
+                <Row label="Date" value={toDisplayDate(details.date)} />
                 <Row label="Time" value={details.time} />
-                <Row label="Place" value={details.place ?? '—'}
-                  hint={`${details.latitude.toFixed(4)}°, ${details.longitude.toFixed(4)}°`} />
+                <Row
+                  label="Place"
+                  value={details.place ?? '—'}
+                  hint={`${details.latitude.toFixed(4)}°, ${details.longitude.toFixed(4)}°`}
+                />
               </>
             ) : (
               <Text style={styles.empty}>Nothing saved yet.</Text>
             )}
           </Card>
-          <Text style={styles.note}>
-            These three facts decide every number in the app. Changing them casts a
-            new chart from scratch.
-          </Text>
           <View style={styles.action}>
             <Button title="Change birth details" onPress={changeBirth} variant="ghost" />
           </View>
@@ -205,65 +200,24 @@ export default function Settings() {
           <View style={styles.section}>
             <Label>Chat history</Label>
             <Card>
-              <Row
-                label="Stored"
-                value="In your account"
-                hint="Questions, answers, and whether each answer matched your chart"
-              />
+              <Row label="Stored" value="In your account" />
             </Card>
             <View style={styles.action}>
               <Button title="Delete chat history" onPress={forgetChat} variant="ghost" />
             </View>
           </View>
         ) : null}
-
-        <View style={styles.section}>
-          <Label>Where your data lives</Label>
-          <Card>
-            <Row
-              label="Birth details"
-              value={syncing ? 'This device and your account' : 'This device only'}
-            />
-            <Row
-              label="Course progress"
-              value={syncing ? 'This device and your account' : 'This device only'}
-            />
-            <Row label="Course text" value="Downloaded, then cached" />
-            <Row
-              label="Your reading"
-              value="Kept for the day"
-              hint="Saved for the day, so opening it again is instant"
-            />
-            <Row label="Chat history" value={syncing ? 'Your account' : 'Not stored'} />
-            <Row label="Account" value={user ? 'Signed in' : 'None'} />
-            <Row
-              label="API"
-              value={API_BASE_URL}
-              hint={
-                API_NOT_CONFIGURED
-                  ? 'This build has no EXPO_PUBLIC_API_URL, so it is pointing at the phone itself. Nothing served from the backend can work until it is rebuilt with one.'
-                  : undefined
-              }
-            />
-          </Card>
-          <Text style={styles.note}>
-            {syncing
-              ? status === 'error'
-                ? 'The last sync did not reach your account, so the rows above may still be device-only. Everything is safe on this phone and will go up on the next successful sync.'
-                : 'Your birth details are sent to the API to compute a chart and are not retained there. What is stored in your account is stored under row-level security: only your own session can read it.'
-              : 'Nothing leaves this phone except the birth details sent to the API to compute a chart, which are not retained there.'}
-          </Text>
-        </View>
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.bg },
+  // No background colour: StarField is the background, and a fill here would
+  // sit on top of it.
+  flex: { flex: 1, backgroundColor: 'transparent' },
   content: { paddingHorizontal: space.lg, paddingTop: space.lg, paddingBottom: space.xxl },
   section: { marginBottom: space.xl },
   empty: { ...type.body, color: colors.textMuted },
-  note: { ...type.mono, color: colors.textFaint, marginTop: space.sm, lineHeight: 18 },
   action: { marginTop: space.md },
 });

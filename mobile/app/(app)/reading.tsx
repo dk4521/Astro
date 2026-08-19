@@ -40,6 +40,8 @@ import { useSync } from '../../src/sync/context';
 import type { BirthDetails, ChatTurn, Language } from '../../src/api/types';
 import { RichText } from '../../src/components/RichText';
 import { ScreenHeader } from '../../src/components/ScreenHeader';
+import { PERSONAS, Portrait, type Persona } from '../../src/components/Avatar';
+import { loadPersona, savePersona } from '../../src/api/storage';
 import { Button, ErrorNote, Label } from '../../src/components/ui';
 import { colors, radius, space, type } from '../../src/theme';
 
@@ -55,6 +57,27 @@ const LANGUAGES: { value: Language; label: string }[] = [
   { value: 'hi', label: 'हिंदी' },
   { value: 'en', label: 'English' },
 ];
+
+/**
+ * What the companion says first.
+ *
+ * Written here rather than asked of the model: a greeting is the one line in
+ * the conversation whose content is known in advance, and waiting on a network
+ * round trip to say hello is exactly the pause that made this screen feel like
+ * a document instead of a chat.
+ */
+const GREETING: Record<Language, (name: string) => string> = {
+  hinglish: (name) => `Namaste! Main ${name} hoon. Aapki kundli mere saamne hai — kya jaanna chahenge?`,
+  hi: (name) => `नमस्ते! मैं ${name} हूँ। आपकी कुंडली मेरे सामने है — क्या जानना चाहेंगे?`,
+  en: (name) => `Hello! I'm ${name}. I have your chart in front of me — what would you like to know?`,
+};
+
+/** The full reading, now something you ask for rather than something you land in. */
+const READ_ALL: Record<Language, string> = {
+  hinglish: 'Meri poori kundli padhkar batao',
+  hi: 'मेरी पूरी कुंडली पढ़कर बताइए',
+  en: 'Read my whole chart',
+};
 
 /** Openers, in the language they will be answered in. */
 const SUGGESTIONS: Record<Language, string[]> = {
@@ -124,13 +147,39 @@ function GroundingNote({
 export default function ReadingScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { enabled: syncing, chartId, loadChatHistory, recordTurn } = useSync();
+  // Undefined while the stored choice is still being read, so the picker does
+  // not flash open for someone who chose weeks ago.
+  const [persona, setPersona] = useState<Persona | null | undefined>(undefined);
+  /** Open while choosing. Separate from `persona` so tapping Change and then
+      picking the same face again costs nothing. */
+  const [picking, setPicking] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    loadPersona().then((id) => {
+      if (cancelled) return;
+      setPersona(PERSONAS.find((p) => p.id === id) ?? null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const {
+    enabled: syncing,
+    chartId,
+    loadChatHistory,
+    recordTurn,
+    clearChatHistory,
+  } = useSync();
 
   const [details, setDetails] = useState<BirthDetails | null>(null);
   const [language, setLanguage] = useState<Language>('hinglish');
 
   const [opening, setOpening] = useState<Message | null>(null);
-  const [openingLoading, setOpeningLoading] = useState(true);
+  // Starts false. The reading is not on its way until a companion is picked,
+  // and a spinner over the picker would claim otherwise.
+  const [openingLoading, setOpeningLoading] = useState(false);
   const [slow, setSlow] = useState(false);
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -193,46 +242,67 @@ export default function ReadingScreen() {
     };
   }, [syncing, chartId, loadChatHistory]);
 
-  const loadOpening = useCallback(
-    async (birth: BirthDetails, lang: Language) => {
-      const id = ++openingRequest.current;
-      setOpeningLoading(true);
-      setError(null);
-      // A reading was measured between 2s and 80s on the free tier. A spinner
-      // that says nothing for a minute reads as a hang, so say what is going on.
-      // Only a first reading waits at all: the same chart, language and day come
-      // back from the device (`src/api/reading.ts`) before this timer starts.
-      const slowTimer = setTimeout(() => setSlow(true), 10_000);
+  /**
+   * The full reading, as a turn in the conversation.
+   *
+   * It used to be a separate block that appeared above the chat before anyone
+   * had said anything — several screens of prose as the first thing you met.
+   * Now it is what it always was in substance: a long answer to a question
+   * somebody asked.
+   */
+  const readWholeChart = useCallback(async () => {
+    if (!details || sending) return;
 
-      try {
-        const result = await loadInterpretation(birth, lang);
-        if (id !== openingRequest.current) return;
-        setOpening({
-          id: 0,
+    const askedId = nextId.current++;
+    const answerId = nextId.current++;
+    const asked = READ_ALL[language];
+
+    setError(null);
+    setSending(true);
+    setMessages((current) => [
+      ...current,
+      { id: askedId, role: 'user', text: asked },
+      { id: answerId, role: 'assistant', text: '', streaming: true },
+    ]);
+    void recordTurn({ role: 'user', content: asked }, language);
+
+    // A reading was measured between 2s and 80s on the free tier, so say what
+    // is going on rather than leaving a bare dot for a minute.
+    const slowTimer = setTimeout(() => setSlow(true), 10_000);
+
+    try {
+      const result = await loadInterpretation(details, language);
+      setMessages((current) =>
+        current.map((message) =>
+          message.id === answerId
+            ? {
+                ...message,
+                text: result.text,
+                grounded: result.grounded,
+                contradictions: result.contradictions,
+                streaming: false,
+              }
+            : message,
+        ),
+      );
+      void recordTurn(
+        {
           role: 'assistant',
-          text: result.text,
+          content: result.text,
           grounded: result.grounded,
           contradictions: result.contradictions,
-        });
-      } catch (err) {
-        if (id !== openingRequest.current) return;
-        setOpening(null);
-        setError(err instanceof Error ? err.message : 'Could not reach the interpreter');
-      } finally {
-        clearTimeout(slowTimer);
-        if (id === openingRequest.current) {
-          setSlow(false);
-          setOpeningLoading(false);
-        }
-      }
-    },
-    [],
-  );
-
-  useEffect(() => {
-    if (!details) return;
-    loadOpening(details, language);
-  }, [details, language, loadOpening]);
+        },
+        language,
+      );
+    } catch (err) {
+      setMessages((current) => current.filter((message) => message.id !== answerId));
+      setError(err instanceof Error ? err.message : 'Could not reach the interpreter');
+    } finally {
+      clearTimeout(slowTimer);
+      setSlow(false);
+      setSending(false);
+    }
+  }, [details, language, sending, recordTurn]);
 
   const stop = useCallback(() => {
     abort.current?.abort();
@@ -241,6 +311,34 @@ export default function ReadingScreen() {
 
   // Leaving mid-answer should not leave a request running.
   useEffect(() => () => abort.current?.abort(), []);
+
+  /**
+   * Pick a companion. A different one starts a new conversation.
+   *
+   * The transcript belongs to the person it was had with — carrying it across
+   * would show Meera's answers under Kabir's name. The stored copy goes too,
+   * or the next launch restores what was just cleared.
+   */
+  const choose = useCallback(
+    (picked: Persona) => {
+      setPicking(false);
+      void savePersona(picked.id);
+
+      if (persona?.id === picked.id) return;
+
+      stop();
+      setMessages([]);
+      setQuestion('');
+      setError(null);
+      // Marked as already restored so the effect below cannot refill the
+      // transcript from a read that was in flight when this ran.
+      restoredFor.current = chartId ?? 'cleared';
+      if (syncing) void clearChatHistory();
+
+      setPersona(picked);
+    },
+    [persona, stop, chartId, syncing, clearChatHistory],
+  );
 
   const changeLanguage = useCallback(
     (next: Language) => {
@@ -353,9 +451,7 @@ export default function ReadingScreen() {
     [details, language, messages, sending, recordTurn],
   );
 
-  const retry = useCallback(() => {
-    if (details) loadOpening(details, language);
-  }, [details, language, loadOpening]);
+
 
   return (
     // `padding` on Android too, which the usual advice says is unnecessary
@@ -370,6 +466,7 @@ export default function ReadingScreen() {
     >
       <ScreenHeader
         right={
+          persona && !picking ? (
           <View style={styles.langGroup}>
           {LANGUAGES.map((option) => {
             const active = option.value === language;
@@ -392,6 +489,7 @@ export default function ReadingScreen() {
             );
           })}
           </View>
+          ) : null
         }
       />
 
@@ -404,42 +502,65 @@ export default function ReadingScreen() {
           if (sending) scroller.current?.scrollToEnd({ animated: true });
         }}
       >
-        <Text style={styles.kicker}>Your reading</Text>
-
-        {openingLoading ? (
-          <View style={styles.waiting}>
-            <ActivityIndicator color={colors.accent} />
-            <Text style={styles.waitingText}>Reading your chart…</Text>
-            {slow ? (
-              <Text style={styles.waitingSlow}>
-                Still working. This can take up to a minute.
-              </Text>
-            ) : null}
-          </View>
-        ) : null}
-
-        {error && !opening ? (
-          <View style={styles.errorSlot}>
-            <ErrorNote message={error} />
-            <View style={styles.retry}>
-              <Button title="Try again" onPress={retry} variant="ghost" />
+        {persona === null || picking ? (
+          <View style={styles.pickerBlock}>
+            <Text style={styles.kicker}>Who would you like to talk to?</Text>
+            <View style={styles.personaGrid}>
+              {PERSONAS.map((option) => (
+                <Pressable
+                  key={option.id}
+                  accessibilityRole="button"
+                  accessibilityLabel={option.name}
+                  onPress={() => choose(option)}
+                  style={({ pressed }) => [styles.personaCard, pressed && styles.pressed]}
+                >
+                  <Portrait person={option} size={128} />
+                  <Text style={styles.personaName}>{option.name}</Text>
+                </Pressable>
+              ))}
             </View>
           </View>
+        ) : persona ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Talking to ${persona.name}. Change.`}
+            onPress={() => setPicking(true)}
+            style={({ pressed }) => [styles.chosen, pressed && styles.pressed]}
+          >
+            <Portrait person={persona} size={34} />
+            <Text style={styles.chosenName}>{persona.name}</Text>
+            <Text style={styles.chosenChange}>Change</Text>
+          </Pressable>
         ) : null}
 
-        {opening ? (
-          <View style={styles.openingBlock}>
-            <RichText text={opening.text} />
-            <GroundingNote
-              grounded={opening.grounded}
-              contradictions={opening.contradictions}
-            />
+        {persona && !picking ? (
+        <>
+        {/* The companion speaks first — one line, instantly, with no request
+            behind it. Landing in a wall of generated prose was the thing that
+            made this read as a document rather than a conversation. */}
+        <View style={styles.answerBlock}>
+          <Text style={styles.greeting}>{GREETING[language](persona.name)}</Text>
+        </View>
+
+        {error ? (
+          <View style={styles.errorSlot}>
+            <ErrorNote message={error} />
           </View>
         ) : null}
 
-        {opening && messages.length === 0 ? (
+        {messages.length === 0 ? (
           <View style={styles.suggestions}>
-            <Label>Ask about it</Label>
+            <Pressable
+              accessibilityRole="button"
+              onPress={readWholeChart}
+              style={({ pressed }) => [
+                styles.suggestion,
+                styles.suggestionLead,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Text style={styles.suggestionLeadText}>{READ_ALL[language]}</Text>
+            </Pressable>
             {SUGGESTIONS[language].map((suggestion) => (
               <Pressable
                 key={suggestion}
@@ -467,7 +588,9 @@ export default function ReadingScreen() {
               ) : (
                 <View style={styles.thinking}>
                   <ActivityIndicator color={colors.textFaint} size="small" />
-                  <Text style={styles.thinkingText}>Thinking…</Text>
+                  <Text style={styles.thinkingText}>
+                    {slow ? 'Still reading your chart…' : 'Thinking…'}
+                  </Text>
                 </View>
               )}
               {message.streaming ? null : (
@@ -480,13 +603,11 @@ export default function ReadingScreen() {
           ),
         )}
 
-        {error && opening ? (
-          <View style={styles.errorSlot}>
-            <ErrorNote message={error} />
-          </View>
+        </>
         ) : null}
       </ScrollView>
 
+      {persona && !picking ? (
       <View style={[styles.composer, { paddingBottom: insets.bottom + space.sm }]}>
         <TextInput
           style={styles.input}
@@ -514,16 +635,17 @@ export default function ReadingScreen() {
           <Text style={styles.sendText}>{sending ? '■' : '↑'}</Text>
         </Pressable>
       </View>
+      ) : null}
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.bg },
+  flex: { flex: 1, backgroundColor: 'transparent' },
   pressed: { opacity: 0.7 },
   langGroup: {
     flexDirection: 'row',
-    backgroundColor: colors.surface,
+    backgroundColor: colors.glass,
     borderRadius: radius.pill,
     padding: 3,
     gap: 2,
@@ -538,6 +660,42 @@ const styles = StyleSheet.create({
   langTextActive: { color: colors.accentSoft },
   content: { paddingHorizontal: space.lg, paddingTop: space.lg },
   kicker: { ...type.label, color: colors.accent },
+  pickerBlock: { marginBottom: space.xl, gap: space.md },
+  personaGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: space.md,
+  },
+  personaCard: {
+    // Two across, not three: at a third of the width the face was smaller than
+    // the name under it.
+    width: '48%',
+    alignItems: 'center',
+    gap: space.sm,
+    paddingVertical: space.md,
+    backgroundColor: colors.glass,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    borderRadius: radius.md,
+  },
+  personaName: { ...type.body, color: colors.text, fontWeight: '600' },
+  chosen: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    alignSelf: 'flex-start',
+    paddingLeft: space.xs,
+    paddingRight: space.md,
+    paddingVertical: space.xs,
+    marginBottom: space.md,
+    backgroundColor: colors.glass,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    borderRadius: radius.pill,
+  },
+  chosenName: { ...type.body, color: colors.text, fontWeight: '600' },
+  chosenChange: { ...type.mono, color: colors.textFaint },
   waiting: { alignItems: 'center', gap: space.sm, paddingVertical: space.xl },
   waitingText: { ...type.body, color: colors.textMuted },
   waitingSlow: {
@@ -546,10 +704,18 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: space.lg,
   },
-  openingBlock: { gap: space.md },
+  openingBlock: {
+    gap: space.md,
+    backgroundColor: colors.glass,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    borderRadius: radius.md,
+    padding: space.md,
+    marginTop: space.md,
+  },
   suggestions: { marginTop: space.xl, gap: space.sm },
   suggestion: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.glass,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.sm,
@@ -557,23 +723,34 @@ const styles = StyleSheet.create({
     paddingVertical: space.md,
   },
   suggestionText: { ...type.body, color: colors.textMuted },
+  suggestionLead: { borderColor: colors.accent, backgroundColor: colors.accentDim },
+  suggestionLeadText: { ...type.body, color: colors.accentSoft, fontWeight: '600' },
+  greeting: { ...type.body, color: colors.text, lineHeight: 22 },
   userRow: { alignItems: 'flex-end', marginTop: space.xl },
   userBubble: {
     maxWidth: '88%',
-    backgroundColor: colors.accentDim,
+    backgroundColor: 'rgba(58, 50, 110, 0.88)',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(185, 174, 255, 0.30)',
     borderRadius: radius.md,
     paddingHorizontal: space.md,
     paddingVertical: space.sm + 2,
   },
   userText: { ...type.body, color: colors.text, lineHeight: 21 },
-  answerBlock: { marginTop: space.lg, gap: space.md },
+  answerBlock: {
+    marginTop: space.lg,
+    gap: space.md,
+    backgroundColor: colors.glass,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    borderRadius: radius.md,
+    padding: space.md,
+  },
   thinking: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   thinkingText: { ...type.body, color: colors.textFaint },
   groundedOk: { ...type.mono, color: colors.textFaint },
   groundedBad: {
-    backgroundColor: 'rgba(228, 114, 143, 0.12)',
+    backgroundColor: 'rgba(74, 30, 46, 0.88)',
     borderColor: colors.combust,
     borderWidth: 1,
     borderRadius: radius.sm,
@@ -585,20 +762,20 @@ const styles = StyleSheet.create({
   groundedBadFoot: { ...type.mono, color: colors.textMuted, marginTop: space.xs },
   errorSlot: { marginTop: space.lg },
   retry: { marginTop: space.md },
+  // No fill and no rule. The composer sits below the scroll view rather than
+  // over it, so nothing ever passes underneath it — the bar it used to wear was
+  // occluding nothing and cutting the sky in two.
   composer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: space.sm,
     paddingHorizontal: space.md,
     paddingTop: space.sm,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
-    backgroundColor: colors.bg,
   },
   input: {
     flex: 1,
     maxHeight: 120,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.glass,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.md,

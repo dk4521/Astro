@@ -29,7 +29,7 @@ from ..astro import Chart, panchang_for, vimshottari
 from . import cache, grounding
 from .client import Request, get_client
 from .facts import build_brief
-from .prompts import READING_REQUEST, language_directive
+from .prompts import READING_REQUEST, chat_directive, reading_directive
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,6 +68,7 @@ def _build_request(
     question: str,
     language: str,
     as_of: dt.datetime,
+    directive: str,
     history: list[Turn] | None = None,
 ) -> Request:
     """Assemble the model request.
@@ -87,7 +88,7 @@ def _build_request(
     else:
         messages.append({"role": "user", "content": f"{brief}\n\n{question}"})
 
-    return Request(messages=messages, suffix=language_directive(language))
+    return Request(messages=messages, suffix=directive)
 
 
 def _verify(text: str, chart: Chart, language: str, cached: bool = False) -> Interpretation:
@@ -120,7 +121,7 @@ def reading(
 ) -> Interpretation:
     """A first introduction to the chart, with no question asked."""
     moment = as_of or dt.datetime.now(dt.timezone.utc)
-    request = _build_request(chart, READING_REQUEST, language, moment)
+    request = _build_request(chart, READING_REQUEST, language, moment, reading_directive(language))
     return _complete(request, chart, language)
 
 
@@ -133,7 +134,7 @@ def answer(
 ) -> Interpretation:
     """Answer one question about the chart."""
     moment = as_of or dt.datetime.now(dt.timezone.utc)
-    request = _build_request(chart, question, language, moment, history)
+    request = _build_request(chart, question, language, moment, chat_directive(language), history)
     return _complete(request, chart, language)
 
 
@@ -157,7 +158,7 @@ def stream_answer(
     asking the same question twice comes back instantly.
     """
     moment = as_of or dt.datetime.now(dt.timezone.utc)
-    request = _build_request(chart, question, language, moment, history)
+    request = _build_request(chart, question, language, moment, chat_directive(language), history)
 
     stored = cache.get(request)
     if stored is not None:

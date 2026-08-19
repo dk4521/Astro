@@ -13,8 +13,9 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AuthProvider } from '../src/auth/context';
+import { StarField } from '../src/components/StarField';
 import { SyncProvider } from '../src/sync/context';
-import { colors } from '../src/theme';
+
 
 export default function RootLayout() {
   return (
@@ -27,10 +28,17 @@ export default function RootLayout() {
           {/* Inside AuthProvider because it mirrors whoever is signed in, and
               above the routes because `index` waits on its first pass. */}
           <SyncProvider>
+            {/* One field for the whole app, mounted above the navigator rather
+                than inside each screen. Per-screen instances would restart the
+                twinkle on every navigation — the sky would visibly blink — and
+                would pay for the animation as many times over as there are
+                screens on the stack. */}
+            <StarField />
             <Stack
               screenOptions={{
                 headerShown: false,
-                contentStyle: { backgroundColor: colors.bg },
+                // Transparent, so the field above shows through every route.
+                contentStyle: { backgroundColor: 'transparent' },
                 animation: 'fade',
               }}
             />

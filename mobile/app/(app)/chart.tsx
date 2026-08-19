@@ -257,13 +257,12 @@ export default function ChartScreen() {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.bg },
+  flex: { flex: 1, backgroundColor: 'transparent' },
   content: { paddingHorizontal: space.lg },
   loading: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.bg,
     gap: space.md,
   },
   loadingText: { ...type.body, color: colors.textMuted },

@@ -17,7 +17,7 @@ from fastapi.testclient import TestClient
 from app.ai import cache, interpret
 from app.ai.client import Request
 from app.ai.interpret import Turn
-from app.ai.prompts import READING_REQUEST
+from app.ai.prompts import READING_REQUEST, reading_directive
 from app.astro import build_chart
 from app.main import app
 
@@ -90,7 +90,9 @@ def test_a_cached_answer_is_still_checked_against_the_chart(chart, model):
     of the grounding rules, read back under a stricter one. The check has to be
     on the read path or the oldest answers would be the ones that escape it.
     """
-    request = interpret._build_request(chart, READING_REQUEST, "en", AS_OF)
+    request = interpret._build_request(
+        chart, READING_REQUEST, "en", AS_OF, reading_directive("en")
+    )
     cache.put(request, "Your Moon is in Simha, which shapes everything.")
 
     result = interpret.reading(chart, language="en", as_of=AS_OF)

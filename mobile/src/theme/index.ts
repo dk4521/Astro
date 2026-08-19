@@ -18,6 +18,13 @@ export const colors = {
   textMuted: '#A8A2C4',
   textFaint: '#6B6589',
 
+  // Translucent surfaces. Every screen sits over the star field, so a card is
+  // a sheet of glass rather than a fill: opaque enough that body text reads
+  // cleanly, sheer enough that the sky behind it is still a sky.
+  glass: 'rgba(26, 23, 48, 0.82)',
+  glassRaised: 'rgba(40, 35, 72, 0.86)',
+  glassBorder: 'rgba(185, 174, 255, 0.20)',
+
   // Accents. Used sparingly — a highlighted value, an active state.
   accent: '#8B7BF7',
   accentSoft: '#B9AEFF',

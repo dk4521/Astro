@@ -26,31 +26,13 @@ import { saveBirthDetails } from '../src/api/storage';
 import { useSync } from '../src/sync/context';
 import type { Place } from '../src/api/types';
 import { Button, ErrorNote, Label } from '../src/components/ui';
+import {
+  formatDateInput,
+  formatTimeInput,
+  toIsoDate,
+  toIsoTime,
+} from '../src/format';
 import { colors, radius, space, type } from '../src/theme';
-
-const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-const TIME_PATTERN = /^\d{2}:\d{2}$/;
-
-/** Validate a calendar date, rejecting things like 2001-02-30. */
-function isRealDate(value: string): boolean {
-  if (!DATE_PATTERN.test(value)) return false;
-  const [year, month, day] = value.split('-').map(Number);
-  if (month < 1 || month > 12 || day < 1) return false;
-  const date = new Date(Date.UTC(year, month - 1, day));
-  return (
-    date.getUTCFullYear() === year &&
-    date.getUTCMonth() === month - 1 &&
-    date.getUTCDate() === day &&
-    year >= 1800 &&
-    date.getTime() <= Date.now()
-  );
-}
-
-function isRealTime(value: string): boolean {
-  if (!TIME_PATTERN.test(value)) return false;
-  const [hours, minutes] = value.split(':').map(Number);
-  return hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59;
-}
 
 export default function Onboarding() {
   const router = useRouter();
@@ -113,18 +95,21 @@ export default function Onboarding() {
     setResults([]);
   }, []);
 
-  const dateValid = isRealDate(date);
-  const timeValid = isRealTime(time);
+  // The field holds what the user sees; these are what the API gets.
+  const isoDate = toIsoDate(date);
+  const isoTime = toIsoTime(time);
+  const dateValid = isoDate !== null;
+  const timeValid = isoTime !== null;
   const ready = dateValid && timeValid && place !== null;
 
   const submit = useCallback(async () => {
-    if (!ready || !place) return;
+    if (!ready || !place || !isoDate || !isoTime) return;
     setSaving(true);
     setError(null);
     try {
       const details = {
-        date,
-        time,
+        date: isoDate,
+        time: isoTime,
         latitude: place.latitude,
         longitude: place.longitude,
         place: `${place.name}, ${place.admin}`,
@@ -139,7 +124,7 @@ export default function Onboarding() {
       setError(err instanceof Error ? err.message : 'Could not save your details');
       setSaving(false);
     }
-  }, [ready, place, date, time, router, pushBirth]);
+  }, [ready, place, isoDate, isoTime, router, pushBirth]);
 
   return (
     // Android needs `padding` as much as iOS does here: with edge-to-edge the
@@ -155,25 +140,22 @@ export default function Onboarding() {
       >
         <Text style={styles.kicker}>Kosmiq</Text>
         <Text style={styles.title}>Your birth chart{'\n'}starts with three facts.</Text>
-        <Text style={styles.subtitle}>
-          Everything is computed from NASA JPL's planetary ephemeris — the same
-          astronomical data observatories use. No guesswork.
-        </Text>
-
         <View style={styles.field}>
           <Label>Date of birth</Label>
           <TextInput
             style={[styles.input, date.length > 0 && !dateValid && styles.inputError]}
             value={date}
-            onChangeText={setDate}
-            placeholder="YYYY-MM-DD"
+            // Digits only: the dashes are placed for the typist rather than
+            // asked of them, which is also why the keypad has no punctuation.
+            onChangeText={(text) => setDate(formatDateInput(text, date))}
+            placeholder="DD-MM-YYYY"
             placeholderTextColor={colors.textFaint}
-            keyboardType="numbers-and-punctuation"
+            keyboardType="number-pad"
             autoCorrect={false}
             maxLength={10}
           />
-          {date.length > 0 && !dateValid ? (
-            <Text style={styles.hintError}>Use YYYY-MM-DD, e.g. 1998-04-23</Text>
+          {date.length === 10 && !dateValid ? (
+            <Text style={styles.hintError}>That date does not exist.</Text>
           ) : null}
         </View>
 
@@ -182,18 +164,16 @@ export default function Onboarding() {
           <TextInput
             style={[styles.input, time.length > 0 && !timeValid && styles.inputError]}
             value={time}
-            onChangeText={setTime}
+            onChangeText={(text) => setTime(formatTimeInput(text, time))}
             placeholder="HH:MM  (24-hour)"
             placeholderTextColor={colors.textFaint}
-            keyboardType="numbers-and-punctuation"
+            keyboardType="number-pad"
             autoCorrect={false}
             maxLength={5}
           />
-          <Text style={time.length > 0 && !timeValid ? styles.hintError : styles.hint}>
-            {time.length > 0 && !timeValid
-              ? 'Use 24-hour HH:MM, e.g. 07:42'
-              : 'Local clock time where you were born. The lagna shifts a whole sign every ~2 hours.'}
-          </Text>
+          {time.length === 5 && !timeValid ? (
+            <Text style={styles.hintError}>Use a 24-hour clock, 00:00 to 23:59.</Text>
+          ) : null}
         </View>
 
         <View style={styles.field}>
@@ -235,8 +215,7 @@ export default function Onboarding() {
 
           {place ? (
             <Text style={styles.hint}>
-              {place.latitude.toFixed(4)}°, {place.longitude.toFixed(4)}° — timezone
-              resolved automatically, including historical offsets.
+              {place.latitude.toFixed(4)}°, {place.longitude.toFixed(4)}°
             </Text>
           ) : null}
         </View>
@@ -261,7 +240,7 @@ export default function Onboarding() {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.bg },
+  flex: { flex: 1, backgroundColor: 'transparent' },
   content: { paddingHorizontal: space.lg, gap: space.sm },
   kicker: { ...type.label, color: colors.accent, marginBottom: space.md },
   title: { ...type.display, color: colors.text, marginBottom: space.sm },
@@ -273,7 +252,7 @@ const styles = StyleSheet.create({
   },
   field: { marginBottom: space.lg },
   input: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.glass,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.sm,
@@ -288,7 +267,7 @@ const styles = StyleSheet.create({
   hintError: { ...type.mono, color: colors.combust, marginTop: space.sm },
   results: {
     marginTop: space.sm,
-    backgroundColor: colors.surfaceRaised,
+    backgroundColor: colors.glassRaised,
     borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.border,

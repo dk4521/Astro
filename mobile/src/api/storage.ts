@@ -143,6 +143,19 @@ export async function markAccountsSeen(): Promise<void> {
   await AsyncStorage.setItem(SEEN_ACCOUNTS_KEY, 'yes');
 }
 
+// --- Chat companion --------------------------------------------------------
+
+const PERSONA_KEY = 'kosmiq.persona.v1';
+
+/** Who the chat is with. Null until someone has been picked. */
+export async function loadPersona(): Promise<string | null> {
+  return AsyncStorage.getItem(PERSONA_KEY);
+}
+
+export async function savePersona(id: string): Promise<void> {
+  await AsyncStorage.setItem(PERSONA_KEY, id);
+}
+
 // --- Remote row ids --------------------------------------------------------
 //
 // Which rows in the account this device is mirroring into. Cached so an ordinary

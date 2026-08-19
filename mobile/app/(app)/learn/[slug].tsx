@@ -62,7 +62,15 @@ export default function ChapterScreen() {
 
   return (
     <View style={styles.flex}>
-      <ScreenHeader title={chapter ? `${chapter.number} / 30` : 'Learn'} />
+      <ScreenHeader
+        title={chapter ? `${chapter.number} / 30` : 'Learn'}
+        // Not router.back(). A chapter is a drawer route, not a pushed screen,
+        // and the drawer's navigate() does not add a history entry — so back()
+        // lands on whatever drawer route was open before Learn. Verified on a
+        // device: it went to Chart. Naming the destination is the only way this
+        // arrow means the same thing every time.
+        onBack={() => router.replace('/learn')}
+      />
 
       <ScrollView contentContainerStyle={styles.content}>
         {loading && !chapter ? (
@@ -156,26 +164,44 @@ export default function ChapterScreen() {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.bg },
+  flex: { flex: 1, backgroundColor: 'transparent' },
   content: { paddingHorizontal: space.lg, paddingTop: space.lg, paddingBottom: space.xxl },
   loading: { paddingVertical: space.xxl, alignItems: 'center' },
   retry: { marginTop: space.md },
   level: { ...type.label, color: colors.accent },
   title: { ...type.display, color: colors.text, marginTop: space.sm },
-  summary: { ...type.body, color: colors.textMuted, lineHeight: 22, marginTop: space.sm },
-  section: { marginTop: space.xl, gap: space.md },
+  summary: {
+    ...type.body,
+    color: colors.textMuted,
+    lineHeight: 22,
+    marginTop: space.sm,
+    backgroundColor: colors.glass,
+    borderRadius: radius.md,
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm + 2,
+    overflow: 'hidden',
+  },
+  section: {
+    marginTop: space.lg,
+    gap: space.md,
+    backgroundColor: colors.glass,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    borderRadius: radius.md,
+    padding: space.md,
+  },
   heading: { ...type.heading, color: colors.text },
   paragraph: { ...type.body, color: colors.text, lineHeight: 24 },
   aside: {
     borderLeftWidth: 2,
-    borderLeftColor: colors.border,
+    borderLeftColor: colors.accent,
     paddingLeft: space.md,
     paddingVertical: space.xs,
   },
   asideText: { ...type.mono, color: colors.textMuted, lineHeight: 20 },
   yours: {
     marginTop: space.xxl,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.glass,
     borderWidth: 1,
     borderColor: colors.accent,
     borderRadius: radius.md,

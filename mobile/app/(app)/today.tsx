@@ -179,7 +179,7 @@ export default function Today() {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.bg },
+  flex: { flex: 1, backgroundColor: 'transparent' },
   content: { paddingHorizontal: space.lg, paddingTop: space.lg, paddingBottom: space.xxl },
   loading: { paddingVertical: space.xxl, alignItems: 'center' },
   retry: { marginTop: space.md },

@@ -13,6 +13,8 @@ import {
   ViewStyle,
 } from 'react-native';
 
+import Svg, { Path } from 'react-native-svg';
+
 import { colors, radius, space, type } from '../theme';
 
 export function Label({ children }: { children: ReactNode }) {
@@ -89,6 +91,36 @@ export function Button({
   );
 }
 
+/**
+ * Back.
+ *
+ * Drawn rather than typed: a chevron character like ‹ or ⟨ is missing from the
+ * stock Android font on some devices and renders as an empty box, which is how
+ * the power glyph in the sidebar failed.
+ */
+export function BackButton({ onPress }: { onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Go back"
+      onPress={onPress}
+      // The arrow is much smaller than a thumb; the target is not.
+      hitSlop={12}
+      style={({ pressed }) => [styles.back, pressed && styles.backPressed]}
+    >
+      <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+        <Path
+          d="M15 4.5 L7.5 12 L15 19.5"
+          stroke={colors.textMuted}
+          strokeWidth={2.1}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </Svg>
+    </Pressable>
+  );
+}
+
 export function Chip({ text, tone }: { text: string; tone?: 'retro' | 'combust' }) {
   const tint =
     tone === 'retro' ? colors.retro : tone === 'combust' ? colors.combust : colors.accentSoft;
@@ -114,10 +146,10 @@ const styles = StyleSheet.create({
     marginBottom: space.sm,
   },
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.glass,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.glassBorder,
     padding: space.md,
   },
   row: {
@@ -141,7 +173,11 @@ const styles = StyleSheet.create({
     minHeight: 52,
   },
   buttonGhost: {
-    backgroundColor: 'transparent',
+    // Glass, not a hole. A fully transparent pill puts its label directly on
+    // whatever is behind the screen — over the star field that means a bright
+    // star can sit inside a letter. The fill is faint enough to read as an
+    // outline button on a flat background and enough to carry text over a sky.
+    backgroundColor: colors.glass,
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -149,6 +185,8 @@ const styles = StyleSheet.create({
   buttonDisabled: { opacity: 0.4 },
   buttonText: { ...type.heading, color: colors.bg },
   buttonTextGhost: { color: colors.textMuted },
+  back: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
+  backPressed: { opacity: 0.6 },
   chip: {
     borderWidth: 1,
     borderRadius: radius.pill,
@@ -157,7 +195,7 @@ const styles = StyleSheet.create({
   },
   chipText: { fontSize: 10, fontWeight: '700', letterSpacing: 0.6 },
   error: {
-    backgroundColor: 'rgba(228, 114, 143, 0.12)',
+    backgroundColor: 'rgba(74, 30, 46, 0.88)',
     borderColor: colors.combust,
     borderWidth: 1,
     borderRadius: radius.sm,

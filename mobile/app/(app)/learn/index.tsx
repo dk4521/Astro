@@ -201,11 +201,11 @@ export default function LearnIndex() {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.bg },
+  flex: { flex: 1, backgroundColor: 'transparent' },
   content: { paddingHorizontal: space.lg, paddingTop: space.lg, paddingBottom: space.xxl },
   langGroup: {
     flexDirection: 'row',
-    backgroundColor: colors.surface,
+    backgroundColor: colors.glass,
     borderRadius: radius.pill,
     padding: 3,
     gap: 2,
@@ -215,15 +215,25 @@ const styles = StyleSheet.create({
   langText: { fontSize: 12, fontWeight: '600', color: colors.textFaint },
   langTextActive: { color: colors.accentSoft },
   kicker: { ...type.title, color: colors.text },
-  blurb: { ...type.body, color: colors.textMuted, lineHeight: 22, marginTop: space.sm },
+  blurb: {
+    ...type.body,
+    color: colors.textMuted,
+    lineHeight: 22,
+    marginTop: space.sm,
+    backgroundColor: colors.glass,
+    borderRadius: radius.md,
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm + 2,
+    overflow: 'hidden',
+  },
   loading: { paddingVertical: space.xxl, alignItems: 'center' },
   section: { marginTop: space.xl },
   retry: { marginTop: space.md },
   progressCard: {
     marginTop: space.xl,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.glass,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.glassBorder,
     borderRadius: radius.md,
     padding: space.md,
     gap: space.sm,
@@ -244,12 +254,18 @@ const styles = StyleSheet.create({
   finished: { ...type.mono, color: colors.textFaint, marginTop: space.xs },
   pressed: { opacity: 0.7 },
   partHeading: { marginTop: space.xl, marginBottom: space.xs },
+  // Each chapter is its own sheet. A hairline rule was enough separation on a
+  // flat background, but over the star field a summary with no body behind it
+  // has points of light landing between its words.
   row: {
     flexDirection: 'row',
     gap: space.md,
-    paddingVertical: space.md,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
+    padding: space.md,
+    marginTop: space.sm,
+    backgroundColor: colors.glass,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    borderRadius: radius.md,
   },
   badge: {
     width: 30,
