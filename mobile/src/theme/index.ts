@@ -30,11 +30,25 @@ export const colors = {
   accentSoft: '#B9AEFF',
   accentDim: 'rgba(139, 123, 247, 0.14)',
 
+  // Buttons. The three named ones carry meaning by colour — leaving and
+  // entering an account, and sending. Everything else takes the brand gradient,
+  // so the coloured ones stay the only coloured things on a screen.
+  signOut: '#C1554D',
+  signIn: '#1E7A5C',
+  send: '#E8B84B',
+
   // Semantic. Never used to signal "good" or "bad" fortune, only chart facts
   // like retrograde motion — the product does not rank outcomes.
   retro: '#F0A868',
   combust: '#E4728F',
 } as const;
+
+/** The brand fill. Two stops, used through expo-linear-gradient. */
+export const gradient = {
+  brand: ['#9B8CFF', '#6B5BD6'] as const,
+  /** For outline buttons, where the fill sits under text rather than behind it. */
+  brandSoft: ['rgba(155, 140, 255, 0.22)', 'rgba(107, 91, 214, 0.16)'] as const,
+};
 
 export const space = {
   xs: 4,

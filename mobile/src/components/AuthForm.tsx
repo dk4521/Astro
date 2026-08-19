@@ -19,7 +19,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { BackButton, Button, ErrorNote, Label } from './ui';
+import { BackButton, Button, ErrorNote, Label, type Tone } from './ui';
 import { colors, radius, space, type } from '../theme';
 
 // Deliberately loose. Rejecting an address the server would have accepted is a
@@ -35,6 +35,7 @@ export function AuthForm({
   footer,
   onSkip,
   notice,
+  tone,
 }: {
   title: string;
   subtitle?: string;
@@ -43,6 +44,8 @@ export function AuthForm({
   footer: { text: string; link: string; onPress: () => void };
   onSkip?: () => void;
   notice?: string | null;
+  /** Sign in is green wherever it appears; creating an account is brand. */
+  tone?: Tone;
 }) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -144,7 +147,7 @@ export function AuthForm({
         ) : null}
 
         <View style={styles.actions}>
-          <Button title={action} onPress={submit} loading={busy} disabled={busy} />
+          <Button title={action} onPress={submit} loading={busy} disabled={busy} tone={tone} />
         </View>
 
         <Pressable

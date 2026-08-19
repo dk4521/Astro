@@ -150,14 +150,14 @@ export default function Settings() {
                     loading={status === 'syncing'}
                   />
                   <View style={styles.action}>
-                    <Button title="Sign out" onPress={signOut} variant="ghost" />
+                    <Button title="Sign out" onPress={signOut} tone="signOut" />
                   </View>
                 </>
               ) : (
                 <Button
                   title="Sign in or create an account"
                   onPress={() => router.push('/sign-in')}
-                  variant="ghost"
+                  tone="signIn"
                 />
               )}
             </View>

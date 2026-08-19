@@ -104,8 +104,15 @@ create table if not exists public.conversations (
   user_id    uuid not null references auth.users on delete cascade,
   chart_id   uuid references public.charts on delete set null,
   language   text not null default 'hinglish',
+  -- Who the conversation was with. Switching companion starts a new row rather
+  -- than continuing this one, so the history screen can say whose thread it is
+  -- reading back. Nullable for rows written before companions existed.
+  persona    text,
   created_at timestamptz not null default now()
 );
+
+-- For projects created before the column existed.
+alter table public.conversations add column if not exists persona text;
 
 create table if not exists public.messages (
   id              uuid primary key default gen_random_uuid(),

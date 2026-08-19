@@ -19,7 +19,7 @@
  * conversation lives as long as the screen does, exactly as it always has.
  */
 
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -170,7 +170,7 @@ export default function ReadingScreen() {
     chartId,
     loadChatHistory,
     recordTurn,
-    clearChatHistory,
+    releaseConversation,
   } = useSync();
 
   const [details, setDetails] = useState<BirthDetails | null>(null);
@@ -220,12 +220,18 @@ export default function ReadingScreen() {
   // Past turns, once. They arrive after the first paint, which is right: the
   // reading is what this screen is for, and the transcript below it can fill in.
   useEffect(() => {
-    if (!syncing || !chartId || restoredFor.current === chartId) return;
-    restoredFor.current = chartId;
+    if (!syncing || !chartId || !persona) return;
+    const key = `${chartId}:${persona.id}`;
+    if (restoredFor.current === key) return;
+    restoredFor.current = key;
 
-    let cancelled = false;
-    loadChatHistory().then((turns) => {
-      if (cancelled || turns.length === 0) return;
+    loadChatHistory(persona.id).then((turns) => {
+      // Guarded by the key rather than by a cancelled flag. Reading the history
+      // sets `conversationId` in the sync context, which hands out a fresh
+      // `loadChatHistory` and re-runs this effect — and a cleanup would cancel
+      // the very request that caused the re-run. The transcript arrived and was
+      // then thrown away, every time, silently.
+      if (restoredFor.current !== key || turns.length === 0) return;
       setMessages(
         turns.map((turn) => ({
           id: nextId.current++,
@@ -236,11 +242,7 @@ export default function ReadingScreen() {
         })),
       );
     });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [syncing, chartId, loadChatHistory]);
+  }, [syncing, chartId, persona, loadChatHistory]);
 
   /**
    * The full reading, as a turn in the conversation.
@@ -264,7 +266,7 @@ export default function ReadingScreen() {
       { id: askedId, role: 'user', text: asked },
       { id: answerId, role: 'assistant', text: '', streaming: true },
     ]);
-    void recordTurn({ role: 'user', content: asked }, language);
+    void recordTurn({ role: 'user', content: asked }, language, persona?.id ?? null);
 
     // A reading was measured between 2s and 80s on the free tier, so say what
     // is going on rather than leaving a bare dot for a minute.
@@ -285,15 +287,12 @@ export default function ReadingScreen() {
             : message,
         ),
       );
-      void recordTurn(
-        {
+      void recordTurn({
           role: 'assistant',
           content: result.text,
           grounded: result.grounded,
           contradictions: result.contradictions,
-        },
-        language,
-      );
+        }, language, persona?.id ?? null);
     } catch (err) {
       setMessages((current) => current.filter((message) => message.id !== answerId));
       setError(err instanceof Error ? err.message : 'Could not reach the interpreter');
@@ -302,7 +301,7 @@ export default function ReadingScreen() {
       setSlow(false);
       setSending(false);
     }
-  }, [details, language, sending, recordTurn]);
+  }, [details, language, persona, sending, recordTurn]);
 
   const stop = useCallback(() => {
     abort.current?.abort();
@@ -319,6 +318,20 @@ export default function ReadingScreen() {
    * would show Meera's answers under Kabir's name. The stored copy goes too,
    * or the next launch restores what was just cleared.
    */
+  /**
+   * Arriving here always offers the choice.
+   *
+   * Picking a companion is how a chat starts, so walking in on the last one
+   * mid-thread skips the step that gives the screen its shape. The stored
+   * companion is still loaded — it is what lets picking the same face again
+   * return to the conversation instead of ending it.
+   */
+  useFocusEffect(
+    useCallback(() => {
+      setPicking(true);
+    }, []),
+  );
+
   const choose = useCallback(
     (picked: Persona) => {
       setPicking(false);
@@ -330,14 +343,15 @@ export default function ReadingScreen() {
       setMessages([]);
       setQuestion('');
       setError(null);
-      // Marked as already restored so the effect below cannot refill the
-      // transcript from a read that was in flight when this ran.
-      restoredFor.current = chartId ?? 'cleared';
-      if (syncing) void clearChatHistory();
+      // Not deleted — it is the account's history now, and the history screen
+      // reads it back. Letting go of the id is what makes the next turn open a
+      // thread under the new companion's name.
+      restoredFor.current = null;
+      if (syncing) void releaseConversation();
 
       setPersona(picked);
     },
-    [persona, stop, chartId, syncing, clearChatHistory],
+    [persona, stop, syncing, releaseConversation],
   );
 
   const changeLanguage = useCallback(
@@ -376,7 +390,7 @@ export default function ReadingScreen() {
       // Recorded before the answer exists, because it was asked whether or not
       // one arrives. Inserts are queued in call order by the sync context, so
       // this lands ahead of the reply it belongs to.
-      void recordTurn({ role: 'user', content: trimmed }, language);
+      void recordTurn({ role: 'user', content: trimmed }, language, persona?.id ?? null);
 
       const controller = new AbortController();
       abort.current = controller;
@@ -433,22 +447,19 @@ export default function ReadingScreen() {
         // answer that was cut short is part of what happened, and dropping it
         // would leave the question above it looking unanswered.
         if (answer.trim().length > 0) {
-          void recordTurn(
-            {
+          void recordTurn({
               role: 'assistant',
               content: answer,
               grounded: verdict?.grounded,
               contradictions: verdict?.contradictions,
-            },
-            language,
-          );
+            }, language, persona?.id ?? null);
         }
 
         abort.current = null;
         setSending(false);
       }
     },
-    [details, language, messages, sending, recordTurn],
+    [details, language, messages, persona, sending, recordTurn],
   );
 
 
@@ -789,7 +800,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: radius.pill,
-    backgroundColor: colors.accent,
+    backgroundColor: colors.send,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -13,9 +13,10 @@ import {
   ViewStyle,
 } from 'react-native';
 
+import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 
-import { colors, radius, space, type } from '../theme';
+import { colors, gradient, radius, space, type } from '../theme';
 
 export function Label({ children }: { children: ReactNode }) {
   return <Text style={styles.label}>{children}</Text>;
@@ -51,20 +52,48 @@ export function Row({
   );
 }
 
+/**
+ * A button.
+ *
+ * `tone` is what the button *is*, not what it looks like. Three actions carry a
+ * colour of their own — leaving an account, entering one, and sending — and
+ * everything else takes the brand gradient. Naming them by role rather than by
+ * hex means the two sign-out buttons in the app cannot drift apart.
+ */
+export type Tone = 'brand' | 'signIn' | 'signOut' | 'send';
+
+const TONE_FILL: Record<Exclude<Tone, 'brand'>, string> = {
+  signIn: colors.signIn,
+  signOut: colors.signOut,
+  send: colors.send,
+};
+
+/** Text that sits on a filled button. Gold is light enough to need dark text. */
+export function toneLabelColor(tone: Tone): string {
+  return tone === 'send' ? colors.bg : tone === 'brand' ? colors.bg : '#FFFFFF';
+}
+
 export function Button({
   title,
   onPress,
   disabled,
   loading,
   variant = 'primary',
+  tone = 'brand',
 }: {
   title: string;
   onPress: () => void;
   disabled?: boolean;
   loading?: boolean;
   variant?: 'primary' | 'ghost';
+  tone?: Tone;
 }) {
   const inactive = disabled || loading;
+  const filled = variant === 'primary';
+  const solid = tone === 'brand' ? null : TONE_FILL[tone];
+
+  const label = filled ? toneLabelColor(tone) : solid ?? colors.accentSoft;
+
   return (
     <Pressable
       accessibilityRole="button"
@@ -73,19 +102,30 @@ export function Button({
       disabled={inactive}
       style={({ pressed }) => [
         styles.button,
-        variant === 'ghost' && styles.buttonGhost,
+        // A solid tone paints itself; the gradient is a layer underneath.
+        filled && solid ? { backgroundColor: solid } : null,
+        !filled && { borderWidth: 1, borderColor: solid ?? colors.border },
         inactive && styles.buttonDisabled,
         pressed && !inactive && styles.buttonPressed,
       ]}
     >
+      <LinearGradient
+        colors={
+          filled
+            ? tone === 'brand'
+              ? [...gradient.brand]
+              : ['transparent', 'transparent']
+            : [...gradient.brandSoft]
+        }
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.buttonFill}
+        pointerEvents="none"
+      />
       {loading ? (
-        <ActivityIndicator color={variant === 'ghost' ? colors.accent : colors.bg} />
+        <ActivityIndicator color={label} />
       ) : (
-        <Text
-          style={[styles.buttonText, variant === 'ghost' && styles.buttonTextGhost]}
-        >
-          {title}
-        </Text>
+        <Text style={[styles.buttonText, { color: label }]}>{title}</Text>
       )}
     </Pressable>
   );
@@ -164,27 +204,21 @@ const styles = StyleSheet.create({
   rowValue: { ...type.body, color: colors.text, fontWeight: '600', textAlign: 'right' },
   rowHint: { ...type.mono, color: colors.textFaint, marginTop: 2, textAlign: 'right' },
   button: {
-    backgroundColor: colors.accent,
     borderRadius: radius.pill,
+    overflow: 'hidden',
     paddingVertical: space.md,
     paddingHorizontal: space.lg,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 52,
   },
-  buttonGhost: {
-    // Glass, not a hole. A fully transparent pill puts its label directly on
-    // whatever is behind the screen — over the star field that means a bright
-    // star can sit inside a letter. The fill is faint enough to read as an
-    // outline button on a flat background and enough to carry text over a sky.
-    backgroundColor: colors.glass,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
+  // The gradient layer. Behind the label, in front of nothing — a fully
+  // transparent pill would put its text straight onto the star field, where a
+  // bright star can land inside a letter.
+  buttonFill: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   buttonPressed: { opacity: 0.85 },
   buttonDisabled: { opacity: 0.4 },
-  buttonText: { ...type.heading, color: colors.bg },
-  buttonTextGhost: { color: colors.textMuted },
+  buttonText: { ...type.heading },
   back: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
   backPressed: { opacity: 0.6 },
   chip: {

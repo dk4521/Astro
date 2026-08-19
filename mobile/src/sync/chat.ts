@@ -42,6 +42,15 @@ type MessageRow = {
 
 export type Conversation = { id: string; language: Language };
 
+/** One row in the history list. */
+export type ConversationSummary = {
+  id: string;
+  persona: string | null;
+  language: Language;
+  createdAt: string;
+  turns: number;
+};
+
 /**
  * The conversation about this chart, if there is one.
  *
@@ -57,14 +66,22 @@ export type Conversation = { id: string; language: Language };
 export async function findConversation(
   userId: string,
   chartId: string,
+  persona: string | null,
 ): Promise<Conversation | null> {
   if (!supabase) return null;
 
-  const { data, error } = await supabase
+  // Scoped to the companion as well as the chart. Without this, picking a new
+  // companion would resume the previous one's thread — which is the opposite of
+  // what switching is for, and would file its turns under the wrong name in the
+  // history list.
+  let query = supabase
     .from('conversations')
     .select('id, language')
     .eq('user_id', userId)
-    .eq('chart_id', chartId)
+    .eq('chart_id', chartId);
+  query = persona ? query.eq('persona', persona) : query.is('persona', null);
+
+  const { data, error } = await query
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle<Conversation>();
@@ -77,17 +94,63 @@ export async function createConversation(
   userId: string,
   chartId: string,
   language: Language,
+  persona: string | null,
 ): Promise<Conversation | null> {
   if (!supabase) return null;
 
   const { data, error } = await supabase
     .from('conversations')
-    .insert({ user_id: userId, chart_id: chartId, language })
+    .insert({ user_id: userId, chart_id: chartId, language, persona })
     .select('id, language')
     .single<Conversation>();
 
   if (error) throw new Error(error.message);
   return data;
+}
+
+/**
+ * Every conversation in the account, newest first, with how many turns each
+ * holds.
+ *
+ * The count comes from a second query rather than a join: PostgREST can return
+ * an aggregate, but only by making `messages` the selected table, which would
+ * mean paging through every message in the account to count them.
+ */
+export async function listConversations(userId: string): Promise<ConversationSummary[]> {
+  if (!supabase) return [];
+
+  const { data, error } = await supabase
+    .from('conversations')
+    .select('id, persona, language, created_at')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(100);
+
+  if (error) throw new Error(error.message);
+  const rows = data ?? [];
+  if (rows.length === 0) return [];
+
+  const counts = await Promise.all(
+    rows.map(async (row) => {
+      const { count } = await supabase!
+        .from('messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('conversation_id', row.id);
+      return count ?? 0;
+    }),
+  );
+
+  return rows
+    .map((row, i) => ({
+      id: row.id as string,
+      persona: (row.persona as string | null) ?? null,
+      language: row.language as Language,
+      createdAt: row.created_at as string,
+      turns: counts[i],
+    }))
+    // An empty conversation is a row that was opened and never used. It is not
+    // history and listing it would only ever confuse.
+    .filter((row) => row.turns > 0);
 }
 
 /** The stored turns, oldest first — the order the screen renders them in. */
@@ -159,5 +222,19 @@ export async function deleteConversation(conversationId: string): Promise<void> 
   if (!supabase) return;
 
   const { error } = await supabase.from('conversations').delete().eq('id', conversationId);
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Every conversation in the account.
+ *
+ * The settings screen promises "every question and answer stored in your
+ * account is removed". Once history accumulates across companions, deleting
+ * only the open thread would leave that promise false. `messages` cascades on
+ * the conversation row, so this is one delete.
+ */
+export async function deleteAllConversations(userId: string): Promise<void> {
+  if (!supabase) return;
+  const { error } = await supabase.from('conversations').delete().eq('user_id', userId);
   if (error) throw new Error(error.message);
 }

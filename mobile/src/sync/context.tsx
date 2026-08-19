@@ -43,10 +43,13 @@ import { clearRemoteProgress, fetchProgress, pushProgress } from './progress';
 import {
   appendTurn,
   createConversation,
+  deleteAllConversations,
   deleteConversation,
   fetchTurns,
   findConversation,
+  listConversations,
   setConversationLanguage,
+  type ConversationSummary,
   type StoredTurn,
 } from './chat';
 
@@ -70,10 +73,22 @@ type SyncState = {
   pushBirth: (details: BirthDetails) => Promise<void>;
   pushChapterRead: (slug: string) => Promise<void>;
   pushProgressReset: () => Promise<void>;
-  /** The stored conversation about this chart, oldest turn first. */
-  loadChatHistory: () => Promise<StoredTurn[]>;
-  recordTurn: (turn: StoredTurn, language: Language) => Promise<void>;
+  /** The stored conversation with this companion, oldest turn first. */
+  loadChatHistory: (persona: string | null) => Promise<StoredTurn[]>;
+  recordTurn: (turn: StoredTurn, language: Language, persona: string | null) => Promise<void>;
   clearChatHistory: () => Promise<void>;
+  /**
+   * Let go of the current thread without deleting it.
+   *
+   * Switching companion must not continue the previous conversation, and must
+   * not destroy it either — it is the account's history. Forgetting the id is
+   * enough: the next turn looks one up for the new companion, or opens a new
+   * row.
+   */
+  releaseConversation: () => Promise<void>;
+  /** Every stored conversation in the account, newest first. */
+  listHistory: () => Promise<ConversationSummary[]>;
+  readConversation: (conversationId: string) => Promise<StoredTurn[]>;
 };
 
 const SyncContext = createContext<SyncState | null>(null);
@@ -110,6 +125,16 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   // The language the conversation was last recorded as being held in, so
   // switching pills mid-thread costs one update rather than one per message.
   const conversationLanguage = useRef<Language | null>(null);
+  /**
+   * Which companion `conversationId` belongs to.
+   *
+   * The cached id alone is not enough to reuse: after switching companion it
+   * still points at the previous one's thread, and reading it back showed
+   * Meera's conversation under Kabir's name. `undefined` means "unknown" — the
+   * id was restored from the device and nothing has claimed it yet — and forces
+   * a lookup.
+   */
+  const conversationPersona = useRef<string | null | undefined>(undefined);
   // Two questions asked before either has an answer would each find no
   // conversation and each create one. The in-flight promise is shared instead.
   const opening = useRef<Promise<string | null> | null>(null);
@@ -309,15 +334,17 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         }
       },
 
-      async loadChatHistory() {
+      async loadChatHistory(persona) {
         if (!userId || !chartId) return [];
         try {
-          const known = conversationId ?? (await findConversation(userId, chartId))?.id ?? null;
+          const cached = conversationPersona.current === persona ? conversationId : null;
+          const known = cached ?? (await findConversation(userId, chartId, persona))?.id ?? null;
           if (!known) return [];
           if (known !== conversationId) {
             await rememberConversationId(known);
             setConversationId(known);
           }
+          conversationPersona.current = persona;
           return await fetchTurns(known);
         } catch {
           // An unreachable account should not stop someone reading their chart
@@ -327,19 +354,23 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         }
       },
 
-      async recordTurn(turn, language) {
+      async recordTurn(turn, language, persona) {
         if (!userId || !chartId) return;
 
         const write = writes.current.then(async () => {
           if (!opening.current) {
             opening.current = (async () => {
-              if (conversationId) return conversationId;
-              const found = await findConversation(userId, chartId);
-              const conversation = found ?? (await createConversation(userId, chartId, language));
+              if (conversationId && conversationPersona.current === persona) {
+                return conversationId;
+              }
+              const found = await findConversation(userId, chartId, persona);
+              const conversation =
+                found ?? (await createConversation(userId, chartId, language, persona));
               if (!conversation) return null;
               // Only from a row we actually read or wrote. Guessing it here
               // would skip the update below and leave the column lying.
               conversationLanguage.current = conversation.language;
+              conversationPersona.current = persona;
               await rememberConversationId(conversation.id);
               setConversationId(conversation.id);
               return conversation.id;
@@ -372,13 +403,41 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         }
       },
 
-      async clearChatHistory() {
-        if (!conversationId) return;
+      async releaseConversation() {
+        await rememberConversationId(null);
+        setConversationId(null);
+        conversationLanguage.current = null;
+        conversationPersona.current = undefined;
+      },
+
+      async listHistory() {
+        if (!userId) return [];
         try {
-          await deleteConversation(conversationId);
+          return await listConversations(userId);
+        } catch (err) {
+          setError(message(err));
+          return [];
+        }
+      },
+
+      async readConversation(id) {
+        try {
+          return await fetchTurns(id);
+        } catch {
+          return [];
+        }
+      },
+
+      async clearChatHistory() {
+        if (!userId) return;
+        try {
+          // Every thread, not just the open one — the settings screen promises
+          // that everything stored goes.
+          await deleteAllConversations(userId);
           await rememberConversationId(null);
           setConversationId(null);
           conversationLanguage.current = null;
+          conversationPersona.current = undefined;
         } catch (err) {
           lastAttempt.current = { at: Date.now(), ok: false };
           setError(message(err));

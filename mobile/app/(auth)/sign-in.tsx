@@ -33,6 +33,7 @@ export default function SignIn() {
     <AuthForm
       title={'Welcome back.'}
       action="Sign in"
+      tone="signIn"
       onSubmit={submit}
       footer={{
         text: 'No account yet?',

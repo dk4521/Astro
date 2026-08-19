@@ -28,28 +28,27 @@ type Item = {
   route: string;
   label: string;
   glyph: string;
+  accountOnly?: boolean;
 };
 
 const ITEMS: Item[] = [
   { route: '/today', label: 'Today', glyph: '☉' },
   { route: '/chart', label: 'Chart', glyph: '◈' },
   { route: '/reading', label: 'Chat', glyph: '❋' },
+  // Only with an account: a signed-out phone keeps no conversations at all, so
+  // the row would lead to a permanently empty screen.
+  { route: '/history', label: 'History', glyph: '↺', accountOnly: true },
   { route: '/learn', label: 'Learn', glyph: '✦' },
   { route: '/settings', label: 'Settings', glyph: '⚙' },
 ];
 
-function PowerIcon() {
+function PowerIcon({ color }: { color: string }) {
   return (
     <Svg width={15} height={15} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M12 2.8 V11"
-        stroke={colors.textMuted}
-        strokeWidth={2.4}
-        strokeLinecap="round"
-      />
+      <Path d="M12 2.8 V11" stroke={color} strokeWidth={2.4} strokeLinecap="round" />
       <Path
         d="M6.6 6.4 a7.6 7.6 0 1 0 10.8 0"
-        stroke={colors.textMuted}
+        stroke={color}
         strokeWidth={2.4}
         strokeLinecap="round"
       />
@@ -87,7 +86,7 @@ function Sidebar() {
         <Text style={styles.brand}>KOSMIQ</Text>
 
         <View style={styles.items}>
-          {ITEMS.map((item) => {
+          {ITEMS.filter((item) => !item.accountOnly || user).map((item) => {
             // `/learn/nakshatras` should still light up the Learn row.
             const active = pathname === item.route || pathname.startsWith(`${item.route}/`);
             return (
@@ -121,19 +120,27 @@ function Sidebar() {
             <Pressable
               accessibilityRole="button"
               onPress={signOut}
-              style={({ pressed }) => [styles.exit, pressed && styles.itemPressed]}
+              style={({ pressed }) => [
+                styles.exit,
+                styles.exitOut,
+                pressed && styles.itemPressed,
+              ]}
             >
-              <PowerIcon />
-              <Text style={styles.exitLabel}>Sign out</Text>
+              <PowerIcon color="#FFFFFF" />
+              <Text style={[styles.exitLabel, styles.exitLabelFilled]}>Sign out</Text>
             </Pressable>
           ) : (
             <Pressable
               accessibilityRole="button"
               onPress={() => router.push('/sign-in')}
-              style={({ pressed }) => [styles.exit, pressed && styles.itemPressed]}
+              style={({ pressed }) => [
+                styles.exit,
+                styles.exitIn,
+                pressed && styles.itemPressed,
+              ]}
             >
-              <PowerIcon />
-              <Text style={styles.exitLabel}>Sign in</Text>
+              <PowerIcon color="#FFFFFF" />
+              <Text style={[styles.exitLabel, styles.exitLabelFilled]}>Sign in</Text>
             </Pressable>
           )
         ) : null}
@@ -151,7 +158,9 @@ export default function AppLayout() {
         // 'front' is what makes transparency mean anything: the panel floats
         // over the screen rather than pushing it aside.
         drawerType: 'front',
-        drawerStyle: { backgroundColor: 'transparent', width: 272 },
+        // 272 left 140dp of empty air: the longest label, SETTINGS, ends at
+        // 132dp. Measured off a screenshot rather than guessed.
+        drawerStyle: { backgroundColor: 'transparent', width: 200 },
         overlayColor: 'rgba(11, 10, 20, 0.55)',
         // Transparent: the root star field is the background now.
         sceneStyle: { backgroundColor: 'transparent' },
@@ -229,8 +238,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.md,
     borderRadius: radius.md,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(168, 162, 196, 0.28)',
-    backgroundColor: 'rgba(244, 242, 255, 0.04)',
+    borderColor: 'transparent',
   },
+  exitOut: { backgroundColor: colors.signOut },
+  exitIn: { backgroundColor: colors.signIn },
+  exitLabelFilled: { color: '#FFFFFF' },
   exitLabel: { ...type.label, fontSize: 12, letterSpacing: 1.6, color: colors.textMuted },
 });
