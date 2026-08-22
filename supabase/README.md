@@ -11,18 +11,14 @@ Paste [schema.sql](schema.sql) into the SQL editor and run it. It creates
 `profiles`, `charts`, `course_progress`, `conversations` and `messages`, and
 enables row-level security on all of them.
 
-Every statement is written to be re-runnable except the policies, which
-`create policy` will refuse to duplicate. On a project created before the sync
-layer existed, run this one addition instead of the whole file:
+**The whole file is re-runnable, including the policies** — each is dropped
+before it is created. Run it again whenever the schema changes; there is no
+separate migration to hunt for.
 
-```sql
-create policy "update own conversations"
-  on public.conversations for update using (auth.uid() = user_id);
-```
-
-Without it the app still works — a conversation simply keeps recording the
-language it was started in, because an update that matches no row under RLS is
-a silent no-op rather than an error.
+That was not true at first. `create policy` refuses to duplicate, so re-running
+the file on a live project failed on the very first policy with `42710: policy
+"read own profile" for table "profiles" already exists` and nothing after it
+ran. If you hit that error on an older copy of this file, take a newer one.
 
 **Do not skip the RLS policies.** The anon key ships inside the app and is meant
 to be public; without those policies these tables are an open API over everyone's

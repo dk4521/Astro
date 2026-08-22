@@ -28,12 +28,14 @@ alter table public.profiles add column if not exists plan text not null default 
 
 alter table public.profiles enable row level security;
 
+drop policy if exists "read own profile" on public.profiles;
 create policy "read own profile"
   on public.profiles for select using (auth.uid() = id);
 
 -- `display_name` is the only column a client has any business changing. The
 -- check below is what keeps `plan` out of reach: an update that alters it fails
 -- rather than silently upgrading the account that asked.
+drop policy if exists "update own profile" on public.profiles;
 create policy "update own profile"
   on public.profiles for update
   using (auth.uid() = id)
@@ -84,9 +86,13 @@ create unique index if not exists charts_one_primary
 
 alter table public.charts enable row level security;
 
+drop policy if exists "read own charts" on public.charts;
 create policy "read own charts"   on public.charts for select using (auth.uid() = user_id);
+drop policy if exists "insert own charts" on public.charts;
 create policy "insert own charts" on public.charts for insert with check (auth.uid() = user_id);
+drop policy if exists "update own charts" on public.charts;
 create policy "update own charts" on public.charts for update using (auth.uid() = user_id);
+drop policy if exists "delete own charts" on public.charts;
 create policy "delete own charts" on public.charts for delete using (auth.uid() = user_id);
 
 
@@ -103,8 +109,11 @@ create table if not exists public.course_progress (
 
 alter table public.course_progress enable row level security;
 
+drop policy if exists "read own progress" on public.course_progress;
 create policy "read own progress"   on public.course_progress for select using (auth.uid() = user_id);
+drop policy if exists "insert own progress" on public.course_progress;
 create policy "insert own progress" on public.course_progress for insert with check (auth.uid() = user_id);
+drop policy if exists "delete own progress" on public.course_progress;
 create policy "delete own progress" on public.course_progress for delete using (auth.uid() = user_id);
 
 
@@ -146,7 +155,9 @@ create index if not exists messages_conversation_idx
 alter table public.conversations enable row level security;
 alter table public.messages enable row level security;
 
+drop policy if exists "read own conversations" on public.conversations;
 create policy "read own conversations"   on public.conversations for select using (auth.uid() = user_id);
+drop policy if exists "insert own conversations" on public.conversations;
 create policy "insert own conversations" on public.conversations for insert with check (auth.uid() = user_id);
 -- `language` is the one mutable column here: the reading screen switches
 -- language mid-thread, so the row has to be able to follow. Without this policy
@@ -154,9 +165,20 @@ create policy "insert own conversations" on public.conversations for insert with
 -- leaves the column quietly claiming a language the conversation stopped being
 -- held in. Found by running the sync layer against a real project, not by
 -- reading the schema.
+drop policy if exists "update own conversations" on public.conversations;
 create policy "update own conversations" on public.conversations for update using (auth.uid() = user_id);
+drop policy if exists "delete own conversations" on public.conversations;
 create policy "delete own conversations" on public.conversations for delete using (auth.uid() = user_id);
 
+drop policy if exists "read own messages" on public.messages;
 create policy "read own messages"   on public.messages for select using (auth.uid() = user_id);
+drop policy if exists "insert own messages" on public.messages;
 create policy "insert own messages" on public.messages for insert with check (auth.uid() = user_id);
+drop policy if exists "delete own messages" on public.messages;
 create policy "delete own messages" on public.messages for delete using (auth.uid() = user_id);
+
+-- PostgREST keeps its own picture of the schema and will answer PGRST202
+-- ("could not find the function ... in the schema cache") for a function it has
+-- not been told about, even once the function exists. This is the line that
+-- tells it.
+notify pgrst, 'reload schema';
