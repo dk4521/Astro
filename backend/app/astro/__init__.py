@@ -9,9 +9,13 @@ of it.
 from .chart import Chart, GrahaPosition, Placement, build_chart, decompose, navamsa_chart
 from .dasha import DashaPeriod, VimshottariTimeline, vimshottari
 from .ephemeris import EPHEMERIS_MODE
+from .matching import Ashtakoot, Koot, ashtakoot
 from .panchang import Panchang, panchang_for
 
 __all__ = [
+    "Ashtakoot",
+    "Koot",
+    "ashtakoot",
     "Chart",
     "DashaPeriod",
     "EPHEMERIS_MODE",

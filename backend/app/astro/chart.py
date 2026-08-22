@@ -35,6 +35,30 @@ class Placement:
     navamsa_index: int        # 0 = Mesha
     navamsa: str
 
+    # Devanagari, derived rather than stored. Every one of these comes off an
+    # index this dataclass already holds, so a Hindi name cannot drift out of
+    # step with the Latin one it translates — which a second set of stored
+    # fields would eventually do.
+    @property
+    def rashi_hi(self) -> str:
+        return K.RASHIS_HI[self.rashi_index]
+
+    @property
+    def nakshatra_hi(self) -> str:
+        return K.NAKSHATRAS_HI[self.nakshatra_index]
+
+    @property
+    def navamsa_hi(self) -> str:
+        return K.RASHIS_HI[self.navamsa_index]
+
+    @property
+    def rashi_lord_hi(self) -> str:
+        return K.GRAHA_HI[self.rashi_lord]
+
+    @property
+    def nakshatra_lord_hi(self) -> str:
+        return K.GRAHA_HI[self.nakshatra_lord]
+
     @property
     def dms(self) -> str:
         """Degree within the rashi as a `12°34'56\"` string."""
@@ -196,6 +220,20 @@ class Chart:
     @property
     def janma_nakshatra(self) -> str:
         return self.grahas["Moon"].placement.nakshatra
+
+    @property
+    def moon_rashi_hi(self) -> str:
+        return self.grahas["Moon"].placement.rashi_hi
+
+    @property
+    def janma_nakshatra_hi(self) -> str:
+        return self.grahas["Moon"].placement.nakshatra_hi
+
+    @property
+    def ayanamsa_name_hi(self) -> str:
+        """Falls back to the English label rather than to nothing: an unnamed
+        correction is worse than one named in the other language."""
+        return K.AYANAMSA_NAMES_HI.get(self.ayanamsa_name, self.ayanamsa_name)
 
 
 # Maximum elongation from the Sun, in degrees, within which a graha is

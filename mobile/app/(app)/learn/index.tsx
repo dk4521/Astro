@@ -8,24 +8,33 @@
  */
 
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { loadCourseIndex } from '../../../src/api/course';
-import { loadProgress } from '../../../src/api/storage';
+import { loadDisplayLanguage, loadProgress, saveDisplayLanguage } from '../../../src/api/storage';
 import type { CourseIndex, CourseLanguage } from '../../../src/api/types';
+import { LanguagePicker } from '../../../src/components/LanguagePicker';
 import { ScreenHeader } from '../../../src/components/ScreenHeader';
 import { Button, ErrorNote, Label } from '../../../src/components/ui';
 import { colors, radius, space, type } from '../../../src/theme';
 
-const LANGUAGES: { value: CourseLanguage; label: string }[] = [
-  { value: 'en', label: 'English' },
-  { value: 'hi', label: 'हिंदी' },
-];
-
 export default function LearnIndex() {
   const router = useRouter();
+  // The same stored choice the chart and today screens read. Learn used to keep
+  // its own, which meant picking हिंदी here and then finding English on the next
+  // screen — the app disagreeing with itself about a question the user had
+  // already answered.
   const [language, setLanguage] = useState<CourseLanguage>('en');
+
+  useEffect(() => {
+    loadDisplayLanguage().then(setLanguage);
+  }, []);
+
+  const chooseLanguage = useCallback((next: CourseLanguage) => {
+    setLanguage(next);
+    void saveDisplayLanguage(next);
+  }, []);
   const [index, setIndex] = useState<CourseIndex | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -67,30 +76,7 @@ export default function LearnIndex() {
     <View style={styles.flex}>
       <ScreenHeader
         title="Learn"
-        right={
-          <View style={styles.langGroup}>
-            {LANGUAGES.map((option) => {
-              const active = option.value === language;
-              return (
-                <Pressable
-                  key={option.value}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: active }}
-                  onPress={() => setLanguage(option.value)}
-                  style={({ pressed }) => [
-                    styles.lang,
-                    active && styles.langActive,
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <Text style={[styles.langText, active && styles.langTextActive]}>
-                    {option.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        }
+        right={<LanguagePicker value={language} onChange={chooseLanguage} />}
       />
 
       <ScrollView contentContainerStyle={styles.content}>
@@ -203,17 +189,6 @@ export default function LearnIndex() {
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: 'transparent' },
   content: { paddingHorizontal: space.lg, paddingTop: space.lg, paddingBottom: space.xxl },
-  langGroup: {
-    flexDirection: 'row',
-    backgroundColor: colors.glass,
-    borderRadius: radius.pill,
-    padding: 3,
-    gap: 2,
-  },
-  lang: { paddingHorizontal: space.sm + 2, paddingVertical: space.xs + 2, borderRadius: radius.pill },
-  langActive: { backgroundColor: colors.accentDim },
-  langText: { fontSize: 12, fontWeight: '600', color: colors.textFaint },
-  langTextActive: { color: colors.accentSoft },
   kicker: { ...type.title, color: colors.text },
   blurb: {
     ...type.body,

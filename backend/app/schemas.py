@@ -61,17 +61,25 @@ class BirthDetails(BaseModel):
         return dt.datetime.combine(self.date, self.time)
 
 
+# Every Devanagari field below is sent alongside its Latin twin rather than
+# instead of it: the app switches language without refetching, and a reading in
+# one language must never have to guess the other.
 class PlacementOut(BaseModel):
     longitude: float
     rashi: str
     rashi_en: str
+    rashi_hi: str
     rashi_lord: str
+    rashi_lord_hi: str
     degree: float
     degree_dms: str
     nakshatra: str
+    nakshatra_hi: str
     nakshatra_lord: str
+    nakshatra_lord_hi: str
     pada: int
     navamsa: str
+    navamsa_hi: str
 
 
 class GrahaOut(BaseModel):
@@ -96,6 +104,7 @@ class ChartMeta(BaseModel):
     julian_day: float
     ayanamsa: float
     ayanamsa_name: str
+    ayanamsa_name_hi: str
     ephemeris_mode: str
     house_system: str = "whole-sign"
 
@@ -108,23 +117,55 @@ class ChartResponse(BaseModel):
     house_lords: dict[int, str]
     navamsa: dict[str, str]
     moon_rashi: str
+    moon_rashi_hi: str
     janma_nakshatra: str
+    janma_nakshatra_hi: str
 
 
 class PanchangResponse(BaseModel):
     tithi: str
+    tithi_hi: str
     tithi_number: int
     paksha: str
+    paksha_hi: str
     tithi_percent: float
     nakshatra: str
+    nakshatra_hi: str
     nakshatra_pada: int
     yoga: str
+    yoga_hi: str
     karana: str
+    karana_hi: str
     vara: str
+    vara_hi: str
     vara_lord: str
+    vara_lord_hi: str
+
+    # The lunar month and the era year it turns with.
+    masa: str
+    masa_hi: str
+    vikram_samvat: int = Field(
+        description="Chaitradi (North Indian) reckoning: the year turns at Chaitra Shukla Pratipada"
+    )
+    shaka_samvat: int
+
+    # Rise and set for the civil day at this place. Null is a real answer: the
+    # Moon skips a rise once a month, and the polar Sun skips both for months.
+    sunrise: dt.datetime | None = None
+    sunset: dt.datetime | None = None
+    moonrise: dt.datetime | None = None
+    moonset: dt.datetime | None = None
 
 
 class DashaPeriodOut(BaseModel):
+    """One Vimshottari period.
+
+    `meaning` is filled only for the periods actually running now. A full
+    timeline at three levels is several hundred periods, and a written theme
+    repeated against every one of them would be a hundred kilobytes of the same
+    nine sentences — so the endpoints attach it where a screen displays it.
+    """
+
     lord: str
     lord_hi: str
     start: dt.datetime
@@ -132,6 +173,8 @@ class DashaPeriodOut(BaseModel):
     level: int
     years: float
     children: list["DashaPeriodOut"] = Field(default_factory=list)
+    meaning: str | None = None
+    meaning_hi: str | None = None
 
 
 class DashaResponse(BaseModel):
@@ -200,6 +243,72 @@ class InterpretResponse(BaseModel):
     contradictions: list[str] = Field(
         default_factory=list,
         description="Statements that disagree with the chart; empty when grounded",
+    )
+
+
+class KootOut(BaseModel):
+    """One of the eight, with the values behind it.
+
+    `bride` and `groom` are what each side actually contributed — the varna, the
+    animal, the gana. They are sent so the screen can show *why* a koot scored
+    what it did: a bare number out of 36 is the form of this procedure that gets
+    used against people.
+    """
+
+    name: str
+    points: float
+    maximum: float
+    bride: str
+    bride_hi: str
+    groom: str
+    groom_hi: str
+
+
+class MatchRequest(BaseModel):
+    """Two nativities, in the roles the procedure names.
+
+    The tradition's own split, kept rather than smoothed: Varna and Gana score
+    differently if the two are swapped, so a symmetric API would be lying about
+    what it computed.
+    """
+
+    bride: BirthDetails
+    groom: BirthDetails
+
+
+class MatchResponse(BaseModel):
+    koots: list[KootOut]
+    total: float
+    maximum: float
+
+    bride_nakshatra: str
+    bride_nakshatra_hi: str
+    bride_rashi: str
+    bride_rashi_hi: str
+    groom_nakshatra: str
+    groom_nakshatra_hi: str
+    groom_rashi: str
+    groom_rashi_hi: str
+
+
+class TipRequest(BaseModel):
+    """Ask for the home screen's daily line."""
+
+    birth: BirthDetails
+    language: Language = "hinglish"
+    companion: str | None = Field(
+        default=None,
+        max_length=40,
+        description="Display name of the chat companion, so the line is in their voice",
+    )
+
+
+class TipResponse(BaseModel):
+    text: str
+    language: Language
+    companion: str | None = None
+    grounded: bool = Field(
+        description="False when the line named a placement it was told not to name"
     )
 
 
@@ -286,8 +395,13 @@ class TodayResponse(BaseModel):
     place: str | None
     panchang: PanchangResponse
     moon_rashi: str
+    moon_rashi_hi: str
     moon_nakshatra: str
+    moon_nakshatra_hi: str
     sun_rashi: str
+    sun_rashi_hi: str
     active: list[DashaPeriodOut]
     birth_moon_rashi: str
+    birth_moon_rashi_hi: str
     birth_nakshatra: str
+    birth_nakshatra_hi: str

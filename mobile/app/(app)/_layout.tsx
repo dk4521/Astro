@@ -34,6 +34,7 @@ type Item = {
 const ITEMS: Item[] = [
   { route: '/today', label: 'Today', glyph: '☉' },
   { route: '/chart', label: 'Chart', glyph: '◈' },
+  { route: '/matching', label: 'Matching', glyph: '◎' },
   { route: '/reading', label: 'Chat', glyph: '❋' },
   // Only with an account: a signed-out phone keeps no conversations at all, so
   // the row would lead to a permanently empty screen.

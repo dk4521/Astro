@@ -185,6 +185,29 @@ VARA_LORDS: tuple[str, ...] = (
 )
 
 
+# --- Lunar months -----------------------------------------------------------
+
+# A lunar month runs new moon to new moon and is named for the rashi the Sun
+# *enters* while it lasts: the month in which the Sun enters Mesha is Chaitra.
+# Index 0 is therefore Chaitra, and the Hindu lunar year begins with it.
+MASA_NAMES: tuple[str, ...] = (
+    "Chaitra", "Vaishakha", "Jyeshtha", "Ashadha", "Shravana", "Bhadrapada",
+    "Ashwina", "Kartika", "Margashirsha", "Pausha", "Magha", "Phalguna",
+)
+
+MASA_NAMES_HI: tuple[str, ...] = (
+    "चैत्र", "वैशाख", "ज्येष्ठ", "आषाढ़", "श्रावण", "भाद्रपद",
+    "आश्विन", "कार्तिक", "मार्गशीर्ष", "पौष", "माघ", "फाल्गुन",
+)
+
+# Vikram Samvat runs 57 years ahead of the Common Era once the year has turned,
+# and Shaka trails Vikram by a fixed 135. Both turn at Chaitra Shukla Pratipada
+# in the reckoning this engine uses — the North Indian, Chaitradi one. Gujarat
+# turns Vikram Samvat at Kartika instead, which is why the convention is named
+# here rather than left implied.
+VIKRAM_OFFSET = 57
+SHAKA_BEHIND_VIKRAM = 135
+
 # --- Ayanamsa ---------------------------------------------------------------
 
 # Keyed by the label the engine stamps on a chart, so a Hindi reading can name

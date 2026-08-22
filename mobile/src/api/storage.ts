@@ -143,6 +143,28 @@ export async function markAccountsSeen(): Promise<void> {
   await AsyncStorage.setItem(SEEN_ACCOUNTS_KEY, 'yes');
 }
 
+// --- Name -------------------------------------------------------------------
+
+const NAME_KEY = 'kosmiq.name.v1';
+
+/**
+ * What to call the reader. Empty until they say.
+ *
+ * Optional, and stays optional: the home screen greets by name when it has one
+ * and simply doesn't when it doesn't. Nothing computed depends on it — a name
+ * is not birth data — so it never blocks a screen the way missing birth details
+ * do.
+ */
+export async function loadName(): Promise<string> {
+  return (await AsyncStorage.getItem(NAME_KEY)) ?? '';
+}
+
+export async function saveName(name: string): Promise<void> {
+  const trimmed = name.trim();
+  if (trimmed) await AsyncStorage.setItem(NAME_KEY, trimmed);
+  else await AsyncStorage.removeItem(NAME_KEY);
+}
+
 // --- Chat companion --------------------------------------------------------
 
 const PERSONA_KEY = 'kosmiq.persona.v1';
@@ -154,6 +176,25 @@ export async function loadPersona(): Promise<string | null> {
 
 export async function savePersona(id: string): Promise<void> {
   await AsyncStorage.setItem(PERSONA_KEY, id);
+}
+
+// --- Display language -------------------------------------------------------
+
+const LANGUAGE_KEY = 'kosmiq.displayLanguage.v1';
+
+/**
+ * Hindi or English for the screens that show computed values.
+ *
+ * Stored rather than held per screen: someone who picks Hindi on the chart has
+ * said what they read in, and having to say it again on the next screen is the
+ * app forgetting them. Defaults to English until they choose.
+ */
+export async function loadDisplayLanguage(): Promise<'en' | 'hi'> {
+  return (await AsyncStorage.getItem(LANGUAGE_KEY)) === 'hi' ? 'hi' : 'en';
+}
+
+export async function saveDisplayLanguage(language: 'en' | 'hi'): Promise<void> {
+  await AsyncStorage.setItem(LANGUAGE_KEY, language);
 }
 
 // --- Remote row ids --------------------------------------------------------

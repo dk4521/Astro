@@ -9,7 +9,7 @@ discouraged.
 from . import cache
 from .client import InterpretationUnavailable, is_configured, set_client
 from .facts import build_brief
-from .interpret import Interpretation, Turn, answer, reading, stream_answer
+from .interpret import Interpretation, Turn, answer, daily_tip, reading, stream_answer
 
 __all__ = [
     "Interpretation",
@@ -18,6 +18,7 @@ __all__ = [
     "answer",
     "build_brief",
     "cache",
+    "daily_tip",
     "is_configured",
     "reading",
     "set_client",

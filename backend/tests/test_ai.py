@@ -599,3 +599,81 @@ def test_token_budget_leaves_room_for_thinking():
     from app.ai import client as C
 
     assert C.MAX_TOKENS >= 4000
+
+
+# --- The daily tip ----------------------------------------------------------
+
+
+def test_the_tip_brief_carries_the_day_and_the_period_but_not_the_chart(chart, stub):
+    """A one-line tip handed a whole natal chart reaches for a placement.
+
+    So it is handed less: the day everyone is in, and the period this reader is
+    in. Pinning the *absence* of the graha table is the point — a future
+    refactor that "helpfully" swaps in `build_brief` would silently reintroduce
+    the failure the short brief exists to prevent.
+    """
+    interpret.daily_tip(chart, chart, language="en", companion="Priya")
+
+    brief = stub.requests[0].messages[0]["content"]
+    assert "TODAY" in brief
+    assert "VIMSHOTTARI DASHA" in brief
+    assert "GRAHAS" not in brief
+    assert "HOUSES" not in brief
+
+
+def test_the_tip_speaks_as_the_companion(stub, chart):
+    interpret.daily_tip(chart, chart, language="hinglish", companion="Priya")
+    assert "You are Priya" in stub.requests[0].suffix
+
+    stub.requests.clear()
+    interpret.daily_tip(chart, chart, language="en", companion=None)
+    assert "You are" not in stub.requests[0].suffix
+
+
+def test_the_tip_refuses_to_rank_the_day_in_every_language_it_speaks():
+    """The rule the model actually broke, and where it broke.
+
+    A live run produced "aaj ka din baaton ko saaf karne ke liye achha hai" —
+    a ranked day, in Hindi, from a directive that had already forbidden it in
+    English. It binds now because it is stated last and in all three languages;
+    this pins that it stays stated, since deleting it breaks nothing offline.
+    """
+    from app.ai.prompts import tip_directive
+
+    directive = tip_directive("hi", "Meera")
+    assert "never rank the day" in directive.lower()
+    for banned in ("good day", "अच्छा दिन", "शुभ", "achha din", "best hai"):
+        assert banned in directive
+    # Stated last: everything above it is the part that loses in a long prompt.
+    assert directive.rstrip().endswith("and stop there.")
+
+
+def test_the_tip_endpoint_returns_a_line(stub):
+    response = TestClient(app).post(
+        "/v1/tip",
+        json={"birth": API_BIRTH, "language": "hinglish", "companion": "Priya"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["text"] == stub.reply
+    assert body["companion"] == "Priya"
+    assert body["grounded"] is True
+
+
+def test_the_tip_endpoint_reports_whether_it_was_cached(monkeypatch):
+    """The home screen opens on this. Two launches must cost one request."""
+    from tests.test_cache import CountingClient
+
+    client_ = CountingClient()
+    monkeypatch.setattr("app.ai.interpret.get_client", lambda: client_)
+    monkeypatch.setattr("app.api.routes.ai.is_configured", lambda: True)
+    api = TestClient(app)
+
+    body = {"birth": API_BIRTH, "language": "en", "companion": "Priya"}
+    first = api.post("/v1/tip", json=body)
+    second = api.post("/v1/tip", json=body)
+
+    assert first.headers["X-Cache"] == "miss"
+    assert second.headers["X-Cache"] == "hit"
+    assert client_.calls == 1

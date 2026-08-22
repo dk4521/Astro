@@ -20,9 +20,10 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter, HTTPException, Query, Response
 from fastapi.responses import StreamingResponse
 
-from .. import ai, course, places
+from .. import ai, course, meanings, places
 from ..ai import grounding
-from ..astro import build_chart, navamsa_chart, panchang_for, vimshottari
+from ..astro import ashtakoot, build_chart, navamsa_chart, panchang_for, vimshottari
+from ..astro.ephemeris import from_julian_day
 from ..astro.chart import Chart, Placement
 from ..astro.dasha import DashaPeriod
 from ..schemas import (
@@ -40,10 +41,15 @@ from ..schemas import (
     GrahaOut,
     InterpretRequest,
     InterpretResponse,
+    KootOut,
+    MatchRequest,
+    MatchResponse,
     PanchangResponse,
     PlaceOut,
     PlacementOut,
     ReadingResponse,
+    TipRequest,
+    TipResponse,
     TodayResponse,
 )
 
@@ -58,13 +64,18 @@ def _placement_out(placement: Placement) -> PlacementOut:
         longitude=placement.longitude,
         rashi=placement.rashi,
         rashi_en=placement.rashi_en,
+        rashi_hi=placement.rashi_hi,
         rashi_lord=placement.rashi_lord,
+        rashi_lord_hi=placement.rashi_lord_hi,
         degree=placement.degree_in_rashi,
         degree_dms=placement.dms,
         nakshatra=placement.nakshatra,
+        nakshatra_hi=placement.nakshatra_hi,
         nakshatra_lord=placement.nakshatra_lord,
+        nakshatra_lord_hi=placement.nakshatra_lord_hi,
         pada=placement.pada,
         navamsa=placement.navamsa,
+        navamsa_hi=placement.navamsa_hi,
     )
 
 
@@ -80,6 +91,7 @@ def _chart_out(chart: Chart, place: str | None) -> ChartResponse:
             julian_day=chart.julian_day,
             ayanamsa=chart.ayanamsa,
             ayanamsa_name=chart.ayanamsa_name,
+            ayanamsa_name_hi=chart.ayanamsa_name_hi,
             ephemeris_mode=chart.ephemeris_mode,
         ),
         lagna=_placement_out(chart.lagna),
@@ -99,11 +111,13 @@ def _chart_out(chart: Chart, place: str | None) -> ChartResponse:
         house_lords=chart.house_lords,
         navamsa=navamsa_chart(chart),
         moon_rashi=chart.moon_rashi,
+        moon_rashi_hi=chart.moon_rashi_hi,
         janma_nakshatra=chart.janma_nakshatra,
+        janma_nakshatra_hi=chart.janma_nakshatra_hi,
     )
 
 
-def _period_out(period: DashaPeriod) -> DashaPeriodOut:
+def _period_out(period: DashaPeriod, *, with_meaning: bool = False) -> DashaPeriodOut:
     return DashaPeriodOut(
         lord=period.lord,
         lord_hi=period.lord_hi,
@@ -112,6 +126,8 @@ def _period_out(period: DashaPeriod) -> DashaPeriodOut:
         level=period.level,
         years=period.duration_years,
         children=[_period_out(child) for child in period.children],
+        meaning=meanings.dasha_meaning(period.lord, "en") if with_meaning else None,
+        meaning_hi=meanings.dasha_meaning(period.lord, "hi") if with_meaning else None,
     )
 
 
@@ -128,19 +144,39 @@ def _build(details: BirthDetails) -> Chart:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
+def _moment(jd: float | None) -> dt.datetime | None:
+    """A Julian day as a UTC instant, or None passed straight through."""
+    return None if jd is None else from_julian_day(jd)
+
+
 def _panchang_out(chart: Chart) -> PanchangResponse:
     p = panchang_for(chart)
     return PanchangResponse(
         tithi=p.tithi,
+        tithi_hi=p.tithi_hi,
         tithi_number=p.tithi_number,
         paksha=p.paksha,
+        paksha_hi=p.paksha_hi,
         tithi_percent=p.tithi_percent,
         nakshatra=p.nakshatra,
+        nakshatra_hi=p.nakshatra_hi,
         nakshatra_pada=p.nakshatra_pada,
         yoga=p.yoga,
+        yoga_hi=p.yoga_hi,
         karana=p.karana,
+        karana_hi=p.karana_hi,
         vara=p.vara,
+        vara_hi=p.vara_hi,
         vara_lord=p.vara_lord,
+        vara_lord_hi=p.vara_lord_hi,
+        masa=p.masa,
+        masa_hi=p.masa_hi,
+        vikram_samvat=p.vikram_samvat,
+        shaka_samvat=p.shaka_samvat,
+        sunrise=_moment(p.sunrise_jd),
+        sunset=_moment(p.sunset_jd),
+        moonrise=_moment(p.moonrise_jd),
+        moonset=_moment(p.moonset_jd),
     )
 
 
@@ -151,7 +187,7 @@ def _dasha_out(chart: Chart, levels: int, as_of: dt.datetime) -> DashaResponse:
         janma_nakshatra_lord=timeline.janma_nakshatra_lord,
         balance_years=timeline.balance_years,
         as_of=as_of,
-        active=[_period_out(p) for p in timeline.at(as_of)],
+        active=[_period_out(p, with_meaning=True) for p in timeline.at(as_of)],
         periods=[_period_out(p) for p in timeline.periods],
     )
 
@@ -213,6 +249,58 @@ def reading(
     )
 
 
+@router.post("/match", response_model=MatchResponse, summary="Ashtakoot Milan")
+def match(payload: MatchRequest) -> MatchResponse:
+    """The eight koots for two nativities.
+
+    Deterministic, like everything else on this side of the app: no model, no
+    quota, and the same two birth times give the same eight numbers forever.
+
+    What it deliberately does not return is a verdict. There is no threshold
+    here, no label, no "compatible" — because a score out of 36 is not a fact
+    about two people, and turning it into one is the use of this procedure the
+    course refuses to endorse. The caller gets the arithmetic and the values it
+    came from; what to make of it is not the server's to say.
+    """
+    bride = _build(payload.bride)
+    groom = _build(payload.groom)
+
+    bride_moon = bride.grahas["Moon"].placement
+    groom_moon = groom.grahas["Moon"].placement
+
+    result = ashtakoot(
+        bride_moon.nakshatra_index,
+        bride_moon.rashi_index,
+        groom_moon.nakshatra_index,
+        groom_moon.rashi_index,
+    )
+
+    return MatchResponse(
+        koots=[
+            KootOut(
+                name=k.name,
+                points=k.points,
+                maximum=k.maximum,
+                bride=k.bride,
+                bride_hi=k.bride_hi,
+                groom=k.groom,
+                groom_hi=k.groom_hi,
+            )
+            for k in result.koots
+        ],
+        total=result.total,
+        maximum=result.maximum,
+        bride_nakshatra=bride_moon.nakshatra,
+        bride_nakshatra_hi=bride_moon.nakshatra_hi,
+        bride_rashi=bride_moon.rashi,
+        bride_rashi_hi=bride_moon.rashi_hi,
+        groom_nakshatra=groom_moon.nakshatra,
+        groom_nakshatra_hi=groom_moon.nakshatra_hi,
+        groom_rashi=groom_moon.rashi,
+        groom_rashi_hi=groom_moon.rashi_hi,
+    )
+
+
 # --- Interpretation ---------------------------------------------------------
 
 
@@ -255,6 +343,42 @@ def interpret(payload: InterpretRequest, response: Response) -> InterpretRespons
         language=payload.language,
         grounded=result.model_grounded,
         contradictions=result.contradictions,
+    )
+
+
+@router.post("/tip", response_model=TipResponse, summary="One line for the home screen")
+def tip(payload: TipRequest, response: Response) -> TipResponse:
+    """The daily line the app opens with.
+
+    Two charts again, as in `/today`: the natal one the dasha runs from, and one
+    for this moment at the same place, which is where the day comes from.
+
+    This is the most expensive endpoint in the product, not per call but per
+    user: it is the first thing the app shows, so without caching on both sides
+    a single launch would spend one of the twenty daily requests. `X-Cache` says
+    which it was, and the client caches for the day on top of this.
+    """
+    _require_interpreter()
+    natal = _build(payload.birth)
+
+    now_utc = dt.datetime.now(dt.timezone.utc)
+    now_local = now_utc.astimezone(ZoneInfo(natal.timezone)).replace(tzinfo=None)
+    sky = build_chart(now_local, payload.birth.latitude, payload.birth.longitude, natal.timezone)
+
+    try:
+        result = ai.daily_tip(
+            natal, sky, language=payload.language, companion=payload.companion
+        )
+    except ai.InterpretationUnavailable as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    response.headers["X-Cache"] = "hit" if result.cached else "miss"
+
+    return TipResponse(
+        text=result.text,
+        language=payload.language,
+        companion=payload.companion,
+        grounded=result.model_grounded,
     )
 
 
@@ -344,13 +468,19 @@ def today(details: BirthDetails) -> TodayResponse:
         place=details.place,
         panchang=_panchang_out(sky),
         moon_rashi=moon.placement.rashi,
+        moon_rashi_hi=moon.placement.rashi_hi,
         moon_nakshatra=moon.placement.nakshatra,
+        moon_nakshatra_hi=moon.placement.nakshatra_hi,
         sun_rashi=sun.placement.rashi,
+        sun_rashi_hi=sun.placement.rashi_hi,
         active=[
-            _period_out(p) for p in vimshottari(natal, levels=3).at(now_utc)
+            _period_out(p, with_meaning=True)
+            for p in vimshottari(natal, levels=3).at(now_utc)
         ],
         birth_moon_rashi=natal.moon_rashi,
+        birth_moon_rashi_hi=natal.moon_rashi_hi,
         birth_nakshatra=natal.janma_nakshatra,
+        birth_nakshatra_hi=natal.janma_nakshatra_hi,
     )
 
 

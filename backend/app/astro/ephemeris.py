@@ -353,6 +353,150 @@ def ascendant(jd: float, latitude: float, longitude: float) -> float:
     return float((tropical - _effective_ayanamsa(jd, t)) % 360.0)
 
 
+def _sidereal_longitude(body: str, jd: float) -> float:
+    """One body, one moment. The lean path, for the root-finding below.
+
+    `all_positions` evaluates nine bodies at three epochs to get speeds too;
+    a bisection that calls it forty times would do fourteen hundred times the
+    work it needs.
+    """
+    timescale, ephemeris, earth = _load_kernel()
+    t = timescale.ut1_jd(jd)
+    _lat, lon, _dist = (
+        earth.at(t).observe(ephemeris[_BODIES[body]]).apparent().ecliptic_latlon(epoch=t)
+    )
+    return float((lon.degrees - _effective_ayanamsa(jd, t)) % 360.0)
+
+
+def _signed(degrees: float) -> float:
+    """An angle folded into (-180, 180], so a crossing of zero is a sign change."""
+    return ((degrees + 180.0) % 360.0) - 180.0
+
+
+def _bisect(f, low: float, high: float, iterations: int = 24) -> float:
+    """Root of a continuous `f` known to change sign across `[low, high]`.
+
+    Plain bisection rather than Newton: the derivative here is an ephemeris
+    lookup too, so an iteration costs the same either way.
+
+    Twenty-four halvings of a twenty-day window resolve to under two seconds of
+    time. That is the budget, not an accident: every caller below wants a date
+    or the rashi the Sun stood in, and each ephemeris evaluation costs about
+    four milliseconds. Sixty iterations — the first draft — bought picoseconds
+    nobody reads and made a panchang take half a second.
+    """
+    lo, hi = low, high
+    f_lo = f(lo)
+    for _ in range(iterations):
+        mid = (lo + hi) / 2.0
+        f_mid = f(mid)
+        if (f_lo < 0.0) == (f_mid < 0.0):
+            lo, f_lo = mid, f_mid
+        else:
+            hi = mid
+    return (lo + hi) / 2.0
+
+
+@functools.lru_cache(maxsize=256)
+def mesha_ingress(year: int) -> float:
+    """Julian day the Sun enters sidereal Mesha in a given Gregorian year.
+
+    The hinge the Hindu solar year turns on, and — through the new moon before
+    it — the lunar one as well. It falls on 13-15 April under the Lahiri
+    ayanamsa, drifting about a day per century, so a window of 5-25 April
+    contains it with room to spare.
+    """
+    low = julian_day(dt.datetime(year, 4, 5, tzinfo=dt.timezone.utc))
+    high = julian_day(dt.datetime(year, 4, 25, tzinfo=dt.timezone.utc))
+    return _bisect(lambda jd: _signed(_sidereal_longitude("Sun", jd)), low, high)
+
+
+@functools.lru_cache(maxsize=256)
+def chaitra_start(year: int) -> float:
+    """Julian day of Chaitra Shukla Pratipada — the Hindu lunar new year.
+
+    Cached with the ingress it hangs off, because both are constants of a
+    calendar year and every single panchang request needs them. Recomputing
+    them per request was three quarters of what a panchang cost.
+    """
+    return previous_new_moon(mesha_ingress(year))
+
+
+#: Mean synodic gain of the Moon on the Sun, in degrees per day.
+_ELONGATION_RATE = 360.0 / 29.530588853
+
+
+def previous_new_moon(jd: float) -> float:
+    """Julian day of the last Sun-Moon conjunction at or before `jd`.
+
+    The start of the current lunar month, which is what names it: a lunar month
+    runs new moon to new moon, and the month's name comes from the rashi the Sun
+    enters while it lasts.
+
+    Seeded from the current elongation and the mean rate, then bracketed wide
+    enough to absorb the Moon's real speed varying by about a seventh either
+    side of that mean.
+    """
+    def elongation(at: float) -> float:
+        return (
+            _sidereal_longitude("Moon", at) - _sidereal_longitude("Sun", at)
+        ) % 360.0
+
+    estimate = jd - elongation(jd) / _ELONGATION_RATE
+    low, high = estimate - 2.0, estimate + 2.0
+
+    # Guard against the seed landing past `jd` when the Moon is running fast and
+    # the conjunction is minutes away: the answer must never be in the future.
+    if high > jd:
+        high = jd
+
+    return _bisect(lambda at: _signed(elongation(at)), low, high)
+
+
+# The bodies `rise_set` understands, mapped to the kernel's own names. The Moon
+# is a segment in its own right; the Sun comes straight off `_BODIES`.
+_RISE_SET_BODIES = {"Sun": "sun", "Moon": "moon"}
+
+
+def rise_set(
+    body: str, start_jd: float, end_jd: float, latitude: float, longitude: float
+) -> tuple[float | None, float | None]:
+    """First rise and first set of `body` inside `[start_jd, end_jd)`.
+
+    Either half can be None and that is a real answer, not a failure. The Moon
+    rises roughly fifty minutes later each day, so on one day in a month it does
+    not rise between one local midnight and the next; above the polar circles
+    the Sun does the same for months at a time. A caller that treats None as an
+    error will eventually show a wrong time instead of an honest blank.
+
+    `find_risings` reports a second array of flags: False marks a moment where
+    the body only grazes the horizon without crossing it. Those are dropped —
+    they are not risings, and printing one as a sunrise would be a fabricated
+    time in a screen whose whole claim is that its numbers are measured.
+    """
+    from skyfield import almanac
+
+    timescale, ephemeris, _earth = _load_kernel()
+    observer = ephemeris["earth"] + wgs84.latlon(latitude, longitude)
+    target = ephemeris[_RISE_SET_BODIES[body]]
+
+    try:
+        t0 = timescale.ut1_jd(start_jd)
+        t1 = timescale.ut1_jd(end_jd)
+        rise_times, rose = almanac.find_risings(observer, target, t0, t1)
+        set_times, set_ = almanac.find_settings(observer, target, t0, t1)
+    except (ValueError, IndexError):
+        return None, None
+
+    def first(times, flags) -> float | None:
+        for time, actual in zip(times, flags):
+            if actual:
+                return float(time.ut1)
+        return None
+
+    return first(rise_times, rose), first(set_times, set_)
+
+
 def sunrise(jd: float, latitude: float, longitude: float) -> float | None:
     """Julian day of the sunrise preceding or at `jd`, or None in polar day/night.
 

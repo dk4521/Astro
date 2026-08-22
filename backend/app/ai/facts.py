@@ -129,6 +129,60 @@ def dasha_facts(timeline: VimshottariTimeline, as_of: dt.datetime) -> str:
     return "\n".join(lines)
 
 
+def today_facts(sky: Panchang, sky_chart: Chart, natal: Chart) -> str:
+    """The sky right now, set against the one this person was born under.
+
+    Both halves matter and neither is the other: the first is true for everyone
+    alive at this moment, the second is the only part that is theirs. Labelling
+    them apart is what stops a daily line being written as though the sky were
+    addressing one reader.
+    """
+    moon = sky_chart.grahas["Moon"]
+    sun = sky_chart.grahas["Sun"]
+
+    return "\n".join(
+        [
+            "TODAY  (the sky now, at the reader's place — the same for everyone)",
+            f"  tithi: {sky.paksha} {sky.tithi} ({sky.tithi_percent:.0f}% elapsed)",
+            f"  masa: {sky.masa}   Vikram Samvat {sky.vikram_samvat}",
+            f"  vara: {sky.vara} (ruled by {sky.vara_lord})",
+            f"  Moon: {moon.placement.rashi} — {moon.placement.nakshatra}"
+            f" pada {moon.placement.pada}",
+            f"  Sun: {sun.placement.rashi}",
+            f"  yoga: {sky.yoga}   karana: {sky.karana}",
+            "",
+            "AGAINST THIS READER'S BIRTH",
+            f"  birth Moon: {natal.moon_rashi} — {natal.janma_nakshatra}",
+            f"  lagna: {natal.lagna.rashi}",
+        ]
+    )
+
+
+def build_daily_brief(
+    natal: Chart,
+    sky: Panchang,
+    sky_chart: Chart,
+    timeline: VimshottariTimeline,
+    as_of: dt.datetime,
+) -> str:
+    """The brief behind a daily line.
+
+    Smaller than `build_brief` on purpose. A one-sentence tip handed the whole
+    natal chart reaches for a placement to name, and a placement named in
+    passing is the thing this product exists not to do. What it gets instead is
+    the period the reader is in and the day everyone is in — which is all a
+    daily line can honestly be about.
+    """
+    return "\n\n".join(
+        [
+            "=== COMPUTED DATA ===",
+            today_facts(sky, sky_chart, natal),
+            dasha_facts(timeline, as_of),
+            "=== END COMPUTED DATA ===",
+        ]
+    )
+
+
 def build_brief(
     chart: Chart,
     panchang: Panchang,

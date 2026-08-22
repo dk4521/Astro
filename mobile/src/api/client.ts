@@ -34,8 +34,10 @@ import type {
   CourseLanguage,
   Interpretation,
   Language,
+  Match,
   Place,
   Reading,
+  Tip,
   Today,
 } from './types';
 
@@ -137,6 +139,14 @@ export function fetchReading(details: BirthDetails, levels = 2): Promise<Reading
   });
 }
 
+/** Ashtakoot Milan. Deterministic, so no long timeout and no quota. */
+export function fetchMatch(bride: BirthDetails, groom: BirthDetails): Promise<Match> {
+  return request<Match>('/v1/match', {
+    method: 'POST',
+    body: JSON.stringify({ bride, groom }),
+  });
+}
+
 export function searchPlaces(query: string, limit = 8): Promise<Place[]> {
   const params = new URLSearchParams({ q: query, limit: String(limit) });
   return request<Place[]>(`/v1/places?${params.toString()}`);
@@ -179,6 +189,22 @@ export function fetchInterpretation(
   return request<Interpretation>(
     '/v1/interpret',
     { method: 'POST', body: JSON.stringify({ birth, language }) },
+    INTERPRET_TIMEOUT_MS,
+  );
+}
+
+/**
+ * The daily line. Goes through the same long timeout as a reading — it is a
+ * model call, and a busy free tier walks the fallback chain before answering.
+ */
+export function fetchTip(
+  birth: BirthDetails,
+  language: Language,
+  companion: string | null,
+): Promise<Tip> {
+  return request<Tip>(
+    '/v1/tip',
+    { method: 'POST', body: JSON.stringify({ birth, language, companion }) },
     INTERPRET_TIMEOUT_MS,
   );
 }

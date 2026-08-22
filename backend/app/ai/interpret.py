@@ -29,7 +29,8 @@ from ..astro import Chart, panchang_for, vimshottari
 from . import cache, grounding
 from .client import Request, get_client
 from .facts import build_brief
-from .prompts import READING_REQUEST, chat_directive, reading_directive
+from .facts import build_daily_brief
+from .prompts import READING_REQUEST, chat_directive, reading_directive, tip_directive
 
 
 @dataclass(frozen=True, slots=True)
@@ -123,6 +124,36 @@ def reading(
     moment = as_of or dt.datetime.now(dt.timezone.utc)
     request = _build_request(chart, READING_REQUEST, language, moment, reading_directive(language))
     return _complete(request, chart, language)
+
+
+def daily_tip(
+    natal: Chart,
+    sky: Chart,
+    language: str = "hinglish",
+    companion: str | None = None,
+    as_of: dt.datetime | None = None,
+) -> Interpretation:
+    """One line for the home screen.
+
+    Cached like everything else, and the cache matters more here than anywhere:
+    this is the first thing the app shows, so without it every launch would
+    spend a request against a daily allowance of twenty. The brief carries
+    `as of:` at day precision, so today's line and tomorrow's hash differently
+    and the entry expires by itself.
+
+    Grounding still runs. A tip is told to name no placements at all, so a
+    contradiction here means the model reached for one anyway — exactly the case
+    worth catching, and worth never storing.
+    """
+    moment = as_of or dt.datetime.now(dt.timezone.utc)
+    brief = build_daily_brief(
+        natal, panchang_for(sky), sky, vimshottari(natal, levels=3), moment
+    )
+    request = Request(
+        messages=[{"role": "user", "content": brief}],
+        suffix=tip_directive(language, companion),
+    )
+    return _complete(request, natal, language)
 
 
 def answer(

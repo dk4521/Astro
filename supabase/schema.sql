@@ -15,16 +15,29 @@
 create table if not exists public.profiles (
   id          uuid primary key references auth.users on delete cascade,
   display_name text,
+  -- What the account is allowed. 'free' until something upstream says
+  -- otherwise; nothing in the app writes this column, and the RLS policy below
+  -- deliberately does not let it: a client that can raise its own plan is not a
+  -- plan, it is a suggestion.
+  plan        text not null default 'free' check (plan in ('free', 'paid')),
   created_at  timestamptz not null default now()
 );
+
+-- For projects created before the column existed.
+alter table public.profiles add column if not exists plan text not null default 'free';
 
 alter table public.profiles enable row level security;
 
 create policy "read own profile"
   on public.profiles for select using (auth.uid() = id);
 
+-- `display_name` is the only column a client has any business changing. The
+-- check below is what keeps `plan` out of reach: an update that alters it fails
+-- rather than silently upgrading the account that asked.
 create policy "update own profile"
-  on public.profiles for update using (auth.uid() = id);
+  on public.profiles for update
+  using (auth.uid() = id)
+  with check (auth.uid() = id and plan = (select plan from public.profiles where id = auth.uid()));
 
 -- Supabase does not create a profile row for you; this trigger does.
 create or replace function public.handle_new_user()

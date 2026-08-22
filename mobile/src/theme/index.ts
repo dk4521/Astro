@@ -43,6 +43,72 @@ export const colors = {
   combust: '#E4728F',
 } as const;
 
+/**
+ * One colour per graha, for the chart.
+ *
+ * Identity, not judgement: the colour says *which* body this is, the way a
+ * transit map colours a line rather than rating it. The hues follow the
+ * traditional associations — Mangal red, Budha green, Shani's cold blue — but
+ * desaturated into this palette, because nine saturated colours in a 320px
+ * square is the red-and-yellow chart the theme exists to avoid.
+ *
+ * They are held apart in hue rather than in lightness, so the twelve houses
+ * stay readable for a red-green colour-blind reader: Mars and Mercury differ in
+ * lightness too, and every glyph carries its two-letter name regardless. Colour
+ * here is a second channel on top of the label, never the only one.
+ */
+export const grahaColour: Record<string, string> = {
+  Sun: '#F5A65B',
+  Moon: '#DCEBF9',
+  Mars: '#F5726B',
+  Mercury: '#6FD2A8',
+  Jupiter: '#F0D77F',
+  Venus: '#F3B0D0',
+  Saturn: '#8FAAE0',
+  Rahu: '#AC98E6',
+  Ketu: '#A9B2C6',
+};
+
+/**
+ * The four elements, as light rather than paint.
+ *
+ * These are gradient stops, not fills — each house is lit from its own centre
+ * and fades outward, which is what keeps twelve tinted cells from reading as
+ * twelve blocks of colour. Flat fills were tried first and went muddy: a low
+ * alpha of anything over this background turns to silt.
+ *
+ * Fire is deliberately pushed toward coral rather than orange. True orange over
+ * a violet ground mixes to brown, which was the one genuinely ugly thing in the
+ * first version of this chart.
+ *
+ * They carry a real fact rather than decorating: the twelve rashis cycle fire,
+ * earth, air, water in order, so the wash tells you at a glance which trine a
+ * house belongs to without printing another word in a cell that has no room.
+ */
+export const elementGlow = {
+  fire: '#FF7E63',
+  earth: '#7BD98F',
+  air: '#79B4F5',
+  water: '#57D0DC',
+} as const;
+
+/**
+ * The same four for the rashi number, but lifted well above the wash.
+ *
+ * Not the glow colours themselves, which is what they were at first: a number
+ * printed in its own element's hue sits on a cell lit by that same hue, so the
+ * fire houses — the strongest wash — had the faintest numbers on them. Caught
+ * on a phone, where the contrast is real rather than simulated. These are the
+ * same four hues carried up in lightness until each one floats off its own
+ * background.
+ */
+export const elementInk = {
+  fire: '#FFB69B',
+  earth: '#ADDDB4',
+  air: '#ADCCF3',
+  water: '#8EDCE5',
+} as const;
+
 /** The brand fill. Two stops, used through expo-linear-gradient. */
 export const gradient = {
   brand: ['#9B8CFF', '#6B5BD6'] as const,

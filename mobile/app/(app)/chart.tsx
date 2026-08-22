@@ -9,7 +9,7 @@
  */
 
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   RefreshControl,
@@ -21,41 +21,56 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { fetchReading } from '../../src/api/client';
-import { loadBirthDetails } from '../../src/api/storage';
+import {
+  loadBirthDetails,
+  loadDisplayLanguage,
+  saveDisplayLanguage,
+} from '../../src/api/storage';
 import type { BirthDetails, DashaPeriod, Reading } from '../../src/api/types';
+import { localeFor, riseSet, strings, type DisplayLanguage } from '../../src/i18n';
 import { KundliChart } from '../../src/components/KundliChart';
+import { LanguagePicker } from '../../src/components/LanguagePicker';
 import { ScreenHeader } from '../../src/components/ScreenHeader';
 import { Button, Card, Chip, ErrorNote, Label, Row } from '../../src/components/ui';
-import { colors, space, type } from '../../src/theme';
+import { colors, grahaColour, space, type } from '../../src/theme';
 
-function formatDate(iso: string): string {
-  const date = new Date(iso);
-  return date.toLocaleDateString(undefined, {
+function formatDate(iso: string, language: DisplayLanguage): string {
+  return new Date(iso).toLocaleDateString(localeFor(language), {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
   });
 }
 
-function DashaTrack({ active }: { active: DashaPeriod[] }) {
+function DashaTrack({
+  active,
+  language,
+}: {
+  active: DashaPeriod[];
+  language: DisplayLanguage;
+}) {
+  const t = strings(language);
   if (active.length === 0) {
-    return <Text style={styles.empty}>Outside the computed 120-year cycle.</Text>;
+    return <Text style={styles.empty}>{t.outsideCycle}</Text>;
   }
 
-  const names = ['Mahadasha', 'Antardasha', 'Pratyantardasha'];
+  const names = t.dashaLevels;
 
   return (
     <View style={styles.dashaTrack}>
       {active.map((period, index) => (
         <View key={`${period.lord}-${period.level}`} style={styles.dashaStep}>
           <View style={styles.dashaHeader}>
-            <Text style={styles.dashaLevel}>{names[index] ?? `Level ${period.level}`}</Text>
+            <Text style={styles.dashaLevel}>{names[index] ?? String(period.level)}</Text>
             <Text style={styles.dashaDates}>
-              {formatDate(period.start)} → {formatDate(period.end)}
+              {formatDate(period.start, language)} → {formatDate(period.end, language)}
             </Text>
           </View>
           <Text style={styles.dashaLord}>
-            {period.lord} <Text style={styles.dashaLordHi}>{period.lord_hi}</Text>
+            {language === 'hi' ? period.lord_hi : period.lord}{' '}
+            <Text style={styles.dashaLordHi}>
+              {language === 'hi' ? period.lord : period.lord_hi}
+            </Text>
           </Text>
         </View>
       ))}
@@ -72,13 +87,33 @@ export default function ChartScreen() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  // Undefined until the stored choice is read, so the screen never renders one
+  // language and then swaps to the other a frame later.
+  const [language, setLanguage] = useState<DisplayLanguage | undefined>(undefined);
+
+  useEffect(() => {
+    loadDisplayLanguage().then(setLanguage);
+  }, []);
+
+  const chooseLanguage = useCallback((next: DisplayLanguage) => {
+    setLanguage(next);
+    void saveDisplayLanguage(next);
+  }, []);
+
+  const t = strings(language ?? 'en');
+
+  // Read through a ref so `load` does not have to depend on the language and
+  // refetch every time someone flips the toggle — the payload is identical in
+  // both languages, which is the whole point of sending them together.
+  const chartFailed = useRef(strings('en').chartFailed);
+  chartFailed.current = t.chartFailed;
 
   const load = useCallback(async (saved: BirthDetails) => {
     try {
       setReading(await fetchReading(saved, 3));
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not compute your chart');
+      setError(err instanceof Error ? err.message : chartFailed.current);
     }
   }, []);
 
@@ -107,18 +142,21 @@ export default function ChartScreen() {
     setRefreshing(false);
   }, [details, load]);
 
-  if (loading) {
+  if (loading || language === undefined) {
     return (
       <View style={styles.loading}>
         <ActivityIndicator color={colors.accent} />
-        <Text style={styles.loadingText}>Computing positions…</Text>
+        <Text style={styles.loadingText}>{t.computing}</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.flex}>
-      <ScreenHeader bordered={false} />
+      <ScreenHeader
+        bordered={false}
+        right={<LanguagePicker value={language} onChange={chooseLanguage} />}
+      />
       <ScrollView
       style={styles.flex}
       contentContainerStyle={[
@@ -137,45 +175,50 @@ export default function ChartScreen() {
         <View style={styles.section}>
           <ErrorNote message={error} />
           <View style={styles.retry}>
-            <Button title="Try again" onPress={refresh} variant="ghost" />
+            <Button title={t.tryAgain} onPress={refresh} variant="ghost" />
           </View>
         </View>
       ) : null}
 
       {reading ? (
         <>
-          <Text style={styles.kicker}>{details?.place ?? 'Your chart'}</Text>
+          <Text style={styles.kicker}>{details?.place ?? t.yourChart}</Text>
           <Text style={styles.title}>
-            {reading.chart.lagna.rashi} lagna
+            {t.lagnaSuffix(
+              language === 'hi' ? reading.chart.lagna.rashi_hi : reading.chart.lagna.rashi,
+            )}
           </Text>
           <Text style={styles.subtitle}>
-            Moon in {reading.chart.moon_rashi} · {reading.chart.janma_nakshatra}{' '}
-            nakshatra
+            {t.moonLine(
+              language === 'hi' ? reading.chart.moon_rashi_hi : reading.chart.moon_rashi,
+              language === 'hi'
+                ? reading.chart.janma_nakshatra_hi
+                : reading.chart.janma_nakshatra,
+            )}
           </Text>
 
           <View style={styles.section}>
             <KundliChart chart={reading.chart} />
             <Text style={styles.caption}>
-              North Indian chart · numbers are rashis, not houses
+              {t.chartCaptionOne}{'\n'}
+              {t.chartCaptionTwo}
             </Text>
           </View>
 
           <View style={styles.section}>
-            <Button title="Read my chart in words" onPress={() => router.push('/reading')} />
-            <Text style={styles.caption}>
-              Explained in plain language, then checked back against the numbers above.
-            </Text>
+            <Button title={t.readInWords} onPress={() => router.push('/reading')} />
+            <Text style={styles.caption}>{t.readInWordsNote}</Text>
           </View>
 
           <View style={styles.section}>
-            <Label>Current period</Label>
+            <Label>{t.currentPeriod}</Label>
             <Card>
-              <DashaTrack active={reading.dasha.active} />
+              <DashaTrack active={reading.dasha.active} language={language} />
             </Card>
           </View>
 
           <View style={styles.section}>
-            <Label>Grahas</Label>
+            <Label>{t.grahas}</Label>
             <Card>
               {reading.chart.grahas.map((graha, index) => (
                 <View
@@ -183,22 +226,45 @@ export default function ChartScreen() {
                   style={[styles.grahaRow, index > 0 && styles.divided]}
                 >
                   <View style={styles.grahaName}>
-                    <Text style={styles.grahaTitle}>{graha.graha}</Text>
-                    <Text style={styles.grahaHi}>{graha.graha_hi}</Text>
+                    {/* This list is the chart's legend, which is what turns the
+                        colour up there into information rather than decoration.
+                        A dot rather than coloured type: nine hues applied to
+                        body text would cost more legibility than the tie-back
+                        is worth. */}
+                    <View style={styles.grahaTitleRow}>
+                      <View
+                        style={[
+                          styles.grahaDot,
+                          { backgroundColor: grahaColour[graha.graha] ?? colors.textFaint },
+                        ]}
+                      />
+                      <Text style={styles.grahaTitle}>
+                        {language === 'hi' ? graha.graha_hi : graha.graha}
+                      </Text>
+                    </View>
+                    <Text style={styles.grahaHi}>
+                      {language === 'hi' ? graha.graha : graha.graha_hi}
+                    </Text>
                   </View>
 
                   <View style={styles.grahaFacts}>
                     <Text style={styles.grahaPosition}>
-                      {graha.placement.rashi} {graha.placement.degree_dms}
+                      {language === 'hi' ? graha.placement.rashi_hi : graha.placement.rashi}{' '}
+                      {graha.placement.degree_dms}
                     </Text>
                     <Text style={styles.grahaMeta}>
-                      House {graha.house} · {graha.placement.nakshatra} pada{' '}
-                      {graha.placement.pada}
+                      {t.houseLine(
+                        graha.house,
+                        language === 'hi'
+                          ? graha.placement.nakshatra_hi
+                          : graha.placement.nakshatra,
+                        graha.placement.pada,
+                      )}
                     </Text>
                     {graha.retrograde || graha.combust ? (
                       <View style={styles.chips}>
-                        {graha.retrograde ? <Chip text="RETRO" tone="retro" /> : null}
-                        {graha.combust ? <Chip text="COMBUST" tone="combust" /> : null}
+                        {graha.retrograde ? <Chip text={t.retro} tone="retro" /> : null}
+                        {graha.combust ? <Chip text={t.combust} tone="combust" /> : null}
                       </View>
                     ) : null}
                   </View>
@@ -208,45 +274,87 @@ export default function ChartScreen() {
           </View>
 
           <View style={styles.section}>
-            <Label>Panchang at birth</Label>
+            <Label>{t.panchangAtBirth}</Label>
             <Card>
               <Row
-                label="Tithi"
-                value={`${reading.panchang.paksha} ${reading.panchang.tithi}`}
-                hint={`${reading.panchang.tithi_percent.toFixed(1)}% elapsed`}
+                label={t.tithi}
+                value={
+                  language === 'hi'
+                    ? `${reading.panchang.paksha_hi} ${reading.panchang.tithi_hi}`
+                    : `${reading.panchang.paksha} ${reading.panchang.tithi}`
+                }
+                hint={t.elapsed(reading.panchang.tithi_percent.toFixed(1))}
               />
               <Row
-                label="Nakshatra"
-                value={reading.panchang.nakshatra}
-                hint={`Pada ${reading.panchang.nakshatra_pada}`}
+                label={t.nakshatra}
+                value={
+                  language === 'hi'
+                    ? reading.panchang.nakshatra_hi
+                    : reading.panchang.nakshatra
+                }
+                hint={t.pada(reading.panchang.nakshatra_pada)}
               />
-              <Row label="Yoga" value={reading.panchang.yoga} />
-              <Row label="Karana" value={reading.panchang.karana} />
               <Row
-                label="Vara"
-                value={reading.panchang.vara}
-                hint={`Ruled by ${reading.panchang.vara_lord}`}
+                label={t.yoga}
+                value={language === 'hi' ? reading.panchang.yoga_hi : reading.panchang.yoga}
               />
+              <Row
+                label={t.karana}
+                value={language === 'hi' ? reading.panchang.karana_hi : reading.panchang.karana}
+              />
+              <Row
+                label={t.vara}
+                value={language === 'hi' ? reading.panchang.vara_hi : reading.panchang.vara}
+                hint={t.ruledBy(
+                  language === 'hi'
+                    ? reading.panchang.vara_lord_hi
+                    : reading.panchang.vara_lord,
+                )}
+              />
+                <Row
+                  label={t.masa}
+                  value={language === 'hi' ? reading.panchang.masa_hi : reading.panchang.masa}
+                  hint={t.samvatValue(reading.panchang.vikram_samvat, reading.panchang.shaka_samvat)}
+                />
+                <Row
+                  label={t.sunriseSet}
+                  value={riseSet(reading.panchang.sunrise, reading.panchang.sunset, language, t.absent)}
+                />
+                <Row
+                  label={t.moonriseSet}
+                  value={riseSet(reading.panchang.moonrise, reading.panchang.moonset, language, t.absent)}
+                />
             </Card>
           </View>
 
           <View style={styles.section}>
-            <Label>How this was computed</Label>
+            <Label>{t.howComputed}</Label>
             <Card>
-              <Row label="Ayanamsa" value={reading.chart.meta.ayanamsa_name}
-                hint={`${reading.chart.meta.ayanamsa.toFixed(4)}°`} />
-              <Row label="House system" value={reading.chart.meta.house_system} />
-              <Row label="Ephemeris" value={reading.chart.meta.ephemeris_mode} />
-              <Row label="Timezone" value={reading.chart.meta.timezone} />
               <Row
-                label="Julian day (UT)"
-                value={reading.chart.meta.julian_day.toFixed(6)}
+                label={t.ayanamsa}
+                value={
+                  language === 'hi'
+                    ? reading.chart.meta.ayanamsa_name_hi
+                    : reading.chart.meta.ayanamsa_name
+                }
+                hint={`${reading.chart.meta.ayanamsa.toFixed(4)}°`}
               />
+              <Row
+                label={t.houseSystem}
+                // The engine ships one house system and stamps it as
+                // "whole-sign". Translating the value here rather than adding a
+                // `house_system_hi` field keeps a constant out of the wire.
+                value={
+                  reading.chart.meta.house_system === 'whole-sign'
+                    ? t.wholeSign
+                    : reading.chart.meta.house_system
+                }
+              />
+              <Row label={t.ephemeris} value={reading.chart.meta.ephemeris_mode} />
+              <Row label={t.timezone} value={reading.chart.meta.timezone} />
+              <Row label={t.julianDay} value={reading.chart.meta.julian_day.toFixed(6)} />
             </Card>
-            <Text style={styles.caption}>
-              Every value above is arithmetic from your birth moment. Same input, same
-              output, always.
-            </Text>
+            <Text style={styles.caption}>{t.determinismNote}</Text>
           </View>
 
         </>
@@ -288,8 +396,12 @@ const styles = StyleSheet.create({
   },
   divided: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
   grahaName: { flexShrink: 0 },
+  grahaTitleRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  grahaDot: { width: 8, height: 8, borderRadius: 4 },
   grahaTitle: { ...type.heading, color: colors.text },
-  grahaHi: { ...type.mono, color: colors.textFaint, marginTop: 2 },
+  // Indented to clear the dot, so the Sanskrit name lines up under the English
+  // one rather than under the swatch.
+  grahaHi: { ...type.mono, color: colors.textFaint, marginTop: 2, marginLeft: 8 + space.sm },
   grahaFacts: { flex: 1, alignItems: 'flex-end' },
   grahaPosition: { ...type.body, color: colors.text, fontWeight: '600' },
   grahaMeta: { ...type.mono, color: colors.textMuted, marginTop: 2, textAlign: 'right' },

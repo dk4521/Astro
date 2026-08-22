@@ -1,7 +1,13 @@
 /**
  * Sign in.
  *
- * Reachable, never forced. An account will carry saved charts and history once
+ * Required for one screen and optional everywhere else.
+ *
+ * Chat needs an account: the conversation is kept there, and so is the count of
+ * messages sent today. Nothing else in the app does — the chart, the panchang,
+ * matching and the course all work signed out, as they always have.
+ *
+ * An account will carry saved charts and history once
  * there are tables behind it; until then the app works exactly as well without
  * one, and pretending otherwise would be a lie told by a paywall's grammar.
  */

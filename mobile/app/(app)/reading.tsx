@@ -19,7 +19,7 @@
  * conversation lives as long as the screen does, exactly as it always has.
  */
 
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -34,9 +34,17 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { streamChat } from '../../src/api/client';
+import {
+  loadAllowance,
+  looksLikeCrisis,
+  QUIET_ABOVE,
+  type Allowance,
+} from '../../src/api/allowance';
+import { useAuth } from '../../src/auth/context';
 import { loadInterpretation } from '../../src/api/reading';
 import { loadBirthDetails } from '../../src/api/storage';
 import { useSync } from '../../src/sync/context';
+import { chromeFor } from '../../src/i18n';
 import type { BirthDetails, ChatTurn, Language } from '../../src/api/types';
 import { RichText } from '../../src/components/RichText';
 import { ScreenHeader } from '../../src/components/ScreenHeader';
@@ -173,8 +181,27 @@ export default function ReadingScreen() {
     releaseConversation,
   } = useSync();
 
+  // Chat is the one screen that needs an account: the conversation is kept
+  // there, and so is the count of what has been sent today. Everything else in
+  // the app still works signed out.
+  const { available: accountsAvailable, user } = useAuth();
+
+  const [allowance, setAllowance] = useState<Allowance | null>(null);
+  // Set when the last message was refused, so the screen can say what happened
+  // and — if that message sounded like trouble — lead with help instead.
+  const [blocked, setBlocked] = useState<{ crisis: boolean } | null>(null);
+
+  const refreshAllowance = useCallback(async () => {
+    setAllowance(await loadAllowance(user?.id ?? null));
+  }, [user]);
+
+  useEffect(() => {
+    void refreshAllowance();
+  }, [refreshAllowance]);
+
   const [details, setDetails] = useState<BirthDetails | null>(null);
   const [language, setLanguage] = useState<Language>('hinglish');
+  const t = chromeFor(language);
 
   const [opening, setOpening] = useState<Message | null>(null);
   // Starts false. The reading is not on its way until a companion is picked,
@@ -319,17 +346,30 @@ export default function ReadingScreen() {
    * or the next launch restores what was just cleared.
    */
   /**
-   * Arriving here always offers the choice.
+   * Arriving here offers the choice — unless the caller already made it.
    *
    * Picking a companion is how a chat starts, so walking in on the last one
-   * mid-thread skips the step that gives the screen its shape. The stored
-   * companion is still loaded — it is what lets picking the same face again
-   * return to the conversation instead of ending it.
+   * mid-thread normally skips the step that gives the screen its shape. The
+   * stored companion is still loaded either way — it is what lets picking the
+   * same face again return to the conversation instead of ending it.
+   *
+   * `resume` is the exception, and it exists because of one button: the home
+   * screen's "Ask Priya about today". A button that names a companion and then
+   * lands on a page asking which companion you want has broken its own promise
+   * before the screen finishes painting.
    */
+  const { resume } = useLocalSearchParams<{ resume?: string }>();
+
   useFocusEffect(
     useCallback(() => {
-      setPicking(true);
-    }, []),
+      // Wait for the stored choice before deciding. `undefined` means it is
+      // still being read from the device, and the first focus always lands
+      // there — an early `return` on that pass leaves the picker open and no
+      // later pass closes it, which is exactly how the first attempt at this
+      // failed.
+      if (persona === undefined) return;
+      setPicking(!(resume === '1' && persona));
+    }, [resume, persona]),
   );
 
   const choose = useCallback(
@@ -367,6 +407,15 @@ export default function ReadingScreen() {
     async (text: string) => {
       const trimmed = text.trim();
       if (!trimmed || !details || sending) return;
+
+      // Checked here rather than in the composer's disabled state: the count is
+      // read from the account and can be stale by a message if two devices are
+      // talking at once, so the last word belongs to the moment of sending.
+      if (allowance && allowance.remaining <= 0) {
+        setQuestion('');
+        setBlocked({ crisis: looksLikeCrisis(trimmed) });
+        return;
+      }
 
       setQuestion('');
       setError(null);
@@ -457,9 +506,10 @@ export default function ReadingScreen() {
 
         abort.current = null;
         setSending(false);
+        void refreshAllowance();
       }
     },
-    [details, language, messages, persona, sending, recordTurn],
+    [details, language, messages, persona, sending, recordTurn, allowance, refreshAllowance],
   );
 
 
@@ -504,6 +554,23 @@ export default function ReadingScreen() {
         }
       />
 
+      {accountsAvailable && !user ? (
+        // Nothing below this renders without an account, so it is a whole
+        // screen rather than a banner: a chat you can look at but not use is
+        // worse than one that says plainly what it needs.
+        <View style={styles.gate}>
+          <Text style={styles.gateTitle}>{t.signInToChat}</Text>
+          <Text style={styles.gateBody}>{t.signInToChatWhy}</Text>
+          <View style={styles.gateAction}>
+            <Button
+              title={t.signInAction}
+              onPress={() => router.push('/sign-in')}
+              tone="signIn"
+            />
+          </View>
+        </View>
+      ) : (
+      <>
       <ScrollView
         ref={scroller}
         style={styles.flex}
@@ -618,8 +685,43 @@ export default function ReadingScreen() {
         ) : null}
       </ScrollView>
 
-      {persona && !picking ? (
+      {persona && !picking && blocked ? (
+        <View style={[styles.spent, { paddingBottom: insets.bottom + space.md }]}>
+          {blocked.crisis ? (
+            <>
+              <Text style={styles.spentTitle}>{t.crisisHeading}</Text>
+              <Text style={styles.helplines}>{t.crisisHelplines}</Text>
+              <Text style={styles.spentMuted}>{t.comesBackTomorrow}</Text>
+            </>
+          ) : (
+            <>
+              <Text style={styles.spentTitle}>{t.outOfMessages}</Text>
+              <Text style={styles.spentBody}>
+                {allowance?.plan === 'paid'
+                  ? t.outOfMessagesPaid(allowance.limit)
+                  : t.outOfMessagesFree(allowance?.limit ?? 0)}
+              </Text>
+              {allowance?.plan === 'free' ? (
+                <View style={styles.spentAction}>
+                  <Button title={t.upgrade} onPress={() => router.push('/settings')} />
+                </View>
+              ) : null}
+              {/* Quiet, and always here. The crisis check above is keyword
+                  matching and will miss phrasings it was not taught; this is
+                  what makes a miss cost nothing. */}
+              <Text style={styles.helplinesQuiet}>{t.crisisHelplines}</Text>
+            </>
+          )}
+        </View>
+      ) : persona && !picking ? (
       <View style={[styles.composer, { paddingBottom: insets.bottom + space.sm }]}>
+        {/* Silent until it starts to matter. A permanent countdown over a chat
+            where people bring the worst of their week makes them ration what
+            they say at exactly the wrong moment. */}
+        {allowance && allowance.remaining <= QUIET_ABOVE ? (
+          <Text style={styles.left}>{t.messagesLeft(allowance.remaining)}</Text>
+        ) : null}
+        <View style={styles.composerRow}>
         <TextInput
           style={styles.input}
           value={question}
@@ -645,8 +747,11 @@ export default function ReadingScreen() {
         >
           <Text style={styles.sendText}>{sending ? '■' : '↑'}</Text>
         </Pressable>
+        </View>
       </View>
       ) : null}
+      </>
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -776,10 +881,9 @@ const styles = StyleSheet.create({
   // No fill and no rule. The composer sits below the scroll view rather than
   // over it, so nothing ever passes underneath it — the bar it used to wear was
   // occluding nothing and cutting the sky in two.
+  // A column now: the count sits above the row that holds the field and the
+  // send button.
   composer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: space.sm,
     paddingHorizontal: space.md,
     paddingTop: space.sm,
   },
@@ -805,5 +909,29 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   sendDisabled: { opacity: 0.35 },
+  // --- The account gate ---------------------------------------------------
+  gate: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: space.xl, gap: space.md },
+  gateTitle: { ...type.title, color: colors.text, textAlign: 'center' },
+  gateBody: { ...type.body, color: colors.textMuted, textAlign: 'center', lineHeight: 24 },
+  gateAction: { marginTop: space.sm, alignSelf: 'stretch' },
+
+  // --- What is left, and what happens when nothing is ---------------------
+  left: { ...type.mono, color: colors.textFaint, marginBottom: space.sm, textAlign: 'center' },
+  composerRow: { flexDirection: 'row', alignItems: 'flex-end', gap: space.sm },
+  spent: {
+    paddingHorizontal: space.lg,
+    paddingTop: space.lg,
+    gap: space.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+    backgroundColor: colors.glass,
+  },
+  spentTitle: { ...type.heading, color: colors.text },
+  spentBody: { ...type.body, color: colors.textMuted, lineHeight: 22 },
+  spentMuted: { ...type.mono, color: colors.textFaint, marginTop: space.xs },
+  spentAction: { marginTop: space.xs },
+  helplines: { ...type.body, color: colors.text, lineHeight: 24 },
+  helplinesQuiet: { ...type.mono, color: colors.textFaint, marginTop: space.sm, lineHeight: 18 },
+
   sendText: { fontSize: 18, fontWeight: '700', color: colors.bg },
 });

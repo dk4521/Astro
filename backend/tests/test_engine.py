@@ -13,6 +13,7 @@ import pytest
 
 from app.astro import build_chart, decompose, navamsa_chart, panchang_for, vimshottari
 from app.astro import constants as K
+from app.astro import ephemeris as E
 from app.astro.chart import divisional_sign
 from app.astro.panchang import _karana_name
 
@@ -265,7 +266,6 @@ def test_sidereal_conversion_accounts_for_nutation():
     displaced by the nutation in longitude — up to 17", identical for all of
     them, which reads as a plausible chart rather than an error.
     """
-    from app.astro import ephemeris as E
 
     jd = E.julian_day(dt.datetime(1947, 8, 14, 18, 30, tzinfo=dt.timezone.utc))
     t = E._load_kernel()[0].ut1_jd(jd)
@@ -510,3 +510,82 @@ def test_tithi_and_yoga_indices_stay_in_range():
         assert 0 <= p.yoga_index < 27
         assert 0 <= p.karana_index < 60
         assert p.vara in K.VARA_NAMES
+
+
+# --- Lunar month, samvat, and the rise/set times ----------------------------
+
+
+def test_mesha_ingress_lands_in_mid_april():
+    """The Sun enters sidereal Mesha on 13-15 April under Lahiri."""
+    for year in (1990, 2025, 2026, 2050):
+        moment = E.from_julian_day(E.mesha_ingress(year))
+        assert moment.year == year
+        assert moment.month == 4
+        assert 13 <= moment.day <= 15, moment
+
+
+def test_chaitra_starts_at_a_new_moon_before_the_ingress():
+    """The lunar year turns at the new moon that opens the month containing
+    the Sun's entry into Mesha — never after it."""
+    for year in (2025, 2026):
+        ingress = E.mesha_ingress(year)
+        start = E.chaitra_start(year)
+        assert start < ingress
+        # A lunar month is 29.5 days, so the new moon that opens the month
+        # containing the ingress cannot be further back than that.
+        assert ingress - start < 29.6
+
+
+def test_gudi_padwa_2025_matches_the_published_date():
+    """Chaitra Shukla Pratipada 2025 fell on 30 March in India.
+
+    The new moon itself is on the 29th; the tithi that begins there is what the
+    day is named for, so the date to check is the one after it in IST.
+    """
+    start = E.from_julian_day(E.chaitra_start(2025))
+    assert start.strftime("%Y-%m-%d") == "2025-03-29"
+
+
+def test_the_samvat_turns_at_chaitra_not_at_january():
+    """January belongs to the year that began the previous March."""
+    before = panchang_for(build_chart(dt.datetime(2026, 1, 10, 12, 0), 28.6139, 77.2090))
+    after = panchang_for(build_chart(dt.datetime(2026, 3, 20, 12, 0), 28.6139, 77.2090))
+
+    assert before.vikram_samvat == 2082
+    assert after.vikram_samvat == 2083
+    assert after.masa == "Chaitra"
+    # Shaka trails Vikram by a fixed 135 in both.
+    assert before.shaka_samvat == 1947
+    assert after.shaka_samvat == 1948
+
+
+def test_the_masa_is_named_for_the_sign_the_sun_enters():
+    p = panchang_for(build_chart(dt.datetime(2026, 8, 22, 12, 0), 28.6139, 77.2090))
+    assert p.masa == "Shravana"
+    assert p.masa_hi == "श्रावण"
+
+
+def test_sun_rises_and_sets_on_the_local_day():
+    """Delhi in late August: sunrise near 05:54 IST, sunset near 18:53."""
+    from zoneinfo import ZoneInfo
+
+    chart = build_chart(dt.datetime(2026, 8, 22, 12, 0), 28.6139, 77.2090)
+    p = panchang_for(chart)
+    ist = ZoneInfo("Asia/Kolkata")
+
+    rise = E.from_julian_day(p.sunrise_jd).astimezone(ist)
+    set_ = E.from_julian_day(p.sunset_jd).astimezone(ist)
+
+    assert rise.strftime("%H:%M") == "05:54"
+    assert set_.strftime("%H:%M") == "18:53"
+    # Both belong to the local day asked about, not to a 24-hour window hung
+    # off noon — which would have put sunrise on the 23rd.
+    assert rise.day == 22 and set_.day == 22
+
+
+def test_a_missing_moonrise_is_none_rather_than_wrong():
+    """The Moon rises ~50 minutes later each day, so once a month it does not
+    rise between one local midnight and the next. That must read as absent."""
+    p = panchang_for(build_chart(dt.datetime(2026, 1, 10, 12, 0), 28.6139, 77.2090))
+    assert p.moonrise_jd is None
+    assert p.moonset_jd is not None

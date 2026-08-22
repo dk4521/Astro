@@ -13,18 +13,26 @@
 
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { useAuth } from '../../src/auth/context';
 import { useSync } from '../../src/sync/context';
 import { clearChartCaches } from '../../src/api/cache';
-import { clearBirthDetails, clearProgress, loadBirthDetails, loadProgress } from '../../src/api/storage';
+import {
+  clearBirthDetails,
+  clearProgress,
+  loadBirthDetails,
+  loadName,
+  loadProgress,
+  saveName,
+} from '../../src/api/storage';
 import { API_NOT_CONFIGURED } from '../../src/api/client';
+import { loadAllowance, type Allowance } from '../../src/api/allowance';
 import type { BirthDetails } from '../../src/api/types';
 import { toDisplayDate } from '../../src/format';
 import { ScreenHeader } from '../../src/components/ScreenHeader';
 import { Button, Card, ErrorNote, Label, Row } from '../../src/components/ui';
-import { colors, space, type } from '../../src/theme';
+import { colors, radius, space, type } from '../../src/theme';
 
 /** "just now", "6 min ago" — enough to tell fresh from stuck. */
 function sinceText(at: number | null): string {
@@ -51,13 +59,27 @@ export default function Settings() {
   } = useSync();
   const [details, setDetails] = useState<BirthDetails | null>(null);
   const [readCount, setReadCount] = useState(0);
+  const [name, setName] = useState('');
+  const [allowance, setAllowance] = useState<Allowance | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([loadBirthDetails(), loadProgress()]).then(([saved, progress]) => {
+    loadAllowance(user?.id ?? null).then((next) => {
+      if (!cancelled) setAllowance(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([loadBirthDetails(), loadProgress(), loadName()]).then(
+      ([saved, progress, storedName]) => {
       if (cancelled) return;
       setDetails(saved);
       setReadCount(progress.length);
+      setName(storedName);
     });
     return () => {
       cancelled = true;
@@ -164,6 +186,23 @@ export default function Settings() {
           ) : null}
         </View>
 
+        {/* Here as well as in onboarding, because everyone who installed the
+            app before the field existed has never been asked. */}
+        <View style={styles.section}>
+          <Label>Your name</Label>
+          <TextInput
+            style={styles.nameInput}
+            value={name}
+            onChangeText={setName}
+            onEndEditing={() => saveName(name)}
+            onBlur={() => saveName(name)}
+            placeholder="Optional"
+            placeholderTextColor={colors.textFaint}
+            autoCorrect={false}
+            maxLength={40}
+          />
+        </View>
+
         <View style={styles.section}>
           <Label>Birth details</Label>
           <Card>
@@ -185,6 +224,35 @@ export default function Settings() {
             <Button title="Change birth details" onPress={changeBirth} variant="ghost" />
           </View>
         </View>
+
+        {/* Where the "See plans" button from the chat screen lands. It has to
+            say something true when it gets here, which for now is what the plan
+            is and what it allows — there is no billing behind it yet. */}
+        {user ? (
+          <View style={styles.section}>
+            <Label>Messages</Label>
+            <Card>
+              <Row
+                label="Plan"
+                value={allowance?.plan === 'paid' ? 'Paid' : 'Free'}
+                hint={
+                  allowance
+                    ? `${allowance.limit} messages a day`
+                    : undefined
+                }
+              />
+              <Row
+                label="Sent today"
+                value={allowance ? String(allowance.used) : '—'}
+                hint={allowance ? `${allowance.remaining} left` : undefined}
+              />
+            </Card>
+            <Text style={styles.note}>
+              Upgrading is not available yet — there is no billing behind this
+              plan. The number above is what the account is allowed today.
+            </Text>
+          </View>
+        ) : null}
 
         <View style={styles.section}>
           <Label>Course</Label>
@@ -220,4 +288,16 @@ const styles = StyleSheet.create({
   section: { marginBottom: space.xl },
   empty: { ...type.body, color: colors.textMuted },
   action: { marginTop: space.md },
+  note: { ...type.mono, color: colors.textFaint, marginTop: space.sm, lineHeight: 18 },
+  nameInput: {
+    ...type.body,
+    color: colors.text,
+    backgroundColor: colors.glass,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    borderRadius: radius.md,
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm + 2,
+    marginTop: space.sm,
+  },
 });

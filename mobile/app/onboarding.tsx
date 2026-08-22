@@ -22,7 +22,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { searchPlaces } from '../src/api/client';
-import { saveBirthDetails } from '../src/api/storage';
+import { saveBirthDetails, saveName } from '../src/api/storage';
 import { useSync } from '../src/sync/context';
 import type { Place } from '../src/api/types';
 import { Button, ErrorNote, Label } from '../src/components/ui';
@@ -39,6 +39,7 @@ export default function Onboarding() {
   const insets = useSafeAreaInsets();
   const { pushBirth } = useSync();
 
+  const [name, setName] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [placeQuery, setPlaceQuery] = useState('');
@@ -114,7 +115,7 @@ export default function Onboarding() {
         longitude: place.longitude,
         place: `${place.name}, ${place.admin}`,
       };
-      await saveBirthDetails(details);
+      await Promise.all([saveBirthDetails(details), saveName(name)]);
       // Not awaited: the device already has the details, and the chart is what
       // this button promised. A failed upload is picked up by the next sync
       // rather than made into a reason to sit on a spinner.
@@ -140,6 +141,24 @@ export default function Onboarding() {
       >
         <Text style={styles.kicker}>Kosmiq</Text>
         <Text style={styles.title}>Your birth chart{'\n'}starts with three facts.</Text>
+
+        {/* Not one of the three, and deliberately first anyway: it is the only
+            field here that is about the person rather than the arithmetic, and
+            it is the one the home screen greets them by. Optional — the button
+            below never waits on it. */}
+        <View style={styles.field}>
+          <Label>Your name</Label>
+          <TextInput
+            style={styles.input}
+            value={name}
+            onChangeText={setName}
+            placeholder="Optional"
+            placeholderTextColor={colors.textFaint}
+            autoCorrect={false}
+            maxLength={40}
+          />
+        </View>
+
         <View style={styles.field}>
           <Label>Date of birth</Label>
           <TextInput

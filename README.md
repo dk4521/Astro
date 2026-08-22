@@ -412,6 +412,41 @@ It casts two charts, not one: the natal chart the dasha runs from, and a chart f
 rather than to a person. What it does not offer is a daily prediction. The
 tradition's honest daily layer is the panchang, and that is what the screen shows.
 
+## Message allowance
+
+Chat costs a model request, and the free Gemini tier allows twenty a day across
+the whole service. So the app counts.
+
+| Plan | Messages per day |
+| --- | --- |
+| `free` | 6 |
+| `paid` | 50 |
+
+Counted **per day, not per conversation**. Per conversation was the first design
+and does not survive contact with the app: switching companion opens a new
+thread, so fifteen companions would have meant fifteen allowances.
+
+The count comes from `messages_sent_today()` in
+[schema.sql](supabase/schema.sql), which counts the rows the account actually
+wrote — reinstalling the app or clearing its data changes nothing. `plan` lives
+on `profiles` and the row-level policy refuses a client that tries to write it.
+
+**It is still the app that decides whether to send.** The backend is stateless
+and has never been told who is asking, so a modified client could call
+`/v1/chat` directly. Real enforcement means passing the Supabase token to
+FastAPI and having it verify and count there — worth doing before anything is
+charged for, and deliberately not pretended to be done yet.
+
+Two decisions in the UI are worth keeping:
+
+- **The counter is silent until three remain.** A permanent countdown over a
+  chat where people bring the worst of their week makes them ration what they
+  say at exactly the wrong moment.
+- **The exhausted screen always carries the helplines**, and leads with them
+  when the refused message looked like distress. That check is keyword matching
+  and will miss phrasings it was not taught — which is why the numbers are
+  there either way, and why a miss costs nothing.
+
 ## Accounts
 
 `mobile/src/auth/` plus `app/(auth)/` is email sign-in and sign-up against
@@ -422,10 +457,11 @@ project at it.
 
 Two decisions worth keeping:
 
-- **Signing in is optional, and skipping it is remembered.** Nothing syncs yet,
-  so forcing an account would take something from the user and give nothing
-  back. The account screen is offered once; "Continue without an account" is a
-  real answer, stored, and not asked again next launch.
+- **Optional everywhere except chat.** The chart, the panchang, matching and the
+  course all work signed out. Chat does not: the conversation is stored in the
+  account, and so is the daily message count, so there is nowhere else to put
+  either. The account screen is still offered once rather than demanded, and
+  "Continue without an account" is a real answer for the rest of the app.
 - **The app runs with no Supabase project at all.** `isConfigured()` is false
   when the env vars are missing, the account screen never appears, and
   everything behaves as it did before auth existed. An app that will not open

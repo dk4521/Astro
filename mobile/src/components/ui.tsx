@@ -90,7 +90,24 @@ export function Button({
 }) {
   const inactive = disabled || loading;
   const filled = variant === 'primary';
+  //: The tone's own colour. Null for `brand`, which is a gradient rather than a
+  //: flat colour — so it is null everywhere the tone is used as *ink*.
   const solid = tone === 'brand' ? null : TONE_FILL[tone];
+
+  /**
+   * What the filled button actually paints.
+   *
+   * The brand button used to paint nothing: its whole appearance came from the
+   * gradient layer above. That held everywhere it was tried, until it went
+   * inside a card with a translucent background — where Android composited the
+   * gradient away and left near-black label text on a dark card. A button that
+   * took up space and could be pressed, and could not be seen.
+   *
+   * The darker gradient stop now sits underneath as a real fill, so the
+   * gradient is decoration over a button rather than the button itself. Nothing
+   * changes where the gradient was already painting: it covers this exactly.
+   */
+  const fill = solid ?? gradient.brand[1];
 
   const label = filled ? toneLabelColor(tone) : solid ?? colors.accentSoft;
 
@@ -103,12 +120,20 @@ export function Button({
       style={({ pressed }) => [
         styles.button,
         // A solid tone paints itself; the gradient is a layer underneath.
-        filled && solid ? { backgroundColor: solid } : null,
+        filled ? { backgroundColor: fill } : null,
         !filled && { borderWidth: 1, borderColor: solid ?? colors.border },
         inactive && styles.buttonDisabled,
         pressed && !inactive && styles.buttonPressed,
       ]}
     >
+      {/* The label lives *inside* the gradient, not beside it.
+
+          As siblings — gradient absolutely positioned, label after it — the
+          paint order held on most screens and inverted on one: inside a card
+          with a translucent background, Android promoted the card to its own
+          layer and drew the gradient over the text, leaving a bright empty
+          pill. Nesting removes the question entirely, since a child always
+          paints above its parent. */}
       <LinearGradient
         colors={
           filled
@@ -120,13 +145,13 @@ export function Button({
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.buttonFill}
-        pointerEvents="none"
-      />
-      {loading ? (
-        <ActivityIndicator color={label} />
-      ) : (
-        <Text style={[styles.buttonText, { color: label }]}>{title}</Text>
-      )}
+      >
+        {loading ? (
+          <ActivityIndicator color={label} />
+        ) : (
+          <Text style={[styles.buttonText, { color: label }]}>{title}</Text>
+        )}
+      </LinearGradient>
     </Pressable>
   );
 }
@@ -206,16 +231,18 @@ const styles = StyleSheet.create({
   button: {
     borderRadius: radius.pill,
     overflow: 'hidden',
+  },
+  // The gradient is the button's body now rather than a layer floating over it,
+  // so it carries the padding and the minimum target height. A fully
+  // transparent pill would put its text straight onto the star field, where a
+  // bright star can land inside a letter — which is why it is painted at all.
+  buttonFill: {
     paddingVertical: space.md,
     paddingHorizontal: space.lg,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 52,
   },
-  // The gradient layer. Behind the label, in front of nothing — a fully
-  // transparent pill would put its text straight onto the star field, where a
-  // bright star can land inside a letter.
-  buttonFill: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   buttonPressed: { opacity: 0.85 },
   buttonDisabled: { opacity: 0.4 },
   buttonText: { ...type.heading },

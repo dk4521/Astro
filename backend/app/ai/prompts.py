@@ -272,6 +272,54 @@ def chat_directive(language: str) -> str:
     )
 
 
+def tip_directive(language: str, companion: str | None) -> str:
+    """The daily line: the shortest thing this app generates, and the most read.
+
+    It opens the home screen, so it is the sentence that sets what the product
+    sounds like. Three rules do the work, and each exists because the obvious
+    version of a daily tip breaks it:
+
+    1. **No ranking of the day.** "Today is a great day", "your ruling planet is
+       well placed" — this is the register the whole contract refuses, and a
+       daily tip is where it creeps back in first.
+    2. **No placements.** A line this short cannot carry a graha in a rashi
+       without it becoming the point, and a transit named in passing reads as a
+       prediction about the reader.
+    3. **One small thing they could actually do today.** That is what makes it
+       worth opening, and it is the half that is in their hands.
+    """
+    voice = (
+        f"You are {companion}. Speak as yourself, warmly, to someone you know."
+        if companion
+        else "Speak warmly, to someone you know."
+    )
+    return (
+        f"{language_directive(language)}\n\n"
+        f"{voice}\n\n"
+        "Write one daily line for this person's home screen.\n\n"
+        "- 25 to 40 words. Two sentences at most. No greeting, no sign-off, no "
+        "name — the screen already shows who is speaking.\n"
+        "- Lead with the theme of the mahadasha they are running, in plain "
+        "words. Then one small, concrete thing that fits today — something they "
+        "could do before tonight.\n"
+        "- Name no graha positions, no rashis, no nakshatras, no houses. You may "
+        "name the mahadasha lord itself, because that is which period it is "
+        "rather than a claim about the sky.\n"
+        "- Do not predict. Nothing 'will' happen.\n\n"
+        # Last, and stated in every language it has to hold in. This is the rule
+        # the model breaks: told once in the middle of the list it produced
+        # "aaj ka din baaton ko saaf karne ke liye achha hai" — a ranked day, in
+        # Hindi, from a directive that had already forbidden it in English.
+        "**The last rule, and the one that matters most: never rank the day or "
+        "the period.** Not 'a good day', not 'the best time', not 'well placed', "
+        "not 'favourable'. Not अच्छा दिन, not शुभ, not अनुकूल. Not 'achha din', "
+        "not 'best hai', not 'sahi time hai'. A period is a subject that keeps "
+        "coming up in someone's life; it is never a verdict on how today turns "
+        "out. Say what the period is about and what they could do — and stop "
+        "there."
+    )
+
+
 def reading_directive(language: str) -> str:
     """The full reading is asked for deliberately and is read as a piece."""
     return (

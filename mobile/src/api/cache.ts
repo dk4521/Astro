@@ -23,6 +23,9 @@ export const COURSE_NAMESPACE = 'kosmiq.course.';
 /** Generated readings. */
 export const READING_NAMESPACE = 'kosmiq.reading.';
 
+/** The home screen's daily line. */
+export const TIP_NAMESPACE = 'kosmiq.tip.';
+
 /**
  * Enough of the birth details to notice a different chart, and nothing more.
  *
@@ -74,5 +77,9 @@ export async function pruneNamespace(prefix: string, keep: string): Promise<void
  * "in your chart" line belongs to a chart the reader has left behind.
  */
 export async function clearChartCaches(): Promise<void> {
-  await Promise.all([clearNamespace(COURSE_NAMESPACE), clearNamespace(READING_NAMESPACE)]);
+  await Promise.all([
+    clearNamespace(COURSE_NAMESPACE),
+    clearNamespace(READING_NAMESPACE),
+    clearNamespace(TIP_NAMESPACE),
+  ]);
 }
