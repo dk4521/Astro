@@ -277,3 +277,91 @@ export type Today = {
   birth_nakshatra: string;
   birth_nakshatra_hi: string;
 };
+
+// --- Tarot -----------------------------------------------------------------
+//
+// Both languages arrive together, exactly as they do for a chart: the deck and
+// the draw take no `language` parameter at all, so switching script is a
+// re-render rather than a refetch. Only the generated reading has a language,
+// because that one really is written in one.
+
+export type TarotSuit = 'wands' | 'cups' | 'swords' | 'pentacles';
+
+export type TarotCard = {
+  id: string;
+  arcana: 'major' | 'minor';
+  suit: TarotSuit | null;
+  /** 0–21 for the major arcana; 1–14 within a suit, where 11–14 are the court. */
+  number: number;
+  name: string;
+  name_hi: string;
+  keywords: string;
+  keywords_hi: string;
+  upright: string;
+  upright_hi: string;
+  reversed: string;
+  reversed_hi: string;
+};
+
+export type TarotSuitInfo = {
+  id: TarotSuit;
+  name: string;
+  name_hi: string;
+  theme: string;
+  theme_hi: string;
+};
+
+export type TarotDeck = {
+  suits: TarotSuitInfo[];
+  cards: TarotCard[];
+};
+
+export type TarotPositionId = 'situation' | 'obstacle' | 'advice';
+
+export type TarotPosition = {
+  id: TarotPositionId;
+  name: string;
+  name_hi: string;
+  prompt: string;
+  prompt_hi: string;
+};
+
+export type TarotDrawnCard = {
+  position: TarotPosition;
+  card: TarotCard;
+  reversed: boolean;
+  /** The written line for the way this card actually came up. */
+  meaning: string;
+  meaning_hi: string;
+};
+
+/**
+ * Three cards and the shuffle they came from.
+ *
+ * `seed` is the whole of the randomness. Send it back to `/v1/tarot/draw` and
+ * the same hand comes up — which is what lets a spread be kept, shared, or
+ * re-opened tomorrow without the server having stored anything.
+ */
+export type TarotDraw = {
+  seed: string;
+  spread: string;
+  spread_hi: string;
+  note: string;
+  note_hi: string;
+  cards: TarotDrawnCard[];
+};
+
+export type TarotReading = {
+  seed: string;
+  text: string;
+  language: Language;
+  /**
+   * False when the reading named a card that was not dealt, or reached for
+   * astrology in a reply that was told there is no chart here. Measured after
+   * generation, so the app shows it rather than assuming it.
+   */
+  grounded: boolean;
+  contradictions: string[];
+  /** Credits left. Null where billing is not configured. */
+  balance: number | null;
+};

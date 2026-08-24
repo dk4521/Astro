@@ -15,13 +15,16 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import uuid
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from fastapi.responses import StreamingResponse
 
-from .. import ai, course, meanings, places
+from .. import ai, auth, course, meanings, places, tarot
+from ..billing import store
 from ..ai import grounding
+from ..tarot import reading as tarot_reading
 from ..astro import ashtakoot, build_chart, navamsa_chart, panchang_for, vimshottari
 from ..astro.ephemeris import from_julian_day
 from ..astro.chart import Chart, Placement
@@ -48,6 +51,15 @@ from ..schemas import (
     PlaceOut,
     PlacementOut,
     ReadingResponse,
+    TarotCardOut,
+    TarotDeckResponse,
+    TarotDrawnOut,
+    TarotDrawRequest,
+    TarotDrawResponse,
+    TarotPositionOut,
+    TarotReadingRequest,
+    TarotReadingResponse,
+    TarotSuitOut,
     TipRequest,
     TipResponse,
     TodayResponse,
@@ -382,18 +394,68 @@ def tip(payload: TipRequest, response: Response) -> TipResponse:
     )
 
 
+def _charge(account: auth.Account | None, request_id: str | None) -> tuple[str | None, str, int]:
+    """Take the credit this message costs, before a single token is generated.
+
+    Returns (account id charged, the reference it was charged under, balance
+    left). The first is None on a deployment with no Supabase project, where
+    billing does not exist and the endpoint behaves as it always did — that is
+    what lets the engine be run locally without standing up payments.
+
+    Two failures, told apart on purpose. Not signed in is 401 and means "sign
+    in"; signed in with nothing left is 402 and means "top up". A single status
+    for both would leave the app guessing which screen to show.
+    """
+    if not store.is_configured():
+        return None, "", 0
+
+    if account is None:
+        raise HTTPException(status_code=401, detail="Sign in to ask a question.")
+
+    ref = request_id or str(uuid.uuid4())
+
+    try:
+        allowed, balance = store.consume_credit(account.id, ref)
+    except store.StoreError as exc:
+        # Falling open here would make the paywall optional for anyone who can
+        # cause a timeout, so it closes — and says so honestly rather than
+        # claiming the credits ran out.
+        raise HTTPException(
+            status_code=503, detail="Could not check your balance just now. Try again."
+        ) from exc
+
+    if not allowed:
+        raise HTTPException(
+            status_code=402,
+            detail="You have used all your messages. Top up or wait for tomorrow's.",
+        )
+
+    return account.id, ref, balance
+
+
 @router.post("/chat", summary="Ask a question about a chart (streamed)")
-def chat(payload: ChatRequest) -> StreamingResponse:
+def chat(
+    payload: ChatRequest,
+    account: auth.Account | None = Depends(auth.optional_user),
+) -> StreamingResponse:
     """Stream an answer as server-sent events.
 
     Events are `token` while generating, then exactly one terminal event:
-    `done` carrying the grounding verdict, or `error`. The grounding check can
-    only run on the complete text, so it arrives last rather than gating the
-    stream — the client should surface a failed check after the fact.
+    `done` carrying the grounding verdict and the balance left, or `error`. The
+    grounding check can only run on the complete text, so it arrives last
+    rather than gating the stream — the client should surface a failed check
+    after the fact.
+
+    The credit is taken before the generator starts, not inside it. A
+    `StreamingResponse` has already sent 200 by the time its body runs, so a
+    refusal raised in there would arrive as an `error` event on a successful
+    response rather than as the 402 the app needs to act on.
     """
     _require_interpreter()
     chart = _build(payload.birth)
     history = [ai.Turn(role=t.role, content=t.content) for t in payload.history]
+
+    charged_to, ref, balance = _charge(account, payload.request_id)
 
     def events():
         collected: list[str] = []
@@ -407,6 +469,14 @@ def chat(payload: ChatRequest) -> StreamingResponse:
                 collected.append(chunk)
                 yield f"event: token\ndata: {json.dumps({'text': chunk})}\n\n"
         except ai.InterpretationUnavailable as exc:
+            # Nothing was said, so nothing was spent. Capacity on the model
+            # side is our problem, and charging for it would make a bad day for
+            # the service into a bad day for the person paying.
+            if charged_to and not collected:
+                try:
+                    store.refund_credit(charged_to, ref)
+                except store.StoreError:
+                    pass  # Logged upstream; a failed refund must not eat the error.
             yield f"event: error\ndata: {json.dumps({'detail': str(exc)})}\n\n"
             return
 
@@ -415,6 +485,7 @@ def chat(payload: ChatRequest) -> StreamingResponse:
         payload_out = {
             "grounded": not contradictions,
             "contradictions": contradictions,
+            "balance": balance,
         }
         yield f"event: done\ndata: {json.dumps(payload_out)}\n\n"
 
@@ -576,4 +647,145 @@ def course_chapter(
         ],
         next_slug=following.slug if following else None,
         in_your_chart=personalised,
+    )
+
+
+# --- Tarot ------------------------------------------------------------------
+#
+# The one place in this API where something is genuinely random, and it is
+# handled the way the rest of the product handles everything: by making it
+# reproducible. A draw returns the seed it was dealt from, and the same seed
+# deals the same hand forever — so a spread can be shared, re-opened tomorrow,
+# or checked, exactly like a chart can.
+#
+# Two of the three endpoints cost nothing and call no model. The written meaning
+# of a card does not vary by reader and does not change tomorrow, so it is text
+# a person wrote rather than text a model is asked for on every draw.
+
+
+def _tarot_card_out(card: tarot.Card) -> TarotCardOut:
+    return TarotCardOut(
+        id=card.id,
+        arcana=card.arcana,
+        suit=card.suit,
+        number=card.number,
+        name=card.name["en"],
+        name_hi=card.name["hi"],
+        keywords=card.keywords["en"],
+        keywords_hi=card.keywords["hi"],
+        upright=card.upright["en"],
+        upright_hi=card.upright["hi"],
+        reversed=card.reversed["en"],
+        reversed_hi=card.reversed["hi"],
+    )
+
+
+def _tarot_position_out(position: tarot.Position) -> TarotPositionOut:
+    return TarotPositionOut(
+        id=position.id,
+        name=position.name["en"],
+        name_hi=position.name["hi"],
+        prompt=position.prompt["en"],
+        prompt_hi=position.prompt["hi"],
+    )
+
+
+def _tarot_draw_out(drawn: tarot.Draw) -> TarotDrawResponse:
+    return TarotDrawResponse(
+        seed=drawn.seed,
+        spread=tarot.SPREAD_NAME["en"],
+        spread_hi=tarot.SPREAD_NAME["hi"],
+        note=tarot.SPREAD_NOTE["en"],
+        note_hi=tarot.SPREAD_NOTE["hi"],
+        cards=[
+            TarotDrawnOut(
+                position=_tarot_position_out(item.position),
+                card=_tarot_card_out(item.card),
+                reversed=item.reversed,
+                meaning=item.meaning("en"),
+                meaning_hi=item.meaning("hi"),
+            )
+            for item in drawn.cards
+        ],
+    )
+
+
+@router.get("/tarot/deck", response_model=TarotDeckResponse, summary="All 78 cards")
+def tarot_deck(response: Response) -> TarotDeckResponse:
+    """The written deck, in both languages.
+
+    Cached for the same span as the course index and for the same reason: card
+    meanings are prose, prose gets corrected, and a corrected line should reach
+    readers the same morning rather than at the next app release.
+    """
+    response.headers["Cache-Control"] = "public, max-age=3600"
+    return TarotDeckResponse(
+        suits=[
+            TarotSuitOut(
+                id=suit.id,
+                name=suit.name["en"],
+                name_hi=suit.name["hi"],
+                theme=suit.theme["en"],
+                theme_hi=suit.theme["hi"],
+            )
+            for suit in tarot.SUITS
+        ],
+        cards=[_tarot_card_out(card) for card in tarot.CARDS],
+    )
+
+
+@router.post("/tarot/draw", response_model=TarotDrawResponse, summary="Deal three cards")
+def tarot_draw(payload: TarotDrawRequest) -> TarotDrawResponse:
+    """Situation, obstacle, advice — and the seed they came from.
+
+    Free, and no model is involved: the cards are dealt by a seeded shuffle and
+    every line returned with them was written by a person. Nobody should have to
+    spend anything to turn three cards over.
+    """
+    return _tarot_draw_out(tarot.draw(payload.seed))
+
+
+@router.post(
+    "/tarot/reading",
+    response_model=TarotReadingResponse,
+    summary="Read the three cards together (costs a credit)",
+)
+def tarot_reading_endpoint(
+    payload: TarotReadingRequest,
+    account: auth.Account | None = Depends(auth.optional_user),
+) -> TarotReadingResponse:
+    """One reading of a spread, in the reader's language.
+
+    The cards are re-dealt here from the seed rather than accepted from the
+    client. That is what makes the charge honest in both directions: the reader
+    pays for a reading of the hand the server itself dealt, and a modified app
+    cannot assemble a flattering spread and buy words for it.
+
+    Charged before the model is called, and refunded if the model never answers.
+    Capacity on the provider's side is our problem, not the reader's.
+    """
+    _require_interpreter()
+
+    drawn = tarot.draw(payload.seed)
+    charged_to, ref, balance = _charge(account, payload.request_id)
+
+    try:
+        result = tarot_reading.interpret(
+            drawn, question=payload.question, language=payload.language
+        )
+    except ai.InterpretationUnavailable as exc:
+        if charged_to:
+            try:
+                store.refund_credit(charged_to, ref)
+            except store.StoreError:
+                pass  # Logged upstream; a failed refund must not eat the error.
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    return TarotReadingResponse(
+        seed=drawn.seed,
+        text=result.text,
+        language=payload.language,
+        grounded=result.model_grounded,
+        contradictions=result.contradictions,
+        balance=balance if charged_to else None,
     )

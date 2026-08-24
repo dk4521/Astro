@@ -76,10 +76,11 @@ type Strings = {
   // Messages left
   messagesLeft: (n: number) => string;
   outOfMessages: string;
-  outOfMessagesFree: (limit: number) => string;
-  outOfMessagesPaid: (limit: number) => string;
+  outOfMessagesFree: string;
+  outOfMessagesPaid: string;
   comesBackTomorrow: string;
   upgrade: string;
+  signInToAsk: string;
   signInToChat: string;
   signInToChatWhy: string;
   signInAction: string;
@@ -101,6 +102,30 @@ type Strings = {
   matchThem: string;
   matchCaption: string;
   koots: Record<string, string>;
+
+  // Tarot
+  tarot: string;
+  tarotIntro: string;
+  tarotQuestionLabel: string;
+  tarotQuestionPlaceholder: string;
+  tarotDraw: string;
+  tarotDrawAgain: string;
+  tarotTurn: string;
+  tarotUpright: string;
+  tarotReversed: string;
+  tarotRead: string;
+  tarotReadCost: string;
+  tarotReadingFailed: string;
+  tarotUngrounded: string;
+  tarotShuffle: (seed: string) => string;
+  tarotShuffleNote: string;
+  tarotSignIn: string;
+  tarotSignInWhy: string;
+  tarotDeckLink: string;
+  tarotDeckTitle: string;
+  tarotDeckIntro: string;
+  tarotMajor: string;
+  tarotAll: string;
 
   // Home
   today: string;
@@ -169,14 +194,15 @@ const EN: Strings = {
   determinismNote:
     'Every value above is arithmetic from your birth moment. Same input, same output, always.',
 
-  messagesLeft: (n) => (n === 1 ? '1 message left today' : `${n} messages left today`),
-  outOfMessages: 'That is today\u2019s messages',
-  outOfMessagesFree: (limit) =>
-    `A free account can send ${limit} messages a day. Yours start again tomorrow.`,
-  outOfMessagesPaid: (limit) =>
-    `${limit} messages a day is the ceiling on this plan. Yours start again tomorrow.`,
+  messagesLeft: (n) => (n === 1 ? '1 message left' : `${n} messages left`),
+  outOfMessages: 'That is your messages for now',
+  outOfMessagesFree:
+    'Six free messages arrive every morning. You can also top up, if you would rather not wait.',
+  outOfMessagesPaid:
+    'This month\u2019s messages are used up. A pack tops you up until the next ones arrive.',
   comesBackTomorrow: 'Your messages start again tomorrow.',
   upgrade: 'See plans',
+  signInToAsk: 'Sign in again to keep asking.',
   signInToChat: 'Chat needs an account',
   signInToChatWhy:
     'Your conversations are kept in your account, and the daily message allowance is counted there. Everything else in the app works without one.',
@@ -210,6 +236,33 @@ const EN: Strings = {
     bhakoot: 'Bhakoot',
     nadi: 'Nadi',
   },
+
+  tarot: 'Tarot',
+  tarotIntro:
+    'Three cards: where you are, what is in the way, and what you could do about it.',
+  tarotQuestionLabel: 'What is on your mind?',
+  tarotQuestionPlaceholder: 'Optional \u2014 the cards are dealt either way',
+  tarotDraw: 'Shuffle and draw',
+  tarotDrawAgain: 'Shuffle again',
+  tarotTurn: 'Tap each card to turn it over',
+  tarotUpright: 'UPRIGHT',
+  tarotReversed: 'REVERSED',
+  tarotRead: 'Read the three together',
+  tarotReadCost: 'One message. Everything above is free and stays as it is.',
+  tarotReadingFailed: 'The reading could not be written just now.',
+  tarotUngrounded:
+    'This reading named a card that was not dealt. Shown anyway, and flagged rather than quietly dropped.',
+  tarotShuffle: (seed) => `Shuffle ${seed}`,
+  tarotShuffleNote: 'The same shuffle always deals these three cards, on any phone.',
+  tarotSignIn: 'A written reading needs an account',
+  tarotSignInWhy:
+    'The cards and their meanings are free and work signed out. Only having the three read together counts against your messages.',
+  tarotDeckLink: 'All 78 cards',
+  tarotDeckTitle: 'The deck',
+  tarotDeckIntro:
+    'Every card, upright and reversed, written out. Nothing here is generated \u2014 the same words for everyone, every day.',
+  tarotMajor: 'Major arcana',
+  tarotAll: 'All',
 
   today: 'Today',
   cosmicVibe: 'Cosmic vibe for today',
@@ -278,14 +331,15 @@ const HI: Strings = {
   determinismNote:
     'ऊपर का हर मान आपके जन्म-क्षण से निकला गणित है। वही जानकारी, वही परिणाम, हर बार।',
 
-  messagesLeft: (n) => `आज ${n} संदेश बचे हैं`,
-  outOfMessages: 'आज के संदेश यहीं तक',
-  outOfMessagesFree: (limit) =>
-    `मुफ़्त खाते से दिन में ${limit} संदेश भेजे जा सकते हैं। कल से फिर शुरू।`,
-  outOfMessagesPaid: (limit) =>
-    `इस योजना में दिन के ${limit} संदेश की सीमा है। कल से फिर शुरू।`,
+  messagesLeft: (n) => `${n} संदेश बचे हैं`,
+  outOfMessages: 'अभी के लिए संदेश यहीं तक',
+  outOfMessagesFree:
+    'हर सुबह छह मुफ़्त संदेश आ जाते हैं। इंतज़ार न करना हो तो पैक भी लिया जा सकता है।',
+  outOfMessagesPaid:
+    'इस महीने के संदेश ख़त्म हुए। अगले महीने तक के लिए एक पैक काम आ जाएगा।',
   comesBackTomorrow: 'आपके संदेश कल से फिर शुरू हो जाएँगे।',
   upgrade: 'योजनाएँ देखिए',
+  signInToAsk: 'पूछते रहने के लिए दोबारा साइन इन कीजिए।',
   signInToChat: 'बातचीत के लिए खाता चाहिए',
   signInToChatWhy:
     'आपकी बातचीत आपके खाते में रहती है, और दिन के संदेशों की गिनती भी वहीं होती है। ऐप का बाक़ी सब बिना खाते के चलता है।',
@@ -319,6 +373,32 @@ const HI: Strings = {
     bhakoot: 'भकूट',
     nadi: 'नाड़ी',
   },
+
+  tarot: 'टैरो',
+  tarotIntro: 'तीन कार्ड: आप कहाँ हैं, रास्ते में क्या है, और आप क्या कर सकते हैं।',
+  tarotQuestionLabel: 'मन में क्या है?',
+  tarotQuestionPlaceholder: 'ज़रूरी नहीं \u2014 कार्ड वैसे भी निकलेंगे',
+  tarotDraw: 'फेंटिए और कार्ड निकालिए',
+  tarotDrawAgain: 'दोबारा फेंटिए',
+  tarotTurn: 'हर कार्ड को पलटने के लिए उस पर छुइए',
+  tarotUpright: 'सीधा',
+  tarotReversed: 'उल्टा',
+  tarotRead: 'तीनों को एक साथ पढ़वाइए',
+  tarotReadCost: 'एक संदेश लगेगा। ऊपर का सब मुफ़्त है और वैसा ही रहेगा।',
+  tarotReadingFailed: 'अभी पाठ नहीं लिखा जा सका।',
+  tarotUngrounded:
+    'इस पाठ में कोई ऐसा कार्ड आ गया जो निकला ही नहीं था। छुपाया नहीं गया — दिखाकर बता दिया गया है।',
+  tarotShuffle: (seed) => `फेंट ${seed}`,
+  tarotShuffleNote: 'यही फेंट हमेशा यही तीन कार्ड निकालेगी, किसी भी फ़ोन पर।',
+  tarotSignIn: 'लिखा हुआ पाठ पाने के लिए खाता चाहिए',
+  tarotSignInWhy:
+    'कार्ड और उनके अर्थ मुफ़्त हैं, बिना खाते के भी चलते हैं। सिर्फ़ तीनों को एक साथ पढ़वाना आपके संदेशों में गिना जाता है।',
+  tarotDeckLink: 'सभी 78 कार्ड',
+  tarotDeckTitle: 'पूरी गड्डी',
+  tarotDeckIntro:
+    'हर कार्ड, सीधा और उल्टा, लिखा हुआ। यहाँ कुछ भी बनाया नहीं जाता — सबके लिए वही शब्द, हर दिन।',
+  tarotMajor: 'महा अर्चना',
+  tarotAll: 'सभी',
 
   today: 'आज',
   cosmicVibe: 'आज का मिज़ाज',

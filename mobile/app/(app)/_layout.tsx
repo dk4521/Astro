@@ -35,6 +35,10 @@ const ITEMS: Item[] = [
   { route: '/today', label: 'Today', glyph: '☉' },
   { route: '/chart', label: 'Chart', glyph: '◈' },
   { route: '/matching', label: 'Matching', glyph: '◎' },
+  // A crescent rather than a card suit: ♠ reads as poker, and the stock
+  // Android font is missing enough of the prettier symbols that the power
+  // glyph in this very sidebar once shipped as an empty box.
+  { route: '/tarot', label: 'Tarot', glyph: '☾' },
   { route: '/reading', label: 'Chat', glyph: '❋' },
   // Only with an account: a signed-out phone keeps no conversations at all, so
   // the row would lead to a permanently empty screen.

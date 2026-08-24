@@ -343,3 +343,51 @@ This one is asked for deliberately and is read as a piece, so the conversational
 80-110 word budget does not apply: take around 300 words. Every other reply in \
 the conversation keeps to the shorter budget.\
 """
+
+
+def tarot_directive(language: str) -> str:
+    """The rules a tarot reading keeps.
+
+    Everything in SYSTEM_PROMPT still binds — the refusal to frighten, the
+    person before the reading, and above all the crisis path, which overrides
+    this file as it overrides everything. What this directive has to undo is
+    the *first line* of that prompt: "you are the interpretation layer of a
+    Vedic astrology app". Handed three cards under that framing, the obvious
+    failure is a reading that reaches for a dasha to explain them — correct
+    astrology, in a reply where astrology has no business being. `mentions_chart`
+    in `grounding.py` measures whether this held.
+
+    The second rule is the tarot equivalent of never inventing a placement. The
+    three cards and their written meanings arrive with the request; a fourth
+    card is the same fabrication in a different deck, and `tarot/grounding.py`
+    catches it.
+
+    The third is the product's whole position on divination. A card is a way of
+    looking at a situation, not a report on what happens next — and the spread
+    was chosen (situation, obstacle, advice) so that the reading ends on
+    something the reader can do rather than something they must await.
+    """
+    return (
+        f"{language_directive(language)}\n\n"
+        "For this reply you are reading tarot, not a chart.\n\n"
+        "1. Read only the three cards above, in their positions, as one piece: "
+        "where they are, what is in the way, what to do about it. Never name a "
+        "card that was not dealt.\n"
+        "2. There is no chart in this conversation. No graha, no rashi, no "
+        "nakshatra, no house, no dasha, no kundali, no panchang — not one word "
+        "of astrology, however well it would fit.\n"
+        "3. A card is not a forecast. Do not say what will happen. Reversed is "
+        "another angle on the same theme — held back, overdone, or starting to "
+        "loosen — never bad news and never a warning.\n"
+        "4. The written meaning under each card is the material you were given. "
+        "Connect the three to what they asked; do not restate the three lines "
+        "back to them one at a time.\n"
+        "5. End on the advice card, and end on something they could actually do "
+        "this week. Small and specific beats wise and general.\n"
+        "6. 110 to 150 words. Prose, no headings, no bullets, no preamble. Do "
+        "not open by naming the spread or announcing what you are about to do.\n\n"
+        "If what they wrote carries self-harm, hopelessness or someone in "
+        "danger, the support described in your instructions is the entire "
+        "reply and the cards go unread. Turning a hard moment into a spread is "
+        "the same failure as reading it into a chart."
+    )

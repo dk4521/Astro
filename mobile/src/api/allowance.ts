@@ -1,69 +1,103 @@
 /**
- * How many messages the reader has left today.
+ * What the reader is allowed, now that it is a balance rather than a limit.
  *
- * **Where the numbers live and why.** The count is not kept on the device. It
- * comes from `messages_sent_today()`, a Supabase function that counts the rows
- * the account actually wrote — so reinstalling the app, clearing its data or
- * editing anything local changes nothing. The plan comes from `profiles.plan`,
- * which the row-level policy will not let a client write: an app that can raise
- * its own plan has not got a plan, it has got a suggestion.
+ * **One currency.** A message costs one credit. Credits arrive from three
+ * places that differ only in how long they last: six a day that expire at
+ * midnight, a month's worth from a subscription that expire with the period,
+ * and packs that were bought outright and last a year. The database spends
+ * whichever expires soonest, so the free six are always used before anything
+ * paid for — and this screen never has to explain which pocket a message came
+ * out of.
  *
- * **What this is not.** It is still the app that decides whether to send. A
- * modified client could call `/v1/chat` directly and the backend would answer,
- * because the backend is stateless and has never been told who is asking. Real
- * enforcement means passing the Supabase token to FastAPI and having it verify
- * and count — worth doing before anything is charged for, and deliberately not
- * pretended to be done here.
+ * **The number is not kept on the device.** It comes from `credit_summary()`,
+ * a Supabase function that reads the account's live lots. Reinstalling the app
+ * or clearing its data changes nothing. Reading it also mints the day's free
+ * credits if they are missing, which is why there is no scheduled job anywhere
+ * in this product.
  *
- * **Counted per day, not per conversation.** Per conversation was the first
- * plan and it does not survive contact: switching companion opens a new thread,
- * so fifteen companions would have meant fifteen allowances.
+ * **This is a display, not a gate.** That is the difference from the version
+ * before it. `/v1/chat` now verifies the Supabase token and spends the credit
+ * itself, so a modified client that ignores everything here gets a 402 from
+ * the server rather than a free answer. Which is what lets the function below
+ * fall open when Supabase cannot be reached: being wrong in the generous
+ * direction costs nothing now, and being wrong in the other direction would
+ * shut the door on someone mid-conversation for a reason that is not theirs.
  */
 
 import { supabase } from '../auth/client';
 
-/** What each plan gets in a day. One place, so the UI and the gate agree. */
-export const DAILY_LIMIT = { free: 6, paid: 50 } as const;
-
-/** Below this many remaining, the screen starts saying so. Above it, silence. */
+/** Below this many left, the screen starts saying so. Above it, silence. */
 export const QUIET_ABOVE = 3;
 
-export type Plan = keyof typeof DAILY_LIMIT;
+/** What the daily grant is worth. Mirrored in `ensure_free_grant()`. */
+export const FREE_PER_DAY = 6;
+
+export type Plan = 'free' | 'monthly' | 'yearly';
 
 export type Allowance = {
+  /** False when there is no account, so the caller can stay quiet about it. */
+  signedIn: boolean;
+  /** Live credits: everything not yet spent and not yet expired. */
+  balance: number;
+  /** When the soonest-expiring live credits die. Usually tonight. */
+  expiresAt: Date | null;
   plan: Plan;
-  used: number;
-  limit: number;
-  remaining: number;
+  /** Razorpay's word for the subscription's state, when there is one. */
+  status: string | null;
+  /** Paid up to here. What "cancelled" still entitles someone to. */
+  periodEnd: Date | null;
 };
 
-const UNKNOWN: Allowance = { plan: 'free', used: 0, limit: DAILY_LIMIT.free, remaining: DAILY_LIMIT.free };
+const UNKNOWN: Allowance = {
+  signedIn: false,
+  balance: FREE_PER_DAY,
+  expiresAt: null,
+  plan: 'free',
+  status: null,
+  periodEnd: null,
+};
+
+function asDate(value: unknown): Date | null {
+  if (typeof value !== 'string') return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function asPlan(value: unknown): Plan {
+  return value === 'monthly' || value === 'yearly' ? value : 'free';
+}
 
 /**
- * The account's allowance right now.
+ * The account's balance right now.
  *
- * Falls open rather than closed when Supabase cannot be reached. A network
- * blip must not tell someone they have run out — being wrong in the generous
- * direction costs a few model requests, and being wrong in the other direction
- * shuts the door on someone mid-conversation for a reason that is not theirs.
+ * One round trip, because the chat screen needs the number, what expires next
+ * and whether a subscription is behind it — and three queries to draw one line
+ * of text is three chances for them to disagree.
  */
 export async function loadAllowance(userId: string | null): Promise<Allowance> {
   if (!supabase || !userId) return UNKNOWN;
 
   try {
-    const [profile, count] = await Promise.all([
-      supabase.from('profiles').select('plan').eq('id', userId).maybeSingle<{ plan: Plan }>(),
-      supabase.rpc('messages_sent_today'),
-    ]);
+    const { data, error } = await supabase.rpc('credit_summary');
+    if (error || !data || typeof data !== 'object') return UNKNOWN;
 
-    const plan: Plan = profile.data?.plan === 'paid' ? 'paid' : 'free';
-    const limit = DAILY_LIMIT[plan];
-    const used = typeof count.data === 'number' ? count.data : 0;
-
-    return { plan, used, limit, remaining: Math.max(0, limit - used) };
+    const row = data as Record<string, unknown>;
+    return {
+      signedIn: row.signed_in === true,
+      balance: typeof row.balance === 'number' ? row.balance : 0,
+      expiresAt: asDate(row.expires_at),
+      plan: asPlan(row.plan),
+      status: typeof row.status === 'string' ? row.status : null,
+      periodEnd: asDate(row.period_end),
+    };
   } catch {
     return UNKNOWN;
   }
+}
+
+/** Whether the plan behind this balance is a paid one that is still running. */
+export function isSubscribed(allowance: Allowance | null): boolean {
+  return Boolean(allowance && allowance.plan !== 'free' && allowance.status === 'active');
 }
 
 /**

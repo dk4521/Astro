@@ -33,12 +33,13 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { streamChat } from '../../src/api/client';
+import { ApiError, streamChat } from '../../src/api/client';
 import {
   loadAllowance,
   looksLikeCrisis,
   QUIET_ABOVE,
   type Allowance,
+  isSubscribed,
 } from '../../src/api/allowance';
 import { useAuth } from '../../src/auth/context';
 import { loadInterpretation } from '../../src/api/reading';
@@ -411,7 +412,7 @@ export default function ReadingScreen() {
       // Checked here rather than in the composer's disabled state: the count is
       // read from the account and can be stale by a message if two devices are
       // talking at once, so the last word belongs to the moment of sending.
-      if (allowance && allowance.remaining <= 0) {
+      if (allowance && allowance.balance <= 0) {
         setQuestion('');
         setBlocked({ crisis: looksLikeCrisis(trimmed) });
         return;
@@ -429,6 +430,10 @@ export default function ReadingScreen() {
 
       const askedId = nextId.current++;
       const answerId = nextId.current++;
+      // The credit this message costs is charged against this. It identifies
+      // the question rather than the account, so re-asking after a dropped
+      // stream is free and asking again is not.
+      const requestId = `${askedId}-${Date.now()}`;
 
       setMessages((current) => [
         ...current,
@@ -462,7 +467,7 @@ export default function ReadingScreen() {
 
       try {
         await streamChat(
-          { birth: details, question: trimmed, language, history },
+          { birth: details, question: trimmed, language, history, requestId },
           {
             onToken: (chunk) => {
               answer += chunk;
@@ -482,7 +487,16 @@ export default function ReadingScreen() {
           controller.signal,
         );
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'The answer was interrupted');
+        // 402 is the server saying the credit was not there. It is not an
+        // error in the sense the error line means — nothing went wrong — so it
+        // opens the same panel as running out locally would have.
+        if (err instanceof ApiError && err.status === 402) {
+          setBlocked({ crisis: looksLikeCrisis(trimmed) });
+        } else if (err instanceof ApiError && err.status === 401) {
+          setError(t.signInToAsk);
+        } else {
+          setError(err instanceof Error ? err.message : 'The answer was interrupted');
+        }
       } finally {
         update({ streaming: false });
         // An answer that produced nothing at all is noise in the transcript.
@@ -691,21 +705,26 @@ export default function ReadingScreen() {
             <>
               <Text style={styles.spentTitle}>{t.crisisHeading}</Text>
               <Text style={styles.helplines}>{t.crisisHelplines}</Text>
-              <Text style={styles.spentMuted}>{t.comesBackTomorrow}</Text>
+              {/* Only for a free account, because only there is it true. A
+                  subscriber who has used the month's credits does not get more
+                  tomorrow, and this is not a screen to be inexact on. */}
+              {isSubscribed(allowance) ? null : (
+                <Text style={styles.spentMuted}>{t.comesBackTomorrow}</Text>
+              )}
             </>
           ) : (
             <>
               <Text style={styles.spentTitle}>{t.outOfMessages}</Text>
               <Text style={styles.spentBody}>
-                {allowance?.plan === 'paid'
-                  ? t.outOfMessagesPaid(allowance.limit)
-                  : t.outOfMessagesFree(allowance?.limit ?? 0)}
+                {isSubscribed(allowance) ? t.outOfMessagesPaid : t.outOfMessagesFree}
               </Text>
-              {allowance?.plan === 'free' ? (
-                <View style={styles.spentAction}>
-                  <Button title={t.upgrade} onPress={() => router.push('/settings')} />
-                </View>
-              ) : null}
+              {/* Now that there is something to sell, this goes to the price
+                  list rather than to settings — and it goes there for
+                  subscribers too, since a plan that has run out mid-month can
+                  still be topped up with a pack. */}
+              <View style={styles.spentAction}>
+                <Button title={t.upgrade} onPress={() => router.push('/plans')} />
+              </View>
               {/* Quiet, and always here. The crisis check above is keyword
                   matching and will miss phrasings it was not taught; this is
                   what makes a miss cost nothing. */}
@@ -718,8 +737,8 @@ export default function ReadingScreen() {
         {/* Silent until it starts to matter. A permanent countdown over a chat
             where people bring the worst of their week makes them ration what
             they say at exactly the wrong moment. */}
-        {allowance && allowance.remaining <= QUIET_ABOVE ? (
-          <Text style={styles.left}>{t.messagesLeft(allowance.remaining)}</Text>
+        {allowance && allowance.balance <= QUIET_ABOVE ? (
+          <Text style={styles.left}>{t.messagesLeft(allowance.balance)}</Text>
         ) : null}
         <View style={styles.composerRow}>
         <TextInput

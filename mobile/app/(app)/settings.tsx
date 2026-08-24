@@ -45,6 +45,26 @@ function sinceText(at: number | null): string {
   return `${Math.floor(hours / 24)} d ago`;
 }
 
+const PLAN_LABEL: Record<'free' | 'monthly' | 'yearly', string> = {
+  free: 'Free',
+  monthly: 'Monthly',
+  yearly: 'Yearly',
+};
+
+/**
+ * When the soonest-expiring credits go.
+ *
+ * Almost always tonight — the free six expire at midnight — so the common case
+ * is a word rather than a date. A date here would be technically correct and
+ * would read as a warning about something that happens every single day.
+ */
+function expiryPhrase(at: Date): string {
+  const hours = (at.getTime() - Date.now()) / 3_600_000;
+  if (hours <= 24) return 'tonight';
+  if (hours <= 48) return 'tomorrow';
+  return `on ${at.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`;
+}
+
 export default function Settings() {
   const router = useRouter();
   const { available, user, signOut } = useAuth();
@@ -225,32 +245,35 @@ export default function Settings() {
           </View>
         </View>
 
-        {/* Where the "See plans" button from the chat screen lands. It has to
-            say something true when it gets here, which for now is what the plan
-            is and what it allows — there is no billing behind it yet. */}
+        {/* A summary, not a price list. Anything that costs money lives on
+            /plans, so this screen stays a place to check facts rather than a
+            second place to be sold to. */}
         {user ? (
           <View style={styles.section}>
             <Label>Messages</Label>
             <Card>
               <Row
                 label="Plan"
-                value={allowance?.plan === 'paid' ? 'Paid' : 'Free'}
+                value={PLAN_LABEL[allowance?.plan ?? 'free']}
                 hint={
-                  allowance
-                    ? `${allowance.limit} messages a day`
-                    : undefined
+                  allowance && allowance.plan !== 'free' && allowance.status
+                    ? allowance.status
+                    : 'Six free messages a day'
                 }
               />
               <Row
-                label="Sent today"
-                value={allowance ? String(allowance.used) : '—'}
-                hint={allowance ? `${allowance.remaining} left` : undefined}
+                label="Balance"
+                value={allowance ? String(allowance.balance) : '—'}
+                hint={
+                  allowance?.expiresAt
+                    ? `Some expire ${expiryPhrase(allowance.expiresAt)}`
+                    : undefined
+                }
               />
             </Card>
-            <Text style={styles.note}>
-              Upgrading is not available yet — there is no billing behind this
-              plan. The number above is what the account is allowed today.
-            </Text>
+            <View style={styles.action}>
+              <Button title="See plans" onPress={() => router.push('/plans')} variant="ghost" />
+            </View>
           </View>
         ) : null}
 

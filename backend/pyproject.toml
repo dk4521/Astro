@@ -13,6 +13,10 @@ dependencies = [
     "timezonefinder>=6.5",
     "google-genai>=2.18",
     "python-dotenv>=1.0",
+    # Direct dependency since billing: Supabase and Razorpay are both reached
+    # over HTTP. It arrived transitively with google-genai before, which is not
+    # a thing to rely on.
+    "httpx>=0.27",
 ]
 
 # Without this, setuptools' flat-layout autodiscovery sees `data/` (the

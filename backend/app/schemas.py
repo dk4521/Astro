@@ -229,6 +229,15 @@ class ChatRequest(BaseModel):
         max_length=40,
         description="Prior turns, oldest first. The chart is re-sent each request.",
     )
+    request_id: str | None = Field(
+        default=None,
+        max_length=64,
+        description=(
+            "Idempotency key for the credit this message costs. Send the same "
+            "value when retrying a question whose stream died, and it is "
+            "charged once. A new question needs a new value."
+        ),
+    )
 
 
 class InterpretResponse(BaseModel):
@@ -405,3 +414,121 @@ class TodayResponse(BaseModel):
     birth_moon_rashi_hi: str
     birth_nakshatra: str
     birth_nakshatra_hi: str
+
+
+# --- Tarot ------------------------------------------------------------------
+#
+# Both languages travel together here, as they do for every computed value in
+# this API: the app switches script without a refetch, and a deck downloaded in
+# English must not have to be downloaded again in Hindi. Which is also why the
+# deck and the draw take no `language` parameter at all — only the generated
+# reading does, because that one really is written in one language.
+
+
+class TarotCardOut(BaseModel):
+    """One card. `arcana`, `suit` and `number` are drawing instructions too:
+    the app has no card art and paints each face from these three."""
+
+    id: str
+    arcana: Literal["major", "minor"]
+    suit: str | None
+    number: int = Field(description="0–21 for the major arcana; 1–14 within a suit")
+    name: str
+    name_hi: str
+    keywords: str
+    keywords_hi: str
+    upright: str
+    upright_hi: str
+    reversed: str
+    reversed_hi: str
+
+
+class TarotSuitOut(BaseModel):
+    id: str
+    name: str
+    name_hi: str
+    theme: str
+    theme_hi: str
+
+
+class TarotDeckResponse(BaseModel):
+    """The whole deck. Static, written by a person, and cacheable as such."""
+
+    suits: list[TarotSuitOut]
+    cards: list[TarotCardOut]
+
+
+class TarotPositionOut(BaseModel):
+    id: str
+    name: str
+    name_hi: str
+    prompt: str
+    prompt_hi: str
+
+
+class TarotDrawnOut(BaseModel):
+    position: TarotPositionOut
+    card: TarotCardOut
+    reversed: bool
+    meaning: str = Field(description="The written line for the way it actually came up")
+    meaning_hi: str
+
+
+class TarotDrawRequest(BaseModel):
+    """Deal three cards.
+
+    `seed` is the entire shuffle. Omit it for a fresh one; send a previous
+    response's seed to deal that exact hand again, on any machine, any time.
+    """
+
+    seed: str | None = Field(
+        default=None,
+        pattern=r"^[A-Za-z0-9_-]{1,64}$",
+        description="A previous draw's seed, to reproduce it",
+    )
+
+
+class TarotDrawResponse(BaseModel):
+    seed: str
+    spread: str
+    spread_hi: str
+    note: str
+    note_hi: str
+    cards: list[TarotDrawnOut]
+
+
+class TarotReadingRequest(BaseModel):
+    """Ask for the three cards to be read.
+
+    The cards are not in this payload, and that is the point: the server deals
+    them again from the seed. A client cannot buy a reading of a hand it made up.
+    """
+
+    seed: str = Field(pattern=r"^[A-Za-z0-9_-]{1,64}$")
+    question: str | None = Field(default=None, max_length=2000)
+    language: Language = "hinglish"
+    request_id: str | None = Field(
+        default=None,
+        max_length=64,
+        description=(
+            "Idempotency key for the credit this reading costs. The same value "
+            "twice is charged once, so a reading whose request failed can be "
+            "retried without paying again."
+        ),
+    )
+
+
+class TarotReadingResponse(BaseModel):
+    seed: str
+    text: str
+    language: Language
+    grounded: bool = Field(
+        description=(
+            "False when the reading named a card that was not dealt, or reached "
+            "for astrology in a reply that was told there is no chart here."
+        )
+    )
+    contradictions: list[str] = Field(default_factory=list)
+    balance: int | None = Field(
+        default=None, description="Credits left. Null where billing is not configured."
+    )

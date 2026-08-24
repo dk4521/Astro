@@ -7,9 +7,11 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from . import ai
+from . import ai, auth
+from .api.billing import router as billing_router
 from .api.routes import router
 from .astro import EPHEMERIS_MODE
+from .billing import gateway, store
 
 app = FastAPI(
     title="Jyotish API",
@@ -34,6 +36,7 @@ app.add_middleware(
 )
 
 app.include_router(router, prefix="/v1")
+app.include_router(billing_router, prefix="/v1")
 
 
 @app.get("/health", summary="Liveness, ephemeris provenance, and cache reuse")
@@ -48,6 +51,15 @@ def health() -> dict[str, object]:
     stats = ai.cache.stats()
     return {
         "status": "ok",
+        # Three switches that fail independently and silently. Without
+        # `accounts` nobody can be identified; without `credits` chat is free
+        # to anyone who can reach it; without `payments` the pricing screen has
+        # nothing to sell. Reading them here beats discovering one at checkout.
+        "billing": {
+            "accounts": auth.is_configured(),
+            "credits": store.is_configured(),
+            "payments": gateway.is_configured(),
+        },
         "ephemeris_mode": EPHEMERIS_MODE,
         "ayanamsa": "Lahiri (Chitrapaksha)",
         "cache": {

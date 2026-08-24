@@ -13,16 +13,18 @@ structurally impossible rather than merely unlikely.
 
 | Piece | State |
 | --- | --- |
-| Astrology engine (ephemeris, chart, dasha, panchang) | Built, 153 tests passing |
+| Astrology engine (ephemeris, chart, dasha, panchang) | Built, 216 tests passing |
 | REST API (FastAPI) | Built, running locally |
 | Mobile app (Expo, TypeScript) | Sidebar over today, chart, reading/chat, course and settings; driven end to end on an Android device |
 | Learning course | 30 chapters, English and Hindi, served from the backend |
 | Today | Panchang for this moment plus the active dasha — no model, no quota |
+| Tarot | 78-card deck in two languages, seeded shuffle, three-card spread; the written meanings are free, the reading costs a credit. 36 tests |
 | AI interpretation layer | Built on Gemini, verified against the live API |
 | Crisis-support path | Checked live, one breach found and closed; re-check pending on two models |
 | Accounts | Email sign-in/sign-up, optional |
 | Sync | Chart, course progress and chat history mirrored to Supabase; checked end to end against a live project |
 | Caching | Two layers, device and server; measured 14.0s → 0.075s on a live repeat |
+| Credits | Schema, server-side enforcement and Razorpay checkout built and unit-tested. **Not yet run against a live Supabase project or a Razorpay test account** |
 
 ## Layout
 
@@ -32,13 +34,17 @@ backend/          FastAPI service and the deterministic engine
   app/astro/      The engine. No I/O, no AI, no randomness.
   app/api/        HTTP surface
   app/ai/         Interpretation layer. Translates engine output; never computes.
-  tests/          153 tests, including known-chart, grounding and cache checks
+  app/billing/    plans (prices), gateway (Razorpay), store (Supabase service role)
+  app/auth.py     verifies the Supabase token — who is spending the credit
+  tests/          252 tests, including known-chart, grounding, cache, billing and tarot
+  app/tarot/      the deck (written, not generated), the seeded shuffle, the card check
   app/course/     the course — 30 chapters of prose, in two languages
   app/places_data.py  ~3,000 places, India tier-1 to tier-3; built by scripts/
 mobile/           Expo app (React Native + TypeScript)
   app/            expo-router screens; (app)/ sits behind the drawer
   src/            theme, API client, components
   src/sync/       the account mirror — see supabase/README.md
+  src/api/billing.ts  opens Razorpay's hosted page; nothing native
 ```
 
 ## Running it
@@ -142,8 +148,15 @@ horoscopes should be generated on a schedule rather than per request.
 | `POST /v1/today` | Panchang for this moment at your place, plus your active dasha |
 | `GET /v1/course?language=` | Course index — 30 chapters, `en` or `hi` |
 | `POST /v1/course/{slug}` | One chapter, optionally located in your chart |
+| `GET /v1/tarot/deck` | All 78 cards, both languages. Static, cacheable, free |
+| `POST /v1/tarot/draw` | Three cards and the seed they came from. Free, no model |
+| `POST /v1/tarot/reading` | The spread read as one piece. Costs one credit |
 | `POST /v1/interpret` | Plain-language reading of a chart |
-| `POST /v1/chat` | Question about a chart, streamed as server-sent events |
+| `POST /v1/chat` | Question about a chart, streamed as server-sent events. Costs one credit |
+| `GET /v1/billing/plans` | What credits cost. Public, so the price list opens signed out |
+| `POST /v1/billing/checkout` | Plan id in, Razorpay page out. Session required |
+| `POST /v1/billing/cancel` | Stop a subscription at the end of the paid period |
+| `POST /v1/billing/webhook` | Razorpay reporting a payment. HMAC-verified, idempotent |
 
 ## The interpretation layer
 
@@ -412,32 +425,164 @@ It casts two charts, not one: the natal chart the dasha runs from, and a chart f
 rather than to a person. What it does not offer is a daily prediction. The
 tradition's honest daily layer is the panchang, and that is what the screen shows.
 
-## Message allowance
 
-Chat costs a model request, and the free Gemini tier allows twenty a day across
-the whole service. So the app counts.
+## Tarot
 
-| Plan | Messages per day |
-| --- | --- |
-| `free` | 6 |
-| `paid` | 50 |
+The one place in this product where something is genuinely random, and the
+interesting part is what happens to that randomness rather than the cards.
 
-Counted **per day, not per conversation**. Per conversation was the first design
-and does not survive contact with the app: switching companion opens a new
-thread, so fifteen companions would have meant fifteen allowances.
+**The seed is the shuffle.** `POST /v1/tarot/draw` returns the twelve hex
+characters it dealt from, and `spread.draw(seed)` deals the same three cards the
+same way round on any machine, in any process, next year. Nothing is stored
+anywhere and a spread is still reproducible — the same property a chart has, and
+the app prints the seed under the cards rather than hiding it.
 
-The count comes from `messages_sent_today()` in
-[schema.sql](supabase/schema.sql), which counts the rows the account actually
-wrote — reinstalling the app or clearing its data changes nothing. `plan` lives
-on `profiles` and the row-level policy refuses a client that tries to write it.
+That also closes a hole. `POST /v1/tarot/reading` costs a credit and takes a
+*seed*, not a list of cards: the server deals them again and reads what it dealt.
+A modified client cannot assemble a flattering spread and buy words for it.
 
-**It is still the app that decides whether to send.** The backend is stateless
-and has never been told who is asking, so a modified client could call
-`/v1/chat` directly. Real enforcement means passing the Supabase token to
-FastAPI and having it verify and count there — worth doing before anything is
-charged for, and deliberately not pretended to be done yet.
+**Two layers, one price.** Turning the cards over and reading what each one means
+is free, works signed out, and calls no model — those seventy-eight cards were
+written by a person, in English and Hindi, and are the same for everyone. Only
+having the three read together as one piece spends anything, and it is a
+deliberate tap with the cost stated next to it.
 
-Two decisions in the UI are worth keeping:
+**Situation, obstacle, advice — not past, present, future.** The timeline spread
+is the one every other app sells, and a timeline is a forecast. These three ask
+the same questions without claiming to know what happens next, and the last card
+lands on something the reader can act on. Same choice `meanings.py` makes for a
+dasha lord: name what the period asks of you, never how it turns out.
+
+**Reversed is another angle, not bad news.** Every reversed line is written as
+the theme held back, overdone, or starting to loosen. Death is an ending you can
+name, the Tower is a weak foundation giving way, the Ten of Swords is the bottom
+of something — which means the direction from there is up. `test_tarot.py` fails
+if the word "beware" ever appears in a card.
+
+**It is grounded twice.** `tarot/grounding.py` reads the generated text back and
+flags any card named that the shuffle did not deal — the same check as a
+fabricated placement, in a different deck. And `ai.grounding.mentions_chart`
+catches the failure specific to *this* codebase: the shared system prompt opens
+by calling itself the interpretation layer of a Vedic astrology app, so a model
+handed three cards will reach for a dasha to explain them. Both checks are
+deliberately narrow, because half the major arcana are ordinary words — English
+names are matched case-sensitively so "The Sun" is a card and "the sun" is the
+sky, and names that survive no case distinction at all (मृत्यु, संसार, तारा) are
+not matched in Hindi.
+
+The deck's order and the order of the random calls in `draw()` are a contract:
+change either and every seed anyone saved deals different cards. A pinned seed
+in `test_tarot.py` makes that a loud decision rather than a quiet diff.
+
+## Credits
+
+A message costs one credit. Credits arrive from three places that differ only
+in how long they last, which is the whole reason there is one currency rather
+than a limit and a separate balance:
+
+| Where from | How many | Expires |
+| --- | --- | --- |
+| Free | 6 | at the next Indian midnight |
+| Subscription | 1,500 a month | with the period that granted them |
+| Pack | what was bought | in a year |
+
+The spend order falls out of the data: **soonest expiry first**. So the free six
+are always used before anything paid for, and nobody has to be told which pocket
+a message came out of.
+
+`credit_lots` stores grants rather than a balance column. A balance is one
+number and cannot answer the two questions that matter — when do these expire,
+and where did they come from. `credit_spends` records each credit as it goes,
+which the balance does not need and a paying person is entitled to.
+
+**Grants are lazy, and there is no scheduled job anywhere in this product.**
+Reading the balance calls `ensure_grants()`, which mints today's free six and
+this month's subscription credits if they are missing. That matters most for a
+yearly subscription: Razorpay charges it once, so a webhook-driven grant would
+hand someone eighteen thousand credits to spend in a week. The month's grant
+instead happens the next time they open the app — and someone who does not open
+the app does not need the credits.
+
+### It is enforced on the server now
+
+This is the part that changed. Previously the app decided whether to send, the
+backend had never been told who was asking, and `/v1/chat` answered anyone who
+could reach it. The allowance was a request, not a rule.
+
+Now `/v1/chat` verifies the Supabase token, spends the credit through
+`consume_credit()` and only then calls the model:
+
+- **The token is checked by asking Supabase**, not by verifying the JWT here.
+  Supabase issues asymmetric signing keys and rotates them, so local
+  verification means fetching a JWKS and handling rotation that happens without
+  warning. One HTTP call is correct under every key type, and it is cached for
+  a minute per token — against a model request measured in seconds, it does not
+  register.
+- **The credit is taken before the generator starts.** A `StreamingResponse`
+  has already sent 200 by the time its body runs, so a refusal raised in there
+  would arrive as an `error` event on a successful response rather than as the
+  402 the app needs to act on.
+- **401 and 402 are different answers.** Not signed in sends someone to sign
+  in; out of credits sends them to the price list. Collapsing them is the kind
+  of bug that reads fine and strands a paying user.
+- **It fails closed.** Supabase unreachable is a 503, not a free message —
+  otherwise the paywall is optional for anyone who can cause a timeout. The
+  device-side reader still falls open, because it is a display now rather than
+  a gate.
+- **A dropped stream is not charged twice.** Every question carries a
+  `request_id`, and `credit_spends` has a unique index on it.
+- **An answer that never arrived is refunded.** Model capacity is the service's
+  problem, and free-tier 503s are common enough that charging for them would
+  make a bad day for the service into a bad day for the person paying.
+
+### What is for sale
+
+Prices live in [plans.py](backend/app/billing/plans.py) and are fetched by the
+app rather than bundled, so a store build from six months ago draws today's
+numbers — and cannot draw one this server would refuse to charge. The client
+sends a plan id and nothing else; the amount, the credit count and the account
+are all decided on the server.
+
+| | Price | Credits | Per message |
+| --- | --- | --- | --- |
+| Free | — | 6 a day | — |
+| Pack | ₹19 / ₹49 / ₹149 | 20 / 60 / 200 | ~₹0.80 |
+| Monthly | ₹99 | 1,500 a month | ~₹0.07 |
+| Yearly | ₹799 | 1,500 a month | ~₹0.07 |
+
+The gap between a pack and a plan is roughly tenfold, and it is the product's
+advice rather than an accident: a pack buys occasional use without a
+commitment, and the pricing screen says exactly that instead of hiding the
+arithmetic. `test_billing.py` asserts the gap, so a future price edit cannot
+quietly close it.
+
+Yearly is a third off, not the sixteen percent that ₹999 would have been. Below
+about a quarter off, an annual plan in this market is decoration — people read
+it, do the division, and stay on monthly.
+
+### Razorpay, and the thing to know about it
+
+**Payments go through Razorpay directly, not through in-app purchase.** Google
+Play and the App Store both require IAP for digital content consumed in the
+app, and this does not use it. That is a deliberate choice with a real
+consequence: it is grounds for rejection or removal, and it is the first thing
+to revisit if a store review goes badly.
+
+**No native module.** Razorpay's usual React Native integration is one, which
+would mean the app can no longer be opened in Expo Go. The backend creates a
+hosted Payment Link (packs) or subscription page, and the app opens the URL.
+
+**Credits come from the webhook, never from the browser coming back.** The
+redirect is a convenience for the person watching; it can be lost to a closed
+tab or a dead battery. `/v1/billing/webhook` is HMAC-verified over the raw
+bytes — which is why the route reads `await request.body()` and parses the JSON
+itself, since re-serialising a parsed body produces different bytes and a
+signature that never matches. Razorpay retries until it gets a 2xx, so a
+Supabase failure answers 500 rather than swallowing a paid-for credit, and
+every grant is keyed on the payment id so the retry that follows grants
+nothing.
+
+### Two decisions in the UI worth keeping
 
 - **The counter is silent until three remain.** A permanent countdown over a
   chat where people bring the worst of their week makes them ration what they
@@ -445,7 +590,8 @@ Two decisions in the UI are worth keeping:
 - **The exhausted screen always carries the helplines**, and leads with them
   when the refused message looked like distress. That check is keyword matching
   and will miss phrasings it was not taught — which is why the numbers are
-  there either way, and why a miss costs nothing.
+  there either way, and why a miss costs nothing. Someone who has hit the wall
+  while saying they want to die does not meet an upgrade prompt.
 
 ## Accounts
 
@@ -459,8 +605,8 @@ Two decisions worth keeping:
 
 - **Optional everywhere except chat.** The chart, the panchang, matching and the
   course all work signed out. Chat does not: the conversation is stored in the
-  account, and so is the daily message count, so there is nowhere else to put
-  either. The account screen is still offered once rather than demanded, and
+  account, and so is the credit balance it spends, so there is nowhere else to
+  put either. The account screen is still offered once rather than demanded, and
   "Continue without an account" is a real answer for the rest of the app.
 - **The app runs with no Supabase project at all.** `isConfigured()` is false
   when the env vars are missing, the account screen never appears, and
@@ -550,6 +696,14 @@ Before the first store build: turn Supabase email confirmation back on
 2. Prompt tuning on Gemini: readings run long (~2000 chars vs the "two to four
    short paragraphs" the contract asks for) and use bullet lists the contract
    tells it to avoid.
-3. Replace the bundled city list with a real geocoder if coverage becomes a problem.
-4. Divisional charts beyond D9 (D10 and friends need per-sign starting rules that
+3. **Move off the Gemini free tier before selling anything.** Twenty requests
+   a day across the whole service cannot deliver 1,500 credits to one person,
+   let alone to a hundred. Everything else in the billing path is built; this
+   is the one thing that makes it sellable, and the margin on ₹99 for 1,500
+   messages has not been checked against paid Gemini pricing.
+4. **Decide the store question.** Payments go through Razorpay directly, which
+   Play and the App Store both consider grounds for removal for in-app digital
+   content. Either accept it knowingly, or add IAP alongside.
+5. Replace the bundled city list with a real geocoder if coverage becomes a problem.
+6. Divisional charts beyond D9 (D10 and friends need per-sign starting rules that
    `divisional_sign` deliberately does not encode yet).

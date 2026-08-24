@@ -27,6 +27,15 @@ export const READING_NAMESPACE = 'kosmiq.reading.';
 export const TIP_NAMESPACE = 'kosmiq.tip.';
 
 /**
+ * The current spread and whatever reading was paid for on it.
+ *
+ * Not cleared with the chart caches below: a tarot draw is not computed from
+ * the birth details and does not go stale when they change. It is the one thing
+ * the app keeps that belongs to the moment rather than to the nativity.
+ */
+export const TAROT_NAMESPACE = 'kosmiq.tarot.';
+
+/**
  * Enough of the birth details to notice a different chart, and nothing more.
  *
  * Three decimal places is about a hundred metres — far finer than anything that

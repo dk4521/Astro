@@ -25,6 +25,7 @@ import Constants from 'expo-constants';
 // build sets EXPO_PUBLIC_USE_RN_FETCH=1 and puts React Native's fetch back.
 import { fetch as streamingFetch } from 'expo/fetch';
 
+import { supabase } from '../auth/client';
 import { SseParser, type SseEvent } from './sse';
 import type {
   BirthDetails,
@@ -37,6 +38,9 @@ import type {
   Match,
   Place,
   Reading,
+  TarotDeck,
+  TarotDraw,
+  TarotReading,
   Tip,
   Today,
 } from './types';
@@ -72,6 +76,29 @@ export const API_BASE_URL = resolveBaseUrl();
  */
 export const API_NOT_CONFIGURED = !__DEV__ && LOOPBACK.test(API_BASE_URL);
 
+/**
+ * The Supabase session, as a header the backend can verify.
+ *
+ * Read from the client rather than passed down from React, so there is no way
+ * for a screen to send a token that went stale while it was mounted:
+ * `getSession()` returns the refreshed one, and supabase-js has already done
+ * the refreshing.
+ *
+ * Absent is a valid answer. Endpoints that cost nothing answer anyway, and the
+ * ones that cost a credit reply 401 — which is the app's cue to ask someone to
+ * sign in, not a reason to have withheld the request.
+ */
+async function authHeader(): Promise<Record<string, string>> {
+  if (!supabase) return {};
+  try {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  } catch {
+    return {};
+  }
+}
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -98,12 +125,14 @@ async function request<T>(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
+  const auth = await authHeader();
+
   let response: Response;
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
       ...init,
       signal: controller.signal,
-      headers: { 'Content-Type': 'application/json', ...init?.headers },
+      headers: { 'Content-Type': 'application/json', ...auth, ...init?.headers },
     });
   } catch (error) {
     // A failed fetch here is almost always the backend not running or the
@@ -209,7 +238,12 @@ export function fetchTip(
   );
 }
 
-export type ChatVerdict = { grounded: boolean; contradictions: string[] };
+export type ChatVerdict = {
+  grounded: boolean;
+  contradictions: string[];
+  /** Credits left after this message. Absent when billing is not configured. */
+  balance?: number;
+};
 
 export type ChatHandlers = {
   /** One streamed fragment. Called many times, in order. */
@@ -241,16 +275,34 @@ export async function streamChat(
     question: string;
     language: Language;
     history: ChatTurn[];
+    /**
+     * Idempotency key for the credit this message costs. The same value twice
+     * is charged once, so a question whose stream died can be re-asked without
+     * paying for it again.
+     */
+    requestId?: string;
   },
   handlers: ChatHandlers,
   signal?: AbortSignal,
 ): Promise<void> {
+  const auth = await authHeader();
+
   let response;
   try {
     response = await streamingFetch(`${API_BASE_URL}/v1/chat`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
-      body: JSON.stringify(body),
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream',
+        ...auth,
+      },
+      body: JSON.stringify({
+        birth: body.birth,
+        question: body.question,
+        language: body.language,
+        history: body.history,
+        request_id: body.requestId,
+      }),
       signal,
     });
   } catch (error) {
@@ -301,7 +353,7 @@ function isAbort(error: unknown): boolean {
 function dispatch(event: SseEvent, handlers: ChatHandlers): void {
   const { name } = event;
 
-  let payload: { text?: string; detail?: string } & Partial<ChatVerdict>;
+  let payload: { text?: string; detail?: string; balance?: number } & Partial<ChatVerdict>;
   try {
     payload = JSON.parse(event.data);
   } catch {
@@ -314,6 +366,7 @@ function dispatch(event: SseEvent, handlers: ChatHandlers): void {
     handlers.onVerdict({
       grounded: payload.grounded ?? true,
       contradictions: payload.contradictions ?? [],
+      balance: typeof payload.balance === 'number' ? payload.balance : undefined,
     });
   } else if (name === 'error') {
     // The stream can fail after text has already reached the reader — capacity
@@ -321,4 +374,51 @@ function dispatch(event: SseEvent, handlers: ChatHandlers): void {
     // returned, and the screen keeps whatever was said before it.
     throw new ApiError(payload.detail ?? 'The reading was interrupted');
   }
+}
+
+// --- Tarot ------------------------------------------------------------------
+//
+// The draw costs nothing and calls no model: the cards come from a seeded
+// shuffle and every line that arrives with them was written by a person. Only
+// the reading below spends anything.
+
+export function fetchTarotDeck(): Promise<TarotDeck> {
+  return request<TarotDeck>('/v1/tarot/deck');
+}
+
+/** Deal three cards. Pass a previous `seed` to deal that exact hand again. */
+export function drawTarot(seed?: string): Promise<TarotDraw> {
+  return request<TarotDraw>('/v1/tarot/draw', {
+    method: 'POST',
+    body: JSON.stringify({ seed: seed ?? null }),
+  });
+}
+
+/**
+ * Read a spread. Costs one credit, and goes through the long timeout for the
+ * same reason a chart reading does — a busy free tier walks its fallback chain
+ * before anyone answers.
+ *
+ * The cards are not sent. The server deals them again from the seed, which is
+ * what makes the charge honest in both directions.
+ */
+export function fetchTarotReading(body: {
+  seed: string;
+  question: string | null;
+  language: Language;
+  requestId?: string;
+}): Promise<TarotReading> {
+  return request<TarotReading>(
+    '/v1/tarot/reading',
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        seed: body.seed,
+        question: body.question,
+        language: body.language,
+        request_id: body.requestId,
+      }),
+    },
+    INTERPRET_TIMEOUT_MS,
+  );
 }
