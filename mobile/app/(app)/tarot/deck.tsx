@@ -100,7 +100,11 @@ export default function TarotDeckScreen() {
     <View style={styles.flex}>
       <ScreenHeader
         title={t.tarotDeckTitle}
-        onBack={() => router.back()}
+        // Not router.back(). The deck is a drawer route rather than a pushed
+        // screen, and the drawer's navigate() adds no history entry — so back()
+        // lands on whichever drawer route was open before Tarot. Verified on a
+        // device: it went to Chart, the same way `learn/[slug]` once did.
+        onBack={() => router.replace('/tarot')}
         right={<LanguagePicker value={language} onChange={chooseLanguage} />}
       />
 
@@ -189,7 +193,7 @@ function Row({
     >
       <View style={styles.rowHead}>
         <View style={[styles.mark, { borderColor: `${tint}66` }]}>
-          <CardEmblem card={card} size={22} />
+          <CardEmblem card={card} size={28} />
           <Text style={[styles.rank, { color: tint }]}>{rankMark(card)}</Text>
         </View>
 
@@ -262,7 +266,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  rank: { fontSize: 8, fontWeight: '700', letterSpacing: 0.6, marginTop: -2 },
+  rank: { fontSize: 8, fontWeight: '700', letterSpacing: 0.6, marginTop: -3 },
   rowText: { flex: 1, gap: 2 },
   name: { ...type.heading, color: colors.text },
   keywords: { ...type.mono, color: colors.textFaint },

@@ -118,7 +118,6 @@ type Strings = {
   tarotReadingFailed: string;
   tarotUngrounded: string;
   tarotShuffle: (seed: string) => string;
-  tarotShuffleNote: string;
   tarotSignIn: string;
   tarotSignInWhy: string;
   tarotDeckLink: string;
@@ -253,7 +252,6 @@ const EN: Strings = {
   tarotUngrounded:
     'This reading named a card that was not dealt. Shown anyway, and flagged rather than quietly dropped.',
   tarotShuffle: (seed) => `Shuffle ${seed}`,
-  tarotShuffleNote: 'The same shuffle always deals these three cards, on any phone.',
   tarotSignIn: 'A written reading needs an account',
   tarotSignInWhy:
     'The cards and their meanings are free and work signed out. Only having the three read together counts against your messages.',
@@ -389,7 +387,6 @@ const HI: Strings = {
   tarotUngrounded:
     'इस पाठ में कोई ऐसा कार्ड आ गया जो निकला ही नहीं था। छुपाया नहीं गया — दिखाकर बता दिया गया है।',
   tarotShuffle: (seed) => `फेंट ${seed}`,
-  tarotShuffleNote: 'यही फेंट हमेशा यही तीन कार्ड निकालेगी, किसी भी फ़ोन पर।',
   tarotSignIn: 'लिखा हुआ पाठ पाने के लिए खाता चाहिए',
   tarotSignInWhy:
     'कार्ड और उनके अर्थ मुफ़्त हैं, बिना खाते के भी चलते हैं। सिर्फ़ तीनों को एक साथ पढ़वाना आपके संदेशों में गिना जाता है।',

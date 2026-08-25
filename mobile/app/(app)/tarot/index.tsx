@@ -221,7 +221,7 @@ export default function Tarot() {
         ) : (
           <>
             <View style={styles.spread}>
-              {drawn.cards.map((item) => {
+              {drawn.cards.map((item, index) => {
                 const open = revealed.includes(item.position.id);
                 const label = language === 'hi' ? item.position.name_hi : item.position.name;
                 return (
@@ -231,6 +231,7 @@ export default function Tarot() {
                       reversed={item.reversed}
                       revealed={open}
                       language={language}
+                      index={index}
                       onPress={open ? undefined : () => turn(item.position.id)}
                       accessibilityLabel={label}
                     />
@@ -293,10 +294,12 @@ export default function Tarot() {
             ) : null}
 
             {/* The honest footnote, and the reason this screen can call itself
-                reproducible at all. */}
+                reproducible at all. One line, not three: the two paragraphs
+                that used to follow it said the same thing as each other and
+                were read once and then scrolled past forever. The seed earns
+                its place because it is the only part anyone can act on — it
+                deals this hand again. */}
             <Text style={styles.seed}>{t.tarotShuffle(drawn.seed)}</Text>
-            <Text style={styles.note}>{t.tarotShuffleNote}</Text>
-            <Text style={styles.note}>{language === 'hi' ? drawn.note_hi : drawn.note}</Text>
 
             <View style={styles.action}>
               <Button

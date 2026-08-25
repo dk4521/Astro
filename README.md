@@ -459,6 +459,13 @@ name, the Tower is a weak foundation giving way, the Ten of Swords is the bottom
 of something — which means the direction from there is up. `test_tarot.py` fails
 if the word "beware" ever appears in a card.
 
+The reading is held to the same line, and that rule was written after watching
+it break. The first live reply on a device opened "नौकरी के मामले में अभी स्थिति
+बहुत अच्छी है" — a verdict on the reader's circumstances, from a draw that only
+said "recognition". `tarot_directive` now forbids ranking the situation in the
+same words `tip_directive` already forbids ranking the day, because it is the
+same model reaching for the same reassurance.
+
 **It is grounded twice.** `tarot/grounding.py` reads the generated text back and
 flags any card named that the shuffle did not deal — the same check as a
 fabricated placement, in a different deck. And `ai.grounding.mentions_chart`
@@ -469,6 +476,23 @@ deliberately narrow, because half the major arcana are ordinary words — Englis
 names are matched case-sensitively so "The Sun" is a card and "the sun" is the
 sky, and names that survive no case distinction at all (मृत्यु, संसार, तारा) are
 not matched in Hindi.
+
+**The card faces are generated, not drawn by anyone.** Seventy-eight
+illustrations is a licensing problem and a forty-megabyte install, so
+`TarotCard.tsx` builds a face out of the three fields the API already sends —
+arcana, suit, number. What makes it read as a card is the furniture rather than
+the picture: a gilt frame with corner marks, the numeral in a band at the top,
+the name in a band at the foot, and on a numbered card **the suit mark repeated
+as many times as the number says**, in the columns a real pip card uses. Three
+of Cups has three cups on it. The four suit grounds are the theme's element
+lights — Wands fire, Cups water, Swords air, Pentacles earth — matched by eye
+rather than by hex, because a navy at the same numeric lightness as a violet
+still reads as black beside it.
+
+`SPREAD_NOTE` is still returned by `/v1/tarot/draw` and is no longer rendered.
+The screen used to carry it under the seed alongside a second, shorter note
+that said the same thing; both were read once and scrolled past forever. The
+seed line stayed because it is the only part of that block anyone can act on.
 
 The deck's order and the order of the random calls in `draw()` are a contract:
 change either and every seed anyone saved deals different cards. A pinned seed

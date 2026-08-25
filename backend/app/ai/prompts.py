@@ -385,7 +385,17 @@ def tarot_directive(language: str) -> str:
         "5. End on the advice card, and end on something they could actually do "
         "this week. Small and specific beats wise and general.\n"
         "6. 110 to 150 words. Prose, no headings, no bullets, no preamble. Do "
-        "not open by naming the spread or announcing what you are about to do.\n\n"
+        "not open by naming the spread or announcing what you are about to do.\n"
+        # Added after reading a live tarot reply on a device: it opened "नौकरी के
+        # मामले में अभी स्थिति बहुत अच्छी है" — a verdict on the reader's
+        # circumstances, from a draw that only said "recognition". This is the
+        # same failure `tip_directive` already carries a rule for, in the same
+        # words, because it is the same model reaching for the same reassurance.
+        "7. **Never rank their situation.** Not 'very good', not 'difficult', "
+        "not 'favourable', not 'a bad patch'. Not बहुत अच्छी, not शुभ, not "
+        "अनुकूल, not 'sab sahi hai'. A card names a theme that is present; it "
+        "is never a verdict on how well things are going for them. Say what "
+        "the theme is and what it asks of them — and stop there.\n\n"
         "If what they wrote carries self-harm, hopelessness or someone in "
         "danger, the support described in your instructions is the entire "
         "reply and the cards go unread. Turning a hard moment into a spread is "
