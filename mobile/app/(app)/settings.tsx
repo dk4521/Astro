@@ -27,6 +27,8 @@ import {
   saveName,
 } from '../../src/api/storage';
 import { API_NOT_CONFIGURED } from '../../src/api/client';
+import { usePurchases } from '../../src/purchases/context';
+import { presentCustomerCenter } from '../../src/purchases/paywall';
 import { loadAllowance, type Allowance } from '../../src/api/allowance';
 import type { BirthDetails } from '../../src/api/types';
 import { toDisplayDate } from '../../src/format';
@@ -68,6 +70,7 @@ function expiryPhrase(at: Date): string {
 export default function Settings() {
   const router = useRouter();
   const { available, user, signOut } = useAuth();
+  const { pro, expiresAt, renews, refresh: refreshPro } = usePurchases();
   const {
     enabled: syncing,
     status,
@@ -273,6 +276,45 @@ export default function Settings() {
             </Card>
             <View style={styles.action}>
               <Button title="See plans" onPress={() => router.push('/plans')} variant="ghost" />
+            </View>
+          </View>
+        ) : null}
+
+        {/* Only for people who already pay. Management is a fact-checking
+            action — what am I on, when does it end, how do I stop — which is
+            what this screen is for; the selling stays on /plans. Someone who
+            has never subscribed sees nothing here at all. */}
+        {pro ? (
+          <View style={styles.section}>
+            <Label>Kosmiq Pro</Label>
+            <Card>
+              <Row
+                label="Status"
+                value="Active"
+                hint={expiresAt === null ? 'Does not expire' : renews ? 'Renews' : 'Will not renew'}
+              />
+              {expiresAt ? (
+                <Row
+                  label={renews ? 'Renews on' : 'Ends on'}
+                  value={expiresAt.toLocaleDateString('en-IN', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                  })}
+                />
+              ) : null}
+            </Card>
+            <View style={styles.action}>
+              {/* Cancel, change plan, restore and — on iOS — request a refund,
+                  all from RevenueCat's own sheet. Writing this screen by hand
+                  would mean two platforms' worth of deep links to get wrong,
+                  and Apple expects cancellation to be reachable from inside
+                  the app. */}
+              <Button
+                title="Manage subscription"
+                onPress={() => presentCustomerCenter(refreshPro)}
+                variant="ghost"
+              />
             </View>
           </View>
         ) : null}

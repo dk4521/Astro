@@ -14,6 +14,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AuthProvider } from '../src/auth/context';
 import { StarField } from '../src/components/StarField';
+import { PurchasesProvider } from '../src/purchases/context';
 import { SyncProvider } from '../src/sync/context';
 
 
@@ -28,20 +29,27 @@ export default function RootLayout() {
           {/* Inside AuthProvider because it mirrors whoever is signed in, and
               above the routes because `index` waits on its first pass. */}
           <SyncProvider>
-            {/* One field for the whole app, mounted above the navigator rather
-                than inside each screen. Per-screen instances would restart the
-                twinkle on every navigation — the sky would visibly blink — and
-                would pay for the animation as many times over as there are
-                screens on the stack. */}
-            <StarField />
-            <Stack
-              screenOptions={{
-                headerShown: false,
-                // Transparent, so the field above shows through every route.
-                contentStyle: { backgroundColor: 'transparent' },
-                animation: 'fade',
-              }}
-            />
+            {/* Also inside AuthProvider, and for a sharper reason than Sync: it
+                calls `Purchases.logIn` with the Supabase user id, so it cannot
+                mount above the thing that knows the id. Above the routes
+                because a gate that mounts per-screen would reconfigure the SDK
+                on every navigation. */}
+            <PurchasesProvider>
+              {/* One field for the whole app, mounted above the navigator rather
+                  than inside each screen. Per-screen instances would restart the
+                  twinkle on every navigation — the sky would visibly blink — and
+                  would pay for the animation as many times over as there are
+                  screens on the stack. */}
+              <StarField />
+              <Stack
+                screenOptions={{
+                  headerShown: false,
+                  // Transparent, so the field above shows through every route.
+                  contentStyle: { backgroundColor: 'transparent' },
+                  animation: 'fade',
+                }}
+              />
+            </PurchasesProvider>
           </SyncProvider>
         </AuthProvider>
       </SafeAreaProvider>

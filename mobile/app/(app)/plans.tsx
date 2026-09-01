@@ -20,7 +20,7 @@
 
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ScreenHeader } from '../../src/components/ScreenHeader';
@@ -34,6 +34,10 @@ import {
   type BillingPlan,
   type Catalogue,
 } from '../../src/api/billing';
+import { PRO_ENTITLEMENT } from '../../src/purchases/config';
+import { usePurchases } from '../../src/purchases/context';
+import { restorePurchases } from '../../src/purchases/client';
+import { presentCustomerCenter, presentPaywall } from '../../src/purchases/paywall';
 import { colors, radius, space, type } from '../../src/theme';
 
 /** Enough to say what a month costs per message without a calculator. */
@@ -99,6 +103,163 @@ function PlanCard({
         />
       </View>
     </Card>
+  );
+}
+
+/**
+ * Kosmiq Pro, sold through the phone's own store.
+ *
+ * **Separate from the credits above, deliberately.** The two answer different
+ * questions — credits are what a message costs, Pro is a standing entitlement —
+ * and folding them into one list would mean explaining, on this screen, why one
+ * row is billed by Razorpay and the next by Apple. They are stacked instead, and
+ * each says what it is.
+ *
+ * **The prices are not here.** They are inside the paywall, which RevenueCat
+ * draws from the dashboard with the store's own localised strings. That is the
+ * point of presenting it rather than listing packages by hand: a price shown
+ * here would be this app's guess at what the store is about to charge, in a
+ * currency it had to pick, and it would be wrong for everyone travelling.
+ *
+ * **Restore is not optional.** App Review rejects builds that sell a
+ * subscription or a lifetime unlock without a visible way to get it back, and
+ * the requirement is a real one — a lifetime buyer on a new phone has no other
+ * route to what they paid for.
+ */
+function ProSection() {
+  const { available, ready, pro, expiresAt, renews, preview, sandbox, refresh } = usePurchases();
+
+  const [busy, setBusy] = useState<'paywall' | 'restore' | 'manage' | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+
+  const open = useCallback(async () => {
+    setBusy('paywall');
+    setError(null);
+    setNote(null);
+
+    const outcome = await presentPaywall();
+    // The entitlement reaches the provider through its customer info listener,
+    // so this refresh is belt and braces — but the listener can land a frame
+    // after the sheet closes, and this screen is the one being looked at.
+    await refresh();
+
+    if (outcome.status === 'entitled') {
+      setNote(outcome.restored ? 'Restored. Pro is active again.' : 'Pro is active. Thank you.');
+    } else if (outcome.status === 'error') {
+      setError(outcome.message);
+    }
+
+    setBusy(null);
+  }, [refresh]);
+
+  const restore = useCallback(async () => {
+    setBusy('restore');
+    setError(null);
+    setNote(null);
+
+    const outcome = await restorePurchases();
+    await refresh();
+
+    if (outcome.status === 'error') {
+      setError(outcome.message);
+    } else {
+      // A restore that finds nothing is a success that changed nothing, and
+      // saying "restored" would imply something arrived. The entitlement is
+      // read back rather than assumed.
+      const found = Boolean(outcome.customerInfo.entitlements.active[PRO_ENTITLEMENT]);
+      setNote(found ? 'Restored. Pro is active again.' : 'Nothing to restore on this account.');
+    }
+
+    setBusy(null);
+  }, [refresh]);
+
+  const manage = useCallback(async () => {
+    setBusy('manage');
+    await presentCustomerCenter(refresh);
+    setBusy(null);
+  }, [refresh]);
+
+  if (!available) return null;
+
+  return (
+    <View style={styles.section}>
+      <Label>Kosmiq Pro</Label>
+
+      <Card style={pro ? styles.cardCurrent : undefined}>
+        {!ready ? (
+          <Text style={styles.muted}>Checking your account…</Text>
+        ) : pro ? (
+          <>
+            <Text style={styles.planTitle}>Active</Text>
+            <Text style={styles.planSub}>
+              {expiresAt === null
+                ? 'Bought outright. It does not expire.'
+                : renews
+                  ? `Renews on ${expiresAt.toLocaleDateString('en-IN', {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                    })}.`
+                  : `Ends on ${expiresAt.toLocaleDateString('en-IN', {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                    })}. It will not renew.`}
+            </Text>
+            <View style={styles.action}>
+              <Button
+                title={busy === 'manage' ? 'Opening…' : 'Manage subscription'}
+                onPress={manage}
+                disabled={busy !== null}
+                loading={busy === 'manage'}
+                variant="ghost"
+              />
+            </View>
+          </>
+        ) : (
+          <>
+            <Text style={styles.planTitle}>Monthly, yearly or once</Text>
+            <Text style={styles.planSub}>
+              Billed by {Platform.OS === 'ios' ? 'the App Store' : 'Google Play'}, so it works
+              without an account here and follows your store login to a new phone.
+            </Text>
+            <View style={styles.action}>
+              <Button
+                title={busy === 'paywall' ? 'Opening…' : 'See plans'}
+                onPress={open}
+                disabled={busy !== null}
+                loading={busy === 'paywall'}
+              />
+            </View>
+            <View style={styles.action}>
+              <Button
+                title={busy === 'restore' ? 'Restoring…' : 'Restore purchases'}
+                onPress={restore}
+                disabled={busy !== null}
+                loading={busy === 'restore'}
+                variant="ghost"
+              />
+            </View>
+          </>
+        )}
+      </Card>
+
+      {error ? <ErrorNote message={error} /> : null}
+      {note ? <Text style={styles.note}>{note}</Text> : null}
+
+      {/* Development only, and worth the space: in Expo Go the paywall draws
+          from mocks and in the Test Store a purchase costs nothing, so an
+          active entitlement on this screen is not evidence that billing works.
+          Someone has to be told that, or it gets shipped. */}
+      {preview || sandbox ? (
+        <Text style={styles.fine}>
+          {preview
+            ? 'Expo Go: paywalls are drawn from mock data and nothing can be charged. Use a development build to test a real purchase.'
+            : 'Test Store: purchases here are simulated and grant Pro without charging.'}
+        </Text>
+      ) : null}
+    </View>
   );
 }
 
@@ -208,6 +369,10 @@ export default function Plans() {
             </Card>
           </View>
         ) : null}
+
+        {/* Above the credit packs: it is the standing plan, and the store bills
+            it whether or not this deployment has Razorpay keys at all. */}
+        <ProSection />
 
         {error ? <ErrorNote message={error} /> : null}
         {note ? <Text style={styles.note}>{note}</Text> : null}
