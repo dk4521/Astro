@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Kosmiq",
-    "slug": "kosmiq",
+    "name": "Enuma Sky",
+    "slug": "enumasky",
     "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "scheme": "kosmiq",
+    "scheme": "enumasky",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
@@ -15,10 +15,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.kosmiq.app"
+      "bundleIdentifier": "com.enumasky.app"
     },
     "android": {
-      "package": "com.kosmiq.app",
+      "package": "com.enumasky.app",
       "adaptiveIcon": {
         "backgroundColor": "#0B0A14",
         "foregroundImage": "./assets/android-icon-foreground.png",

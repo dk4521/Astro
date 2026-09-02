@@ -19,7 +19,7 @@
  * backend and appears nowhere in this app.
  *
  * **Entitlement, not product.** Every gate in this app asks one question —
- * is `kosmiq_pro` active — and never which SKU paid for it. That is the whole
+ * is `enuma_sky_pro` active — and never which SKU paid for it. That is the whole
  * point of an entitlement: the three products below can be renamed, re-priced,
  * regionalised or replaced from the dashboard without a release, because no
  * screen names them.
@@ -34,7 +34,7 @@ import { Platform } from 'react-native';
  * a monthly subscriber, a yearly subscriber and someone who bought lifetime all
  * arrive here identically.
  */
-export const PRO_ENTITLEMENT = 'kosmiq_pro';
+export const PRO_ENTITLEMENT = 'enuma_sky_pro';
 
 /**
  * The offering the paywall loads by default.
@@ -64,7 +64,7 @@ export const DEFAULT_OFFERING: string | null = null;
  *
  * Adding one here changes nothing on its own. The offering in the RevenueCat
  * dashboard decides what the paywall shows, and the entitlement decides what
- * the app unlocks — which is why every gate asks about `kosmiq_pro` and no
+ * the app unlocks — which is why every gate asks about `enuma_sky_pro` and no
  * screen names a product.
  */
 export const PRODUCTS = {
@@ -136,7 +136,7 @@ export const REVENUECAT_NOT_CONFIGURED = REVENUECAT_API_KEY === null;
  * True when this build is pointed at the sandbox rather than a real store.
  *
  * Worth surfacing in development UI: a purchase made here costs nothing and
- * grants `kosmiq_pro` anyway, and someone testing needs to know that the
+ * grants `enuma_sky_pro` anyway, and someone testing needs to know that the
  * entitlement they are looking at is not evidence that billing works.
  */
 export const USING_TEST_STORE = REVENUECAT_API_KEY?.startsWith('test_') ?? false;

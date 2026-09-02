@@ -230,7 +230,7 @@ const EN: Strings = {
   determinismNote:
     'Every value above is arithmetic from your birth moment. Same input, same output, always.',
 
-  proNeeded: 'This part needs Kosmiq Pro',
+  proNeeded: 'This part needs Enuma Sky Pro',
   proNeededWhy:
     'Pro covers every reading and every question, with no daily count to watch. Weekly, monthly or yearly \u2014 cancel whenever you like.',
   proNeededFree:
@@ -387,7 +387,7 @@ const HI: Strings = {
   determinismNote:
     'ऊपर का हर मान आपके जन्म-क्षण से निकला गणित है। वही जानकारी, वही परिणाम, हर बार।',
 
-  proNeeded: 'इसके लिए Kosmiq Pro चाहिए',
+  proNeeded: 'इसके लिए Enuma Sky Pro चाहिए',
   proNeededWhy:
     'Pro में हर पाठ और हर सवाल शामिल है, गिनती रखने की ज़रूरत नहीं। साप्ताहिक, मासिक या वार्षिक — जब चाहें बंद कर दीजिए।',
   proNeededFree:
@@ -524,16 +524,37 @@ export function clockTime(
   iso: string | null,
   language: DisplayLanguage,
   absent: string,
+  timeZone?: string,
 ): string {
   if (!iso) return absent;
+
   // 24-hour, deliberately. Hermes on Android has no Hindi am/pm, so a 12-hour
   // clock printed "6:36 am" in Latin inside an otherwise Devanagari card — and
   // an almanac is a table of times, where 17:19 is what belongs anyway.
-  return new Date(iso).toLocaleTimeString(localeFor(language), {
+  const clock: Intl.DateTimeFormatOptions = {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
-  });
+  };
+
+  // The zone is the *place's*, not the phone's. These instants are sunrise and
+  // sunset at a set of coordinates, and the device's own zone is only the same
+  // one while the reader is standing there. Someone in Toronto reading a chart
+  // cast for Patna was shown a sunrise ten and a half hours out — a number this
+  // app computed exactly and then printed against the wrong clock.
+  //
+  // Guarded because the zone comes off the wire and `Intl` throws on one it
+  // does not know; the device's clock is a worse answer than the right one and
+  // a better one than a blank screen.
+  if (timeZone) {
+    try {
+      return new Date(iso).toLocaleTimeString(localeFor(language), { ...clock, timeZone });
+    } catch {
+      // Falls through to the device's zone.
+    }
+  }
+
+  return new Date(iso).toLocaleTimeString(localeFor(language), clock);
 }
 
 /**
@@ -552,8 +573,12 @@ export function riseSet(
   set: string | null,
   language: DisplayLanguage,
   absent: string,
+  timeZone?: string,
 ): string {
-  return `${clockTime(rise, language, absent)}  ·  ${clockTime(set, language, absent)}`;
+  return (
+    `${clockTime(rise, language, absent, timeZone)}` +
+    `  ·  ${clockTime(set, language, absent, timeZone)}`
+  );
 }
 
 /**

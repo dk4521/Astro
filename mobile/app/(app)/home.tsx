@@ -84,6 +84,23 @@ const LAYOUT: { key: HubKey; span: 'full' | 'half' }[] = [
 type Lagna = { en: string; hi: string };
 type Progress = { done: number; total: number };
 
+/**
+ * Today, on the device's own calendar.
+ *
+ * Not `toISOString()`, which is the day in UTC: east of Greenwich that turns
+ * over in the middle of the night, so an Indian reader opening the app before
+ * half past five in the morning was handed the panchang cached the previous
+ * evening — yesterday's sunrise, yesterday's tithi. `/v1/today` computes the
+ * panchang for *now* at the reader's place, and this key has to change when
+ * their day does, not when Greenwich's does.
+ */
+function localDay(): string {
+  const now = new Date();
+  const month = `${now.getMonth() + 1}`.padStart(2, '0');
+  const day = `${now.getDate()}`.padStart(2, '0');
+  return `${now.getFullYear()}-${month}-${day}`;
+}
+
 export default function Home() {
   const router = useRouter();
 
@@ -179,10 +196,14 @@ export default function Home() {
         try {
           // One level of dasha: the card wants a rashi, not a whole reading.
           const reading = await fetchReading(birth, 1);
-          if (cancelled) return;
           const next = { en: reading.chart.lagna.rashi, hi: reading.chart.lagna.rashi_hi };
+          // Cached before the cancelled check, not after. Leaving the screen
+          // while this was in flight used to throw the answer away with the
+          // ref above still marking the chart as fetched, so nothing asked
+          // again for the rest of the session and the card kept its blurb.
+          await writeCache(key, next);
+          if (cancelled) return;
           setLagna(next);
-          void writeCache(key, next);
         } catch {
           // Deliberately quiet, and deliberately retryable. The blurb underneath
           // is a whole sentence on its own; a card on the home screen is not the
@@ -195,11 +216,11 @@ export default function Home() {
         const birth = await loadBirthDetails();
         if (!birth || cancelled) return;
 
-        // The day, on the boundary the backend itself uses. Sunrise and sunset
-        // are the same all day and the tithi is not, which is why this is the
-        // one cache in the app whose key carries a date: it must be right on a
-        // relaunch at breakfast and gone by the next morning.
-        const day = new Date().toISOString().slice(0, 10);
+        // The day, on the reader's own calendar. Sunrise and sunset are the
+        // same all day and the tithi is not, which is why this is the one cache
+        // in the app whose key carries a date: it must be right on a relaunch
+        // at breakfast and gone by the next morning.
+        const day = localDay();
         const family = `${HOME_NAMESPACE}today.${birthKey(birth)}.`;
         const key = `${family}${day}.v1`;
 
@@ -210,11 +231,13 @@ export default function Home() {
         panchangFor.current = key;
         try {
           const fresh = await fetchToday(birth);
-          if (cancelled) return;
-          setToday(fresh);
+          // Stored whether or not this screen is still listening, for the same
+          // reason as the lagna above: the request is not made twice.
           await writeCache(key, fresh);
           // Yesterday's entry can never be asked for again.
           await pruneNamespace(family, key);
+          if (cancelled) return;
+          setToday(fresh);
         } catch {
           panchangFor.current = null;
         }
@@ -331,6 +354,7 @@ export default function Home() {
                           today.panchang.sunset,
                           language ?? 'en',
                           t.absent,
+                          today.timezone,
                         )}
                       </Text>
                     </View>
@@ -342,6 +366,7 @@ export default function Home() {
                           today.panchang.moonset,
                           language ?? 'en',
                           t.absent,
+                          today.timezone,
                         )}
                       </Text>
                     </View>

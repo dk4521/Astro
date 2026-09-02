@@ -323,11 +323,23 @@ export default function Today() {
                 />
                 <Row
                   label={t.sunriseSet}
-                  value={riseSet(data.panchang.sunrise, data.panchang.sunset, language ?? 'en', t.absent)}
+                  value={riseSet(
+                    data.panchang.sunrise,
+                    data.panchang.sunset,
+                    language ?? 'en',
+                    t.absent,
+                    data.timezone,
+                  )}
                 />
                 <Row
                   label={t.moonriseSet}
-                  value={riseSet(data.panchang.moonrise, data.panchang.moonset, language ?? 'en', t.absent)}
+                  value={riseSet(
+                    data.panchang.moonrise,
+                    data.panchang.moonset,
+                    language ?? 'en',
+                    t.absent,
+                    data.timezone,
+                  )}
                 />
               </Card>
               <Text style={styles.caption}>

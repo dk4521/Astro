@@ -139,7 +139,7 @@ export default function Onboarding() {
         ]}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.kicker}>Kosmiq</Text>
+        <Text style={styles.kicker}>Enuma Sky</Text>
         <Text style={styles.title}>Your birth chart{'\n'}starts with three facts.</Text>
 
         {/* Not one of the three, and deliberately first anyway: it is the only

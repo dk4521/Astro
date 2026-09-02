@@ -7,7 +7,7 @@ one message at a time. It is gone, along with `app.billing`, `credit_lots`,
 the whole paywall optional (the same `request_id` twice was charged once, so
 the same `request_id` forever was charged once ever).
 
-What is left is a single question: **is `kosmiq_pro` active on this account.**
+What is left is a single question: **is `enuma_sky_pro` active on this account.**
 Nothing is metered, nothing expires at midnight, and there is no number for a
 modified client to argue with.
 
@@ -53,7 +53,7 @@ from fastapi import Depends, HTTPException
 
 from . import auth, config  # noqa: F401  — config loads .env before os.environ
 
-log = logging.getLogger("kosmiq.entitlements")
+log = logging.getLogger("enumasky.entitlements")
 
 API = "https://api.revenuecat.com/v1"
 
@@ -66,7 +66,7 @@ SECRET_KEY = os.environ.get("REVENUECAT_SECRET_KEY", "").strip()
 #: `mobile/src/purchases/config.ts` as `PRO_ENTITLEMENT` — two copies of a
 #: string, and the only thing keeping them together is this comment and the one
 #: there. Configurable so a rename can be rolled out without a release.
-ENTITLEMENT = os.environ.get("REVENUECAT_ENTITLEMENT", "kosmiq_pro").strip() or "kosmiq_pro"
+ENTITLEMENT = os.environ.get("REVENUECAT_ENTITLEMENT", "enuma_sky_pro").strip() or "enuma_sky_pro"
 
 TIMEOUT = httpx.Timeout(8.0, connect=4.0)
 
@@ -249,7 +249,7 @@ def require_pro(account: auth.Account | None = Depends(auth.optional_user)) -> a
     if not entitlement_of(account.id).active:
         raise HTTPException(
             status_code=402,
-            detail="Kosmiq Pro is needed for this. Start a plan to continue.",
+            detail="Enuma Sky Pro is needed for this. Start a plan to continue.",
         )
 
     return account

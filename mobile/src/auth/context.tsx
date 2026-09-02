@@ -27,6 +27,15 @@ type AuthState = {
   signIn: (email: string, password: string) => Promise<string | null>;
   signUp: (email: string, password: string) => Promise<{ error: string | null; needsConfirmation: boolean }>;
   signOut: () => Promise<void>;
+  /**
+   * Delete the account and everything the account holds. Null on success.
+   *
+   * Not undoable, and not a sign-out: the row is gone, so the session it
+   * belonged to is gone with it. The phone's own copy is the caller's to clear
+   * — see `clearDeviceData` — because this provider knows about accounts and
+   * nothing about what the app stores.
+   */
+  deleteAccount: () => Promise<string | null>;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -92,6 +101,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       async signOut() {
         await supabase?.auth.signOut();
+      },
+
+      async deleteAccount() {
+        if (!supabase) return 'Accounts are not configured in this build.';
+
+        // A `security definer` function in the project rather than an admin
+        // call from a server: `auth.users` is not reachable through PostgREST,
+        // and the service-role key that could reach it opens every other
+        // account's rows too. See `supabase/schema.sql`.
+        const { error } = await supabase.rpc('delete_own_account');
+        if (error) {
+          // The one failure worth naming, because it is a deployment mistake
+          // rather than anything the reader did: the project has not had
+          // `migrations/2026-09-02-account-deletion.sql` run against it.
+          if (error.code === 'PGRST202') {
+            return 'This build cannot delete accounts yet. Please write to us instead.';
+          }
+          return authErrorMessage(error);
+        }
+
+        // The session is already dead upstream; this drops the stored copy so
+        // the app is not holding a token for an account that no longer exists.
+        await supabase.auth.signOut();
+        return null;
       },
     }),
     [ready, session],

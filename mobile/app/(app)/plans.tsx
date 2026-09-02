@@ -1,5 +1,5 @@
 /**
- * Kosmiq Pro.
+ * Enuma Sky Pro.
  *
  * **Not a paywall, a price list.** Nothing on this screen is urgent, nothing
  * counts down, and nothing implies that the reader is missing out. The
@@ -179,7 +179,7 @@ function ProSection() {
 
   return (
     <View style={styles.section}>
-      <Label>Kosmiq Pro</Label>
+      <Label>Enuma Sky Pro</Label>
 
       <Card style={pro ? styles.cardCurrent : undefined}>
         {!ready ? (

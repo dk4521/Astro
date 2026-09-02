@@ -313,11 +313,23 @@ export default function ChartScreen() {
                 />
                 <Row
                   label={t.sunriseSet}
-                  value={riseSet(reading.panchang.sunrise, reading.panchang.sunset, language, t.absent)}
+                  value={riseSet(
+                    reading.panchang.sunrise,
+                    reading.panchang.sunset,
+                    language,
+                    t.absent,
+                    reading.chart.meta.timezone,
+                  )}
                 />
                 <Row
                   label={t.moonriseSet}
-                  value={riseSet(reading.panchang.moonrise, reading.panchang.moonset, language, t.absent)}
+                  value={riseSet(
+                    reading.panchang.moonrise,
+                    reading.panchang.moonset,
+                    language,
+                    t.absent,
+                    reading.chart.meta.timezone,
+                  )}
                 />
             </Card>
           </View>

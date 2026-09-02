@@ -91,7 +91,7 @@ export async function presentPaywall(): Promise<PaywallOutcome> {
 }
 
 /**
- * Show the paywall only if `kosmiq_pro` is not already active.
+ * Show the paywall only if `enuma_sky_pro` is not already active.
  *
  * The gate. The entitlement check happens inside the SDK against freshly
  * fetched customer info, so this is also the safest thing to call from a screen

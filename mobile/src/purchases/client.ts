@@ -144,7 +144,7 @@ export async function identify(userId: string | null): Promise<CustomerInfo | nu
   }
 }
 
-/** Whether `kosmiq_pro` is active on this customer. The only gate in the app. */
+/** Whether `enuma_sky_pro` is active on this customer. The only gate in the app. */
 export function isPro(info: CustomerInfo | null): boolean {
   return Boolean(info?.entitlements.active[PRO_ENTITLEMENT]);
 }

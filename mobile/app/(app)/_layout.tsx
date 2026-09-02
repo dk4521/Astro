@@ -113,7 +113,7 @@ function Sidebar() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.brand}>KOSMIQ</Text>
+        <Text style={styles.brand}>ENUMA SKY</Text>
 
         <View style={styles.items}>
           {ITEMS.filter((item) => !item.accountOnly || user).map((item) => {

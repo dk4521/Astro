@@ -117,8 +117,8 @@ def test_no_card_is_described_as_a_warning():
 
 
 def test_the_same_seed_deals_the_same_hand():
-    first = spread.draw("kosmiq-test")
-    second = spread.draw("kosmiq-test")
+    first = spread.draw("enumasky-test")
+    second = spread.draw("enumasky-test")
     assert first == second
 
 

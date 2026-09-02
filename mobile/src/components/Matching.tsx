@@ -17,7 +17,7 @@
  * computes the koots — someone else's birth time is not ours to keep.
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { fetchMatch, searchPlaces } from '../api/client';
@@ -51,22 +51,50 @@ export function Matching({
   const isoTime = toIsoTime(time);
   const ready = isoDate !== null && isoTime !== null && place !== null;
 
-  const search = useCallback(async (query: string) => {
+  /** Typing only edits the field; the search itself is the effect below. */
+  const search = useCallback((query: string) => {
     setPlaceQuery(query);
     setPlace(null);
-    if (query.trim().length < 2) {
+  }, []);
+
+  // Debounced and sequenced, the same way `onboarding.tsx` does it, and for the
+  // same two reasons. A request per keystroke put nine of them on the wire for
+  // "Ahmedabad", and without the counter the answer to "Ahm" could land after
+  // the answer to the whole word and put its own cities back on screen — a list
+  // the reader then picks somebody's birth place out of.
+  const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const requestId = useRef(0);
+
+  useEffect(() => {
+    // A chosen place is not a query: the field holds its name now.
+    if (place) return;
+
+    if (debounce.current) clearTimeout(debounce.current);
+
+    const query = placeQuery.trim();
+    if (query.length < 2) {
       setResults([]);
+      setSearching(false);
       return;
     }
+
     setSearching(true);
-    try {
-      setResults(await searchPlaces(query, 6));
-    } catch {
-      setResults([]);
-    } finally {
-      setSearching(false);
-    }
-  }, []);
+    debounce.current = setTimeout(async () => {
+      const id = ++requestId.current;
+      try {
+        const found = await searchPlaces(query, 6);
+        if (id === requestId.current) setResults(found);
+      } catch {
+        if (id === requestId.current) setResults([]);
+      } finally {
+        if (id === requestId.current) setSearching(false);
+      }
+    }, 250);
+
+    return () => {
+      if (debounce.current) clearTimeout(debounce.current);
+    };
+  }, [placeQuery, place]);
 
   const run = useCallback(async () => {
     if (!ready || !place || !isoDate || !isoTime) return;

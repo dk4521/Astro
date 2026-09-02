@@ -12,7 +12,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import type { BirthDetails } from './types';
 
-const KEY = 'kosmiq.birthDetails.v1';
+const KEY = 'enumasky.birthDetails.v1';
 
 /**
  * When the details below were last written, as epoch milliseconds.
@@ -25,7 +25,7 @@ const KEY = 'kosmiq.birthDetails.v1';
  * disagree. Two devices editing the same birth time is rare but not impossible,
  * and "whichever device signed in last" is the wrong answer to that.
  */
-const SAVED_AT_KEY = 'kosmiq.birthDetails.savedAt.v1';
+const SAVED_AT_KEY = 'enumasky.birthDetails.savedAt.v1';
 
 export async function saveBirthDetails(details: BirthDetails): Promise<void> {
   await AsyncStorage.multiSet([
@@ -92,7 +92,7 @@ export async function clearBirthDetails(): Promise<void> {
 // mirrored to Supabase and merged as a union, so two devices reading different
 // chapters add up instead of overwriting each other.
 
-const PROGRESS_KEY = 'kosmiq.learn.progress.v1';
+const PROGRESS_KEY = 'enumasky.learn.progress.v1';
 
 export async function loadProgress(): Promise<string[]> {
   const raw = await AsyncStorage.getItem(PROGRESS_KEY);
@@ -127,7 +127,7 @@ export async function clearProgress(): Promise<void> {
 
 // --- Accounts --------------------------------------------------------------
 
-const SEEN_ACCOUNTS_KEY = 'kosmiq.seenAccounts.v1';
+const SEEN_ACCOUNTS_KEY = 'enumasky.seenAccounts.v1';
 
 /**
  * Whether the account screen has been shown once.
@@ -145,7 +145,7 @@ export async function markAccountsSeen(): Promise<void> {
 
 // --- Name -------------------------------------------------------------------
 
-const NAME_KEY = 'kosmiq.name.v1';
+const NAME_KEY = 'enumasky.name.v1';
 
 /**
  * What to call the reader. Empty until they say.
@@ -167,7 +167,7 @@ export async function saveName(name: string): Promise<void> {
 
 // --- Chat companion --------------------------------------------------------
 
-const PERSONA_KEY = 'kosmiq.persona.v1';
+const PERSONA_KEY = 'enumasky.persona.v1';
 
 /** Who the chat is with. Null until someone has been picked. */
 export async function loadPersona(): Promise<string | null> {
@@ -180,7 +180,7 @@ export async function savePersona(id: string): Promise<void> {
 
 // --- Display language -------------------------------------------------------
 
-const LANGUAGE_KEY = 'kosmiq.displayLanguage.v1';
+const LANGUAGE_KEY = 'enumasky.displayLanguage.v1';
 
 /**
  * Hindi or English for the screens that show computed values.
@@ -197,6 +197,29 @@ export async function saveDisplayLanguage(language: 'en' | 'hi'): Promise<void> 
   await AsyncStorage.setItem(LANGUAGE_KEY, language);
 }
 
+// --- Deleting everything ----------------------------------------------------
+
+/**
+ * Every key this app has ever written on this phone.
+ *
+ * For one caller: deleting the account. Signing out deliberately leaves the
+ * birth details behind — it is not a request to be forgotten, and typing a
+ * birth time back in is the last thing someone signing out expects. Deleting
+ * the account is that request, and leaving the mirror of a deleted account
+ * sitting on the phone would make the promise a half-truth.
+ *
+ * By prefix rather than `AsyncStorage.clear()`, which would also take anything
+ * a library keeps beside us — the Supabase session on web, where there is no
+ * keychain to hold it, is exactly that.
+ */
+export async function clearDeviceData(): Promise<void> {
+  const keys = await AsyncStorage.getAllKeys();
+  // The one prefix every key above shares; `api/cache.ts` names the cache
+  // families under it, and `api/migrate.ts` is why it is not `kosmiq.` any more.
+  const ours = keys.filter((key) => key.startsWith('enumasky.'));
+  if (ours.length > 0) await AsyncStorage.multiRemove(ours);
+}
+
 // --- Remote row ids --------------------------------------------------------
 //
 // Which rows in the account this device is mirroring into. Cached so an ordinary
@@ -207,7 +230,7 @@ export async function saveDisplayLanguage(language: 'en' | 'hi'): Promise<void> 
 // conversation stays with the old chart rather than following the new one into a
 // reading it was never about.
 
-const IDS_KEY = 'kosmiq.sync.ids.v1';
+const IDS_KEY = 'enumasky.sync.ids.v1';
 
 export type SyncIds = {
   chartId: string | null;

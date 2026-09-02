@@ -89,7 +89,7 @@ export function AuthForm({
           </View>
         ) : null}
 
-        <Text style={styles.kicker}>Kosmiq</Text>
+        <Text style={styles.kicker}>Enuma Sky</Text>
         <Text style={styles.title}>{title}</Text>
         {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
 

@@ -95,7 +95,7 @@ def _subscriber_body(expires: str | None) -> dict:
     return {
         "subscriber": {
             "entitlements": {
-                "kosmiq_pro": {
+                "enuma_sky_pro": {
                     "expires_date": expires,
                     "product_identifier": "monthly",
                 }

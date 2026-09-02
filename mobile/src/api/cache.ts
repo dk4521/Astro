@@ -9,7 +9,7 @@
  * a server-side cache cannot: it survives cold starts, redeploys and a backend
  * that spun down overnight.
  *
- * Everything is namespaced under `kosmiq.` so a whole family can be dropped at
+ * Everything is namespaced under `enumasky.` so a whole family can be dropped at
  * once when the chart it was computed for changes.
  */
 
@@ -18,13 +18,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { BirthDetails } from './types';
 
 /** Chapters and the course index. */
-export const COURSE_NAMESPACE = 'kosmiq.course.';
+export const COURSE_NAMESPACE = 'enumasky.course.';
 
 /** Generated readings. */
-export const READING_NAMESPACE = 'kosmiq.reading.';
+export const READING_NAMESPACE = 'enumasky.reading.';
 
 /** The home screen's daily line. */
-export const TIP_NAMESPACE = 'kosmiq.tip.';
+export const TIP_NAMESPACE = 'enumasky.tip.';
 
 /**
  * The one line the home screen borrows from the chart.
@@ -34,7 +34,7 @@ export const TIP_NAMESPACE = 'kosmiq.tip.';
  * something true. Kept here so the second launch onward reads it from disk, and
  * so it works on a train.
  */
-export const HOME_NAMESPACE = 'kosmiq.home.';
+export const HOME_NAMESPACE = 'enumasky.home.';
 
 /**
  * The current spread and whatever reading was paid for on it.
@@ -43,7 +43,7 @@ export const HOME_NAMESPACE = 'kosmiq.home.';
  * the birth details and does not go stale when they change. It is the one thing
  * the app keeps that belongs to the moment rather than to the nativity.
  */
-export const TAROT_NAMESPACE = 'kosmiq.tarot.';
+export const TAROT_NAMESPACE = 'enumasky.tarot.';
 
 /**
  * Enough of the birth details to notice a different chart, and nothing more.

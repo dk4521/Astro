@@ -1,7 +1,15 @@
-# Kosmiq
+# Enuma Sky
 
-AI-powered Vedic astrology app. Mobile-first (React Native + Expo), Python backend,
-Postgres/Supabase for user data.
+AI-powered Vedic astrology app built to take astrology back from fear and
+fatalism. Mobile-first (React Native + Expo), Python backend, Postgres/Supabase
+for user data.
+
+**The mission:** to end the fear this trade runs on. People have been sold
+"flawed charts", doshas to be cured, and a future already written. Enuma Sky
+starts from the opposite position: no chart is wrong, no planet decides or
+reveals anyone's future, and astrology is worth having as a lens for reflection
+and nerve — not as a verdict. The tagline is the whole product in three words:
+**astrology without fear.**
 
 The product bet, from [app.md](app.md): **the AI is a translator, never an oracle.**
 Every number — planetary positions, nakshatras, dashas, panchang — comes from
@@ -24,7 +32,7 @@ structurally impossible rather than merely unlikely.
 | Accounts | Email sign-in/sign-up, optional |
 | Sync | Chart, course progress and chat history mirrored to Supabase; checked end to end against a live project |
 | Caching | Two layers, device and server; measured 14.0s → 0.075s on a live repeat |
-| Subscriptions | Kosmiq Pro, sold by the App Store and Google Play through RevenueCat; enforced server-side against RevenueCat's API. Unit-tested. **Not yet run against a live store account** |
+| Subscriptions | Enuma Sky Pro, sold by the App Store and Google Play through RevenueCat; enforced server-side against RevenueCat's API. Unit-tested. **Not yet run against a live store account** |
 | Rate limiting | Per-account on everything that calls a model, per-address on everything else. In-process, so it multiplies across instances |
 
 ## Layout
@@ -507,7 +515,7 @@ in `test_tarot.py` makes that a loud decision rather than a quiet diff.
 
 ## Subscriptions
 
-Kosmiq Pro, one entitlement, sold by the App Store and Google Play through
+Enuma Sky Pro, one entitlement, sold by the App Store and Google Play through
 RevenueCat. The split is by feature, not by count:
 
 | Free, and needs no account | Pro |
@@ -613,6 +621,16 @@ Two decisions worth keeping:
   because a backend nobody has set up yet is missing is worse than one that
   quietly works offline.
 
+**Deleting an account is the account's own to do.** Settings → *Delete account*
+calls `delete_own_account()`, a `security definer` function in the project, and
+every table cascades off the `auth.users` row it removes; the phone's copy is
+cleared straight afterwards by `clearDeviceData()`. Both stores require an app
+with accounts to offer this from inside the app, and an email address to write
+to does not satisfy it. The route deliberately avoids the obvious alternative —
+a backend endpoint holding the service-role key — because that key reads and
+writes every account's rows, which is a large permission to keep standing so
+that one button can work.
+
 RLS is not a later hardening step here. The anon key ships inside the app and is
 public by design; without those policies the tables are an open API over
 everyone's birth details — a date, a minute and a place is enough to identify
@@ -703,7 +721,7 @@ Before the first store build: turn Supabase email confirmation back on
    checked against paid Gemini pricing.
 4. **Run the store path end to end.** RevenueCat is wired on both sides but has
    never seen a live store account: products in App Store Connect and Play
-   Console, mapped to the `kosmiq_pro` entitlement, a sandbox purchase, and a
+   Console, mapped to the `enuma_sky_pro` entitlement, a sandbox purchase, and a
    check that `/v1/billing/status` agrees with the device afterwards.
 5. Replace the bundled city list with a real geocoder if coverage becomes a problem.
 6. Divisional charts beyond D9 (D10 and friends need per-sign starting rules that

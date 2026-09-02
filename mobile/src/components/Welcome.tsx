@@ -564,12 +564,18 @@ function Galaxy({
  * the warm it uses for the Sun. Cold to warm across the name of a sky app.
  */
 const BRAND = [
-  { char: 'K', colour: '#9C8CFF' },
-  { char: 'O', colour: '#B097FB' },
-  { char: 'S', colour: '#CBA3F0' },
-  { char: 'M', colour: '#E6AFCE' },
-  { char: 'I', colour: '#F2C08F' },
-  { char: 'Q', colour: '#F5D27A' },
+  { char: 'E', colour: '#9C8CFF' },
+  { char: 'N', colour: '#A892FC' },
+  { char: 'U', colour: '#B398F9' },
+  { char: 'M', colour: '#BF9EF4' },
+  { char: 'A', colour: '#CBA3F0' },
+  // The word break, and a letter node like every other one so the two rows
+  // stay the same shape. Letter spacing alone puts no more air here than it
+  // does between two letters, so the gap carries the rest.
+  { char: ' ', colour: '#D8A9DF', gap: true },
+  { char: 'S', colour: '#E6AFCE' },
+  { char: 'K', colour: '#F0BE96' },
+  { char: 'Y', colour: '#F5D27A' },
 ];
 
 function Brand() {
@@ -591,16 +597,20 @@ function Brand() {
           shadows give the tube; this gives the haze around it, which is the
           half people read as neon.
 
-          It has to be the *same shape* — six Texts in a row — and not one Text
-          reading "KOSMIQ". Tracking is not applied identically to a string of
-          six glyphs and to six strings of one, so the single Text came out
-          wider and hung a ghost K off the left of the word and a ghost Q off
+          It has to be the *same shape* — one Text per glyph — and not one Text
+          reading "ENUMA SKY". Tracking is not applied identically to a string of
+          glyphs and to a row of one-glyph strings, so the single Text came out
+          wider and hung a ghost E off the left of the word and a ghost Y off
           the right. Two rows built the same way cannot disagree. */}
       <View style={[styles.brandRow, styles.brandBloomRow]} pointerEvents="none">
         {BRAND.map((letter, index) => (
           <Text
             key={index}
-            style={[styles.brandBloomLetter, { color: letter.colour, textShadowColor: letter.colour }]}
+            style={[
+              styles.brandBloomLetter,
+              letter.gap ? styles.brandGap : null,
+              { color: letter.colour, textShadowColor: letter.colour },
+            ]}
           >
             {letter.char}
           </Text>
@@ -612,6 +622,7 @@ function Brand() {
             key={index}
             char={letter.char}
             colour={letter.colour}
+            gap={Boolean(letter.gap)}
             at={index / (BRAND.length - 1)}
             sweep={sweep}
           />
@@ -624,11 +635,14 @@ function Brand() {
 function BrandLetter({
   char,
   colour,
+  gap,
   at,
   sweep,
 }: {
   char: string;
   colour: string;
+  /** True for the space between the two words, which carries extra air. */
+  gap: boolean;
   /** Where this letter sits along the word, 0 to 1. */
   at: number;
   sweep: SharedValue<number>;
@@ -645,7 +659,14 @@ function BrandLetter({
   });
 
   return (
-    <Animated.Text style={[styles.brandLetter, { textShadowColor: alpha(colour, 0.85) }, style]}>
+    <Animated.Text
+      style={[
+        styles.brandLetter,
+        gap ? styles.brandGap : null,
+        { textShadowColor: alpha(colour, 0.85) },
+        style,
+      ]}
+    >
       {char}
     </Animated.Text>
   );
@@ -836,6 +857,7 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 13,
   },
+  brandGap: { marginRight: 6 },
   brandBloomRow: { position: 'absolute', left: 0, right: 0, top: 0, justifyContent: 'center' },
   brandBloomLetter: {
     ...BRAND_TYPE,

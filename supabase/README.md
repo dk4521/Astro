@@ -19,6 +19,14 @@ only stops creating them; use
 to drop them, and read the warning at the top of it first, because it takes the
 Razorpay payment history with it.
 
+**Upgrading a project created before 2 September 2026?** It has no
+`delete_own_account()`, so Settings → *Delete account* answers `PGRST202` and
+the app cannot offer the deletion route both stores require. Run
+[migrations/2026-09-02-account-deletion.sql](migrations/2026-09-02-account-deletion.sql);
+it creates the function and destroys nothing. Then call it once from a signed-in
+test account and check the row is gone — on some projects `postgres` cannot
+write to `auth.users`, and the file's last line says what to do about that.
+
 **The whole file is re-runnable, including the policies** — each is dropped
 before it is created. Run it again whenever the schema changes; there is no
 separate migration to hunt for.

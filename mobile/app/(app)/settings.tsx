@@ -20,6 +20,7 @@ import { useSync } from '../../src/sync/context';
 import { clearChartCaches } from '../../src/api/cache';
 import {
   clearBirthDetails,
+  clearDeviceData,
   clearProgress,
   loadBirthDetails,
   loadName,
@@ -48,7 +49,7 @@ function sinceText(at: number | null): string {
 
 export default function Settings() {
   const router = useRouter();
-  const { available, user, signOut } = useAuth();
+  const { available, user, signOut, deleteAccount } = useAuth();
   const { pro, expiresAt, renews, refresh: refreshPro } = usePurchases();
   const {
     enabled: syncing,
@@ -59,6 +60,10 @@ export default function Settings() {
     pushProgressReset,
     clearChatHistory,
   } = useSync();
+  /** Set while the account is being deleted, and if that fails. */
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
   const [details, setDetails] = useState<BirthDetails | null>(null);
   const [readCount, setReadCount] = useState(0);
   const [name, setName] = useState('');
@@ -104,6 +109,48 @@ export default function Settings() {
       ],
     );
   }, [pushProgressReset]);
+
+  /**
+   * Delete the account, then the phone's copy of it.
+   *
+   * In that order, and not the other way round: a wipe that ran first would
+   * leave someone with an empty app and an account still standing if the
+   * request failed. The store's requirement is that this exists in the app at
+   * all — an email address to write to is not a route to deletion.
+   *
+   * Two taps, because there is no undo. The second one names what goes.
+   */
+  const removeAccount = useCallback(() => {
+    Alert.alert(
+      'Delete your account?',
+      'Your chart, course progress and every stored question and answer are '
+        + 'removed from your account, and this phone forgets them too. '
+        + 'This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setDeleting(true);
+            setDeleteError(null);
+
+            const failure = await deleteAccount();
+            if (failure) {
+              setDeleteError(failure);
+              setDeleting(false);
+              return;
+            }
+
+            await clearDeviceData();
+            // Nothing is left to show: the birth details this app is built
+            // around went with everything else.
+            router.replace('/onboarding');
+          },
+        },
+      ],
+    );
+  }, [deleteAccount, router]);
 
   const forgetChat = useCallback(() => {
     Alert.alert(
@@ -243,7 +290,7 @@ export default function Settings() {
             has never subscribed sees nothing here at all. */}
         {pro ? (
           <View style={styles.section}>
-            <Label>Kosmiq Pro</Label>
+            <Label>Enuma Sky Pro</Label>
             <Card>
               <Row
                 label="Status"
@@ -294,6 +341,32 @@ export default function Settings() {
             </Card>
             <View style={styles.action}>
               <Button title="Delete chat history" onPress={forgetChat} variant="ghost" />
+            </View>
+          </View>
+        ) : null}
+
+        {/* Last on the screen, and only for someone who has an account to
+            delete. A subscription is not cancelled by this — the store owns
+            that, and `Manage subscription` above is where it lives — so the
+            note says so rather than letting someone assume it. */}
+        {available && user ? (
+          <View style={styles.section}>
+            <Label>Delete account</Label>
+            <Card>
+              <Text style={styles.empty}>
+                Removes your account and everything in it, permanently. A
+                subscription is billed by the store and is cancelled there, not
+                here.
+              </Text>
+            </Card>
+            {deleteError ? <ErrorNote message={deleteError} /> : null}
+            <View style={styles.action}>
+              <Button
+                title={deleting ? 'Deleting…' : 'Delete account'}
+                onPress={removeAccount}
+                loading={deleting}
+                tone="signOut"
+              />
             </View>
           </View>
         ) : null}

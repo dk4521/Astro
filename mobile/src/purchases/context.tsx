@@ -2,7 +2,7 @@
  * Pro access, for the whole app.
  *
  * One provider, mounted once, holding one boolean that matters: is
- * `kosmiq_pro` active. Screens ask this provider rather than the SDK so that a
+ * `enuma_sky_pro` active. Screens ask this provider rather than the SDK so that a
  * gate is a hook call rather than an async round trip — a component that has to
  * `await getCustomerInfo()` before it knows what to draw renders the locked
  * state first and then flips, which reads as the app taking something away.
@@ -54,7 +54,7 @@ type PurchasesState = {
   available: boolean;
   /** True once the first customer info has been resolved, whatever the answer. */
   ready: boolean;
-  /** `kosmiq_pro` is active. The only question most callers should ask. */
+  /** `enuma_sky_pro` is active. The only question most callers should ask. */
   pro: boolean;
   /** When access ends. Null for lifetime — check `pro` before reading this. */
   expiresAt: Date | null;

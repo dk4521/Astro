@@ -195,10 +195,6 @@ export default function ReadingScreen() {
   const [language, setLanguage] = useState<Language>('hinglish');
   const t = chromeFor(language);
 
-  const [opening, setOpening] = useState<Message | null>(null);
-  // Starts false. The reading is not on its way until a companion is picked,
-  // and a spinner over the picker would claim otherwise.
-  const [openingLoading, setOpeningLoading] = useState(false);
   const [slow, setSlow] = useState(false);
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -209,12 +205,6 @@ export default function ReadingScreen() {
   const scroller = useRef<ScrollView>(null);
   const abort = useRef<AbortController | null>(null);
   const nextId = useRef(1);
-  // Switching language starts a second reading while the first is still in
-  // flight, and `/v1/interpret` has no cancellation. Without this the slower
-  // response wins whenever it happens to land last, so the screen can end up
-  // showing Hinglish under a selected हिंदी pill. Same guard the place search
-  // in `onboarding.tsx` uses.
-  const openingRequest = useRef(0);
   // Which chart's history has been read back. The sync context hands out a new
   // `loadChatHistory` whenever its status changes, and re-running the restore
   // would wipe whatever has been asked since.
@@ -274,6 +264,16 @@ export default function ReadingScreen() {
   const readWholeChart = useCallback(async () => {
     if (!details || sending) return;
 
+    // The same courtesy check `ask` makes, for the same reason: this button
+    // calls `/v1/interpret`, which is gated exactly as `/v1/chat` is. Without
+    // it the one tap most people make first answered a subscription prompt in
+    // a red error line instead of the panel written for it. No crisis check —
+    // the question is this app's own canned sentence, not the reader's.
+    if (purchasesAvailable && proReady && !pro) {
+      setBlocked({ crisis: false });
+      return;
+    }
+
     const askedId = nextId.current++;
     const answerId = nextId.current++;
     const asked = READ_ALL[language];
@@ -314,13 +314,22 @@ export default function ReadingScreen() {
         }, language, persona?.id ?? null);
     } catch (err) {
       setMessages((current) => current.filter((message) => message.id !== answerId));
-      setError(err instanceof Error ? err.message : 'Could not reach the interpreter');
+      // 402 and 401 are answers, not failures — the paywall panel and the
+      // sign-in line say what to do about them, and the server's own English
+      // detail string is not what either should look like on screen.
+      if (err instanceof ApiError && err.status === 402) {
+        setBlocked({ crisis: false });
+      } else if (err instanceof ApiError && err.status === 401) {
+        setError(t.signInToAsk);
+      } else {
+        setError(err instanceof Error ? err.message : 'Could not reach the interpreter');
+      }
     } finally {
       clearTimeout(slowTimer);
       setSlow(false);
       setSending(false);
     }
-  }, [details, language, persona, sending, recordTurn]);
+  }, [details, language, persona, sending, recordTurn, pro, proReady, purchasesAvailable, t]);
 
   const stop = useCallback(() => {
     abort.current?.abort();

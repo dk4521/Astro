@@ -16,7 +16,7 @@ from .api.billing import router as billing_router
 from .api.routes import router
 from .astro import EPHEMERIS_MODE
 
-log = logging.getLogger("kosmiq")
+log = logging.getLogger("enumasky")
 
 
 @asynccontextmanager

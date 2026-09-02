@@ -1,8 +1,8 @@
-# Privacy Policy — Kosmiq
+# Privacy Policy — Enuma Sky
 
 **Last updated: 18 August 2026**
 
-Kosmiq is a Vedic astrology app. This policy describes exactly what the app
+Enuma Sky is a Vedic astrology app. This policy describes exactly what the app
 collects, where it goes, and how to remove it. It describes what the app
 actually does today, not what it might do later.
 
@@ -83,7 +83,7 @@ or write rows belonging to the account that made it.
 
 ### RevenueCat, Apple and Google — handle your subscription
 
-Only if you subscribe to Kosmiq Pro.
+Only if you subscribe to Enuma Sky Pro.
 
 **We never see your card.** The payment is taken by the App Store or Google
 Play, exactly as any other purchase on your phone is. Your card number, billing
@@ -154,12 +154,23 @@ removes every stored question and answer from your account permanently.
 **Sign out.** Your data stays in your account and on your phone; nothing is
 deleted.
 
-**Delete your account and everything in it.** Write to us at the address below
-and we will delete the account together with all of its charts, conversations and
-progress. Deletion is permanent and we will confirm when it is done.
+**Delete your account and everything in it.** Settings → *Delete account*. It
+asks once to be sure, and then the account goes together with its profile, its
+charts, its course progress and every conversation and message in it — and this
+phone forgets its copy at the same time. Nothing is queued for a person to
+action later and nothing is kept for a grace period: the row is deleted and the
+rest follows it out of the database immediately. Deletion is permanent, and it
+cannot be undone by us or by you.
+
+Deleting the account does **not** cancel a subscription, because we do not sell
+it — Google Play or the App Store does. Cancel it there, or through Settings →
+*Manage subscription*, which opens the store's own sheet.
+
+If you have uninstalled the app and want the account gone, write to us at the
+address below and we will delete it for you.
 
 **Uninstalling the app** removes everything held on the phone. If you have an
-account, that data remains until you ask us to delete it.
+account, that data remains until it is deleted.
 
 ---
 
@@ -174,7 +185,7 @@ reported to anyone.
 
 ## Children
 
-Kosmiq is not directed at children under 13, and we do not knowingly collect
+Enuma Sky is not directed at children under 13, and we do not knowingly collect
 data from them.
 
 ---
@@ -188,8 +199,9 @@ will be announced in the app before they take effect.
 
 ## Contact
 
-Questions about this policy, or a request to delete your account:
+Questions about this policy, or a request to delete an account you can no
+longer reach from inside the app:
 
-**<CONTACT_EMAIL>**
+**enumasky.support@gmail.com**
 
 We aim to reply within seven days.
