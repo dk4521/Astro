@@ -15,6 +15,24 @@
 export type DisplayLanguage = 'en' | 'hi';
 
 /**
+ * The app's destinations, as a key set rather than free strings.
+ *
+ * `src/destinations.ts` owns where each one goes; this owns what it is called.
+ * A `Record` over this union is what makes a missing Hindi card a type error
+ * rather than a card that quietly reads in English on a Hindi phone.
+ */
+export type HubKey =
+  | 'today'
+  | 'chart'
+  | 'matching'
+  | 'tarot'
+  | 'chat'
+  | 'history'
+  | 'learn'
+  | 'plans'
+  | 'settings';
+
+/**
  * The companion's name is shown as an attribution, never inside a sentence.
  *
  * "Priya says" has no neutral Hindi: कहती है is feminine, कहते हैं masculine,
@@ -38,10 +56,7 @@ type Strings = {
   yourChart: string;
   lagnaSuffix: (rashi: string) => string;
   moonLine: (rashi: string, nakshatra: string) => string;
-  chartCaptionOne: string;
-  chartCaptionTwo: string;
   readInWords: string;
-  readInWordsNote: string;
   currentPeriod: string;
   dashaLevels: [string, string, string];
   outsideCycle: string;
@@ -74,11 +89,9 @@ type Strings = {
   determinismNote: string;
 
   // Messages left
-  messagesLeft: (n: number) => string;
-  outOfMessages: string;
-  outOfMessagesFree: string;
-  outOfMessagesPaid: string;
-  comesBackTomorrow: string;
+  proNeeded: string;
+  proNeededWhy: string;
+  proNeededFree: string;
   upgrade: string;
   signInToAsk: string;
   signInToChat: string;
@@ -145,6 +158,34 @@ type Strings = {
   janmaNakshatra: string;
   sharedSkyNote: string;
   yourBirthPlace: string;
+
+  // Home — the welcome screen above the grid
+  /**
+   * The hero's own greeting, kept apart from `greeting` on purpose. Today
+   * says hello because you have arrived on a particular day; the first
+   * screenful welcomes you to the app itself, which is a different sentence
+   * and would be wrong in either other place.
+   */
+  welcomeGreeting: (name: string) => string;
+  welcomeGreetingNoName: string;
+  welcomeTagline: string;
+  welcomeScroll: string;
+
+  // Home hub — the card grid the app opens on
+  hubKicker: string;
+  hub: Record<HubKey, { title: string; blurb: string }>;
+  /**
+   * What a card says once it knows something. Each one replaces the card's
+   * blurb, and each one is allowed not to arrive: the blurb is what shows while
+   * the chart is still loading, or when the phone is offline.
+   *
+   * `hubChatWith` names the companion the way the rest of the app does — beside
+   * an imperative addressed to the reader, never as the subject of a verb, so
+   * the Hindi needs no gender for a set of companions that is half men.
+   */
+  hubChartLagna: (rashi: string) => string;
+  hubChatWith: (companion: string) => string;
+  hubChapters: (done: number, total: number) => string;
 };
 
 const EN: Strings = {
@@ -156,11 +197,7 @@ const EN: Strings = {
   yourChart: 'Your chart',
   lagnaSuffix: (rashi) => `${rashi} lagna`,
   moonLine: (rashi, nakshatra) => `Moon in ${rashi} · ${nakshatra} nakshatra`,
-  chartCaptionOne: 'North Indian chart · numbers are rashis, not houses',
-  chartCaptionTwo: 'Colour = graha · dim = combust · R = retrograde',
   readInWords: 'Read my chart in words',
-  readInWordsNote:
-    'Explained in plain language, then checked back against the numbers above.',
   currentPeriod: 'Current period',
   dashaLevels: ['Mahadasha', 'Antardasha', 'Pratyantardasha'],
   outsideCycle: 'Outside the computed 120-year cycle.',
@@ -193,18 +230,16 @@ const EN: Strings = {
   determinismNote:
     'Every value above is arithmetic from your birth moment. Same input, same output, always.',
 
-  messagesLeft: (n) => (n === 1 ? '1 message left' : `${n} messages left`),
-  outOfMessages: 'That is your messages for now',
-  outOfMessagesFree:
-    'Six free messages arrive every morning. You can also top up, if you would rather not wait.',
-  outOfMessagesPaid:
-    'This month\u2019s messages are used up. A pack tops you up until the next ones arrive.',
-  comesBackTomorrow: 'Your messages start again tomorrow.',
+  proNeeded: 'This part needs Kosmiq Pro',
+  proNeededWhy:
+    'Pro covers every reading and every question, with no daily count to watch. Weekly, monthly or yearly \u2014 cancel whenever you like.',
+  proNeededFree:
+    'Your chart, your dashas, the panchang, matching and the card draw stay free, and always will.',
   upgrade: 'See plans',
   signInToAsk: 'Sign in again to keep asking.',
   signInToChat: 'Chat needs an account',
   signInToChatWhy:
-    'Your conversations are kept in your account, and the daily message allowance is counted there. Everything else in the app works without one.',
+    'Your conversations are kept in your account, and so is your subscription. Everything else in the app works without one.',
   signInAction: 'Sign in or create an account',
   crisisHeading: 'Please talk to someone who can help',
   crisisHelplines:
@@ -247,7 +282,7 @@ const EN: Strings = {
   tarotUpright: 'UPRIGHT',
   tarotReversed: 'REVERSED',
   tarotRead: 'Read the three together',
-  tarotReadCost: 'One message. Everything above is free and stays as it is.',
+  tarotReadCost: 'Reading the spread together needs Pro. Turning the cards over is free and stays that way.',
   tarotReadingFailed: 'The reading could not be written just now.',
   tarotUngrounded:
     'This reading named a card that was not dealt. Shown anyway, and flagged rather than quietly dropped.',
@@ -282,6 +317,32 @@ const EN: Strings = {
   sharedSkyNote:
     'The sky above is the same for everyone alive right now. Only the second column is yours.',
   yourBirthPlace: 'your birth place',
+
+  // Says what the app does in the order it does it — the arithmetic first,
+  // because that is the part that cannot be wrong, and the words second.
+  welcomeGreeting: (name) => `Welcome, ${name}`,
+  welcomeGreetingNoName: 'Welcome',
+  welcomeTagline: 'Your sky at birth, worked out exactly. Then said plainly.',
+  welcomeScroll: 'Scroll',
+
+  hubKicker: 'Where to?',
+  // Titles match the sidebar exactly — the sidebar reads them from here, so a
+  // card and the row that leads to the same screen cannot end up named
+  // differently. The blurb says what the screen gives you, not what it is.
+  hub: {
+    today: { title: 'Today', blurb: 'Panchang for this moment, and a line from your companion.' },
+    chart: { title: 'Chart', blurb: 'Your kundli, the grahas and the dasha running now.' },
+    matching: { title: 'Matching', blurb: 'Two charts, koot by koot.' },
+    tarot: { title: 'Tarot', blurb: 'Three cards on your question.' },
+    chat: { title: 'Chat', blurb: 'Ask anything about your chart.' },
+    history: { title: 'History', blurb: 'Everything you have asked, kept with your account.' },
+    learn: { title: 'Learn', blurb: 'Jyotisha, from the ground up.' },
+    plans: { title: 'Pro', blurb: 'Readings, questions and tarot, uncounted.' },
+    settings: { title: 'Settings', blurb: 'Birth details, language, account and sync.' },
+  },
+  hubChartLagna: (rashi) => `Your ${rashi} lagna`,
+  hubChatWith: (companion) => `Talk to ${companion}`,
+  hubChapters: (done, total) => `${done} of ${total} chapters`,
 };
 
 const HI: Strings = {
@@ -293,10 +354,7 @@ const HI: Strings = {
   yourChart: 'आपकी कुंडली',
   lagnaSuffix: (rashi) => `${rashi} लग्न`,
   moonLine: (rashi, nakshatra) => `चंद्रमा ${rashi} में · ${nakshatra} नक्षत्र`,
-  chartCaptionOne: 'उत्तर भारतीय कुंडली · अंक राशियाँ हैं, भाव नहीं',
-  chartCaptionTwo: 'रंग = ग्रह · धुँधला = अस्त · R = वक्री',
   readInWords: 'मेरी कुंडली शब्दों में पढ़िए',
-  readInWordsNote: 'सरल भाषा में, और फिर ऊपर के अंकों से मिलाकर जाँची हुई।',
   currentPeriod: 'चल रही दशा',
   dashaLevels: ['महादशा', 'अंतर्दशा', 'प्रत्यंतर्दशा'],
   outsideCycle: 'गणना किए गए 120 वर्ष के चक्र से बाहर।',
@@ -329,18 +387,16 @@ const HI: Strings = {
   determinismNote:
     'ऊपर का हर मान आपके जन्म-क्षण से निकला गणित है। वही जानकारी, वही परिणाम, हर बार।',
 
-  messagesLeft: (n) => `${n} संदेश बचे हैं`,
-  outOfMessages: 'अभी के लिए संदेश यहीं तक',
-  outOfMessagesFree:
-    'हर सुबह छह मुफ़्त संदेश आ जाते हैं। इंतज़ार न करना हो तो पैक भी लिया जा सकता है।',
-  outOfMessagesPaid:
-    'इस महीने के संदेश ख़त्म हुए। अगले महीने तक के लिए एक पैक काम आ जाएगा।',
-  comesBackTomorrow: 'आपके संदेश कल से फिर शुरू हो जाएँगे।',
+  proNeeded: 'इसके लिए Kosmiq Pro चाहिए',
+  proNeededWhy:
+    'Pro में हर पाठ और हर सवाल शामिल है, गिनती रखने की ज़रूरत नहीं। साप्ताहिक, मासिक या वार्षिक — जब चाहें बंद कर दीजिए।',
+  proNeededFree:
+    'आपकी कुंडली, दशाएँ, पंचांग, मिलान और कार्ड निकालना — ये मुफ़्त हैं और रहेंगे।',
   upgrade: 'योजनाएँ देखिए',
   signInToAsk: 'पूछते रहने के लिए दोबारा साइन इन कीजिए।',
   signInToChat: 'बातचीत के लिए खाता चाहिए',
   signInToChatWhy:
-    'आपकी बातचीत आपके खाते में रहती है, और दिन के संदेशों की गिनती भी वहीं होती है। ऐप का बाक़ी सब बिना खाते के चलता है।',
+    'आपकी बातचीत आपके खाते में रहती है, और आपकी सदस्यता भी वहीं जुड़ी होती है। ऐप का बाक़ी सब बिना खाते के चलता है।',
   signInAction: 'साइन इन कीजिए या खाता बनाइए',
   crisisHeading: 'किसी से बात कीजिए जो मदद कर सके',
   crisisHelplines:
@@ -382,7 +438,7 @@ const HI: Strings = {
   tarotUpright: 'सीधा',
   tarotReversed: 'उल्टा',
   tarotRead: 'तीनों को एक साथ पढ़वाइए',
-  tarotReadCost: 'एक संदेश लगेगा। ऊपर का सब मुफ़्त है और वैसा ही रहेगा।',
+  tarotReadCost: 'तीनों कार्ड को साथ पढ़ने के लिए Pro चाहिए। कार्ड पलटना मुफ़्त है और रहेगा।',
   tarotReadingFailed: 'अभी पाठ नहीं लिखा जा सका।',
   tarotUngrounded:
     'इस पाठ में कोई ऐसा कार्ड आ गया जो निकला ही नहीं था। छुपाया नहीं गया — दिखाकर बता दिया गया है।',
@@ -417,6 +473,27 @@ const HI: Strings = {
   sharedSkyNote:
     'ऊपर का आकाश इस समय जीवित हर व्यक्ति के लिए एक ही है। सिर्फ़ दूसरी पंक्ति आपकी है।',
   yourBirthPlace: 'आपके जन्मस्थान',
+
+  welcomeGreeting: (name) => `स्वागत है, ${name}`,
+  welcomeGreetingNoName: 'स्वागत है',
+  welcomeTagline: 'जन्म का आपका आकाश, ठीक-ठीक गिना हुआ। फिर सरल भाषा में कहा हुआ।',
+  welcomeScroll: 'नीचे चलिए',
+
+  hubKicker: 'कहाँ चलें?',
+  hub: {
+    today: { title: 'आज', blurb: 'इस समय का पंचांग, और आपके साथी की एक पंक्ति।' },
+    chart: { title: 'कुंडली', blurb: 'आपकी कुंडली, ग्रह और चल रही दशा।' },
+    matching: { title: 'मिलान', blurb: 'दो कुंडलियाँ, कूट दर कूट।' },
+    tarot: { title: 'टैरो', blurb: 'आपके सवाल पर तीन पत्ते।' },
+    chat: { title: 'बातचीत', blurb: 'कुंडली के बारे में कुछ भी पूछिए।' },
+    history: { title: 'इतिहास', blurb: 'आपके पूछे हुए सब सवाल, खाते के साथ सुरक्षित।' },
+    learn: { title: 'सीखिए', blurb: 'ज्योतिष, बिलकुल शुरू से।' },
+    plans: { title: 'प्रो', blurb: 'रीडिंग, सवाल और टैरो — बिना गिनती के।' },
+    settings: { title: 'सेटिंग', blurb: 'जन्म विवरण, भाषा, खाता और सिंक।' },
+  },
+  hubChartLagna: (rashi) => `आपकी ${rashi} लग्न`,
+  hubChatWith: (companion) => `${companion} से बात कीजिए`,
+  hubChapters: (done, total) => `${total} में से ${done} अध्याय`,
 };
 
 export function strings(language: DisplayLanguage): Strings {

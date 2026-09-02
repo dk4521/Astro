@@ -81,6 +81,32 @@ conversations are stored in a Supabase database. Every table is protected by
 row-level security: the rules are written so that a request can only ever read
 or write rows belonging to the account that made it.
 
+### RevenueCat, Apple and Google — handle your subscription
+
+Only if you subscribe to Kosmiq Pro.
+
+**We never see your card.** The payment is taken by the App Store or Google
+Play, exactly as any other purchase on your phone is. Your card number, billing
+address and the rest of it stay with Apple or Google and never reach us — we are
+told only that a subscription exists and when it runs out.
+
+**RevenueCat keeps the record of it.** They are the service that tells our
+server whether your subscription is active. What reaches them is your account
+identifier (the random id Supabase gave you, not your email), the store's
+purchase receipt, and ordinary device information the store attaches — the
+platform and app version. Not your birth details, not your questions, not your
+readings.
+
+**Why our server asks at all.** Because your phone is not proof of payment. If
+we simply trusted the app's word for it, a modified copy could claim a
+subscription it never bought, and everyone who did pay would be covering the
+cost. So the server asks RevenueCat directly and caches the answer for about a
+minute.
+
+If you cancel, cancel through your App Store or Google Play account — that is
+where the subscription lives, and it stays active until the end of the period
+you have already paid for.
+
 ### Render — runs our server
 
 Our API runs on Render. As with any web service, their infrastructure handles
@@ -104,6 +130,7 @@ under anything that names you, and it disappears whenever the server restarts.
 ## What we never do
 
 - Sell, rent or share your data with advertisers or data brokers
+- See, store or process your card details — the stores handle payment entirely
 - Show advertising
 - Include analytics, crash-tracking or any other telemetry
 - Read your location, contacts, photos, files or any other app's data

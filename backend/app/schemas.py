@@ -229,15 +229,6 @@ class ChatRequest(BaseModel):
         max_length=40,
         description="Prior turns, oldest first. The chart is re-sent each request.",
     )
-    request_id: str | None = Field(
-        default=None,
-        max_length=64,
-        description=(
-            "Idempotency key for the credit this message costs. Send the same "
-            "value when retrying a question whose stream died, and it is "
-            "charged once. A new question needs a new value."
-        ),
-    )
 
 
 class InterpretResponse(BaseModel):
@@ -501,21 +492,12 @@ class TarotReadingRequest(BaseModel):
     """Ask for the three cards to be read.
 
     The cards are not in this payload, and that is the point: the server deals
-    them again from the seed. A client cannot buy a reading of a hand it made up.
+    them again from the seed. A client cannot get a reading of a hand it made up.
     """
 
     seed: str = Field(pattern=r"^[A-Za-z0-9_-]{1,64}$")
     question: str | None = Field(default=None, max_length=2000)
     language: Language = "hinglish"
-    request_id: str | None = Field(
-        default=None,
-        max_length=64,
-        description=(
-            "Idempotency key for the credit this reading costs. The same value "
-            "twice is charged once, so a reading whose request failed can be "
-            "retried without paying again."
-        ),
-    )
 
 
 class TarotReadingResponse(BaseModel):
@@ -529,6 +511,3 @@ class TarotReadingResponse(BaseModel):
         )
     )
     contradictions: list[str] = Field(default_factory=list)
-    balance: int | None = Field(
-        default=None, description="Credits left. Null where billing is not configured."
-    )

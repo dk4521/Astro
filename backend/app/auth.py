@@ -3,9 +3,12 @@
 Until now the backend was stateless in the strong sense: it had never been told
 who was on the other end, and `/v1/chat` answered anyone who could reach it.
 That was fine while the allowance was advisory. It stops being fine the moment
-a credit costs money, because the app deciding whether to send is not
+an answer costs money, because the app deciding whether to send is not
 enforcement — it is a request, and a modified client is not obliged to honour
 it.
+
+Identity is half the door. The other half is `entitlements.py`, which asks
+whether this person has paid; neither is any use without the other.
 
 **How the token is checked, and why not locally.** The obvious approach is to
 verify the JWT's signature here with the project's secret. It is also the one
@@ -18,10 +21,10 @@ The cost of that call is one round trip per message, and it is paid at most
 once a minute per person because of the cache below. Against a model request
 that takes seconds, it does not register.
 
-**Failure is closed, not open.** `loadAllowance` on the device falls open when
-Supabase cannot be reached, and it is right to: being wrong there costs a few
-model requests. Here the same wrongness costs whatever the person can spend, so
-an unverifiable token is refused.
+**Failure is closed, not open.** The app falls open when it cannot tell whether
+someone is subscribed, and it is right to: being wrong on the device only draws
+the wrong screen. Here the same wrongness gives away model requests to anyone
+who can forge a token badly, so an unverifiable one is refused.
 """
 
 from __future__ import annotations
@@ -39,13 +42,14 @@ from . import config  # noqa: F401  — loads .env before os.environ is read
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "").strip().rstrip("/")
 
-# Either key works as the `apikey` header on this endpoint; the token in
-# `Authorization` is what identifies the person. Preferring the anon key keeps
-# the service-role key out of a code path that does not need it.
+# The `apikey` header on this endpoint, while the token in `Authorization` is
+# what identifies the person. The service-role key used to be accepted here as a
+# last resort; it is not any more. Nothing in this backend needs that key since
+# the credit ledger was deleted, and a key that bypasses row-level security
+# should not be reachable from a code path whose job is merely to read a name.
 _API_KEY = (
     os.environ.get("SUPABASE_ANON_KEY", "").strip()
     or os.environ.get("SUPABASE_PUBLISHABLE_KEY", "").strip()
-    or os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip()
 )
 
 TIMEOUT = httpx.Timeout(8.0, connect=4.0)
@@ -164,7 +168,9 @@ def optional_user(authorization: str | None = Header(default=None)) -> Account |
 
     For endpoints that must keep working on a deployment with no Supabase
     project — the whole app runs that way in development, and refusing to cast
-    a chart because nobody configured billing would be absurd.
+    a chart because nobody configured accounts would be absurd. Also for
+    `entitlements.require_pro`, which needs to tell "signed out" (401) from
+    "signed in without a plan" (402) and so must be handed the None itself.
     """
     if not is_configured():
         return None

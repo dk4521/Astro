@@ -3,7 +3,9 @@
  *
  * **Native, and that is a change.** Everything bought in this app until now went
  * through a hosted Razorpay page precisely so no native module was needed and
- * the app stayed openable in Expo Go. `react-native-purchases` is native, and
+ * the app stayed openable in Expo Go. That path is deleted: Razorpay sold
+ * credits, credits are gone, and selling digital goods inside an app through
+ * anything but the store is against both platforms' rules anyway. `react-native-purchases` is native, and
  * it has to be: Apple and Google both require that digital goods consumed
  * inside an app are sold through their own billing, which is a StoreKit and a
  * Play Billing call, not a web page. Version 10 softens the cost — in Expo Go
@@ -28,10 +30,13 @@
  *
  * **The device is not the auditor.** What the SDK reports is good enough to
  * decide what a screen draws. It is not good enough to decide what the server
- * gives away, for the same reason the credit balance is spent server-side in
- * `../api/allowance`: a rooted phone can say anything. Anything that costs real
- * money on the backend should be checked against RevenueCat's own API from
- * there, with a webhook, rather than trusted from here.
+ * gives away: a rooted phone can say anything.
+ *
+ * That is no longer advice — it is how the backend works. Every endpoint that
+ * calls a model reads the entitlement from RevenueCat's own API with a secret
+ * key (`backend/app/entitlements.py`) and answers 402 when it is not there,
+ * whatever this SDK told the screen. `../api/subscription` asks the server for
+ * that answer, so the two can be compared when they disagree.
  */
 
 import { Platform } from 'react-native';

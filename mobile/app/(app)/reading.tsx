@@ -34,13 +34,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ApiError, streamChat } from '../../src/api/client';
-import {
-  loadAllowance,
-  looksLikeCrisis,
-  QUIET_ABOVE,
-  type Allowance,
-  isSubscribed,
-} from '../../src/api/allowance';
+import { looksLikeCrisis } from '../../src/safety';
+import { usePurchases } from '../../src/purchases/context';
 import { useAuth } from '../../src/auth/context';
 import { loadInterpretation } from '../../src/api/reading';
 import { loadBirthDetails } from '../../src/api/storage';
@@ -183,22 +178,18 @@ export default function ReadingScreen() {
   } = useSync();
 
   // Chat is the one screen that needs an account: the conversation is kept
-  // there, and so is the count of what has been sent today. Everything else in
-  // the app still works signed out.
+  // there, and so is the subscription that pays for it. Everything else in the
+  // app still works signed out.
   const { available: accountsAvailable, user } = useAuth();
 
-  const [allowance, setAllowance] = useState<Allowance | null>(null);
+  // `ready` matters as much as `pro` here. Unresolved is not the same as not
+  // subscribed, and a paywall drawn during the first render of a subscriber's
+  // session is a paywall shown to someone who has paid.
+  const { pro, ready: proReady, available: purchasesAvailable } = usePurchases();
+
   // Set when the last message was refused, so the screen can say what happened
   // and — if that message sounded like trouble — lead with help instead.
   const [blocked, setBlocked] = useState<{ crisis: boolean } | null>(null);
-
-  const refreshAllowance = useCallback(async () => {
-    setAllowance(await loadAllowance(user?.id ?? null));
-  }, [user]);
-
-  useEffect(() => {
-    void refreshAllowance();
-  }, [refreshAllowance]);
 
   const [details, setDetails] = useState<BirthDetails | null>(null);
   const [language, setLanguage] = useState<Language>('hinglish');
@@ -361,16 +352,31 @@ export default function ReadingScreen() {
    */
   const { resume } = useLocalSearchParams<{ resume?: string }>();
 
+  // Whether the stored choice has been read yet — a boolean that flips once,
+  // rather than the choice itself, which changes every time one is made.
+  const personaLoaded = persona !== undefined;
+  // The choice, readable from the effect below without being a dependency of it.
+  const personaRef = useRef(persona);
+  personaRef.current = persona;
+
   useFocusEffect(
     useCallback(() => {
       // Wait for the stored choice before deciding. `undefined` means it is
       // still being read from the device, and the first focus always lands
       // there — an early `return` on that pass leaves the picker open and no
       // later pass closes it, which is exactly how the first attempt at this
-      // failed.
-      if (persona === undefined) return;
-      setPicking(!(resume === '1' && persona));
-    }, [resume, persona]),
+      // failed. So the gate is `personaLoaded`, which flips exactly once, and
+      // the value is read through a ref.
+      //
+      // Depending on `persona` itself is what made picking a companion
+      // impossible: `useFocusEffect` re-runs whenever its callback changes
+      // identity, not only on focus, and `choose` sets `persona`. Tapping a
+      // face ran `setPicking(false)` and then this effect immediately ran
+      // `setPicking(true)` again, so the picker reopened and the chat behind it
+      // could never be reached.
+      if (!personaLoaded) return;
+      setPicking(!(resume === '1' && personaRef.current));
+    }, [resume, personaLoaded]),
   );
 
   const choose = useCallback(
@@ -409,10 +415,15 @@ export default function ReadingScreen() {
       const trimmed = text.trim();
       if (!trimmed || !details || sending) return;
 
-      // Checked here rather than in the composer's disabled state: the count is
-      // read from the account and can be stale by a message if two devices are
-      // talking at once, so the last word belongs to the moment of sending.
-      if (allowance && allowance.balance <= 0) {
+      // Checked here rather than in the composer's disabled state, and only
+      // once the SDK has actually resolved: `pro` is false while it is still
+      // loading, and refusing to send on that would lock a subscriber out of
+      // their own chat for the first second of every launch.
+      //
+      // This is a courtesy, not the gate. The server checks the entitlement
+      // itself and answers 402 — which is handled below — because a check that
+      // lives on the device is a request rather than an enforcement.
+      if (purchasesAvailable && proReady && !pro) {
         setQuestion('');
         setBlocked({ crisis: looksLikeCrisis(trimmed) });
         return;
@@ -430,10 +441,6 @@ export default function ReadingScreen() {
 
       const askedId = nextId.current++;
       const answerId = nextId.current++;
-      // The credit this message costs is charged against this. It identifies
-      // the question rather than the account, so re-asking after a dropped
-      // stream is free and asking again is not.
-      const requestId = `${askedId}-${Date.now()}`;
 
       setMessages((current) => [
         ...current,
@@ -467,7 +474,7 @@ export default function ReadingScreen() {
 
       try {
         await streamChat(
-          { birth: details, question: trimmed, language, history, requestId },
+          { birth: details, question: trimmed, language, history },
           {
             onToken: (chunk) => {
               answer += chunk;
@@ -487,9 +494,10 @@ export default function ReadingScreen() {
           controller.signal,
         );
       } catch (err) {
-        // 402 is the server saying the credit was not there. It is not an
-        // error in the sense the error line means — nothing went wrong — so it
-        // opens the same panel as running out locally would have.
+        // 402 is the server saying this account has no subscription. It is not
+        // an error in the sense the error line means — nothing went wrong — so
+        // it opens the paywall panel rather than a red line, and it is the
+        // answer that actually decides, since the check above only guesses.
         if (err instanceof ApiError && err.status === 402) {
           setBlocked({ crisis: looksLikeCrisis(trimmed) });
         } else if (err instanceof ApiError && err.status === 401) {
@@ -520,10 +528,9 @@ export default function ReadingScreen() {
 
         abort.current = null;
         setSending(false);
-        void refreshAllowance();
       }
     },
-    [details, language, messages, persona, sending, recordTurn, allowance, refreshAllowance],
+    [details, language, messages, persona, sending, recordTurn, pro, proReady, purchasesAvailable],
   );
 
 
@@ -702,26 +709,19 @@ export default function ReadingScreen() {
       {persona && !picking && blocked ? (
         <View style={[styles.spent, { paddingBottom: insets.bottom + space.md }]}>
           {blocked.crisis ? (
+            /* No price, no plan, no upgrade button. Someone who has said this
+               is not a conversion opportunity, and a paywall is the last thing
+               that should be in front of them. They get the numbers and
+               nothing else — the plans screen is a tab away if they want it. */
             <>
               <Text style={styles.spentTitle}>{t.crisisHeading}</Text>
               <Text style={styles.helplines}>{t.crisisHelplines}</Text>
-              {/* Only for a free account, because only there is it true. A
-                  subscriber who has used the month's credits does not get more
-                  tomorrow, and this is not a screen to be inexact on. */}
-              {isSubscribed(allowance) ? null : (
-                <Text style={styles.spentMuted}>{t.comesBackTomorrow}</Text>
-              )}
             </>
           ) : (
             <>
-              <Text style={styles.spentTitle}>{t.outOfMessages}</Text>
-              <Text style={styles.spentBody}>
-                {isSubscribed(allowance) ? t.outOfMessagesPaid : t.outOfMessagesFree}
-              </Text>
-              {/* Now that there is something to sell, this goes to the price
-                  list rather than to settings — and it goes there for
-                  subscribers too, since a plan that has run out mid-month can
-                  still be topped up with a pack. */}
+              <Text style={styles.spentTitle}>{t.proNeeded}</Text>
+              <Text style={styles.spentBody}>{t.proNeededWhy}</Text>
+              <Text style={styles.spentMuted}>{t.proNeededFree}</Text>
               <View style={styles.spentAction}>
                 <Button title={t.upgrade} onPress={() => router.push('/plans')} />
               </View>
@@ -734,12 +734,11 @@ export default function ReadingScreen() {
         </View>
       ) : persona && !picking ? (
       <View style={[styles.composer, { paddingBottom: insets.bottom + space.sm }]}>
-        {/* Silent until it starts to matter. A permanent countdown over a chat
-            where people bring the worst of their week makes them ration what
-            they say at exactly the wrong moment. */}
-        {allowance && allowance.balance <= QUIET_ABOVE ? (
-          <Text style={styles.left}>{t.messagesLeft(allowance.balance)}</Text>
-        ) : null}
+        {/* There is no counter here any more, and that is the point of the
+            change. A countdown over a chat where people bring the worst of
+            their week made them ration what they said at exactly the wrong
+            moment — and it was never honest anyway, since the number it drew
+            came from a ledger the app could not enforce. */}
         <View style={styles.composerRow}>
         <TextInput
           style={styles.input}

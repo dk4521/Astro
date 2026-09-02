@@ -21,37 +21,30 @@ services:
       # readings are broken rather than an app that is down.
       - key: GEMINI_API_KEY
         sync: false
-      # Accounts and credits. Without these the service still starts, /health
-      # reports `billing: {accounts: false, credits: false, payments: false}`,
-      # and /v1/chat answers anyone who can reach it — which is not a state to
-      # deploy in once there is a price list. The service-role key bypasses
-      # row-level security and belongs only here; if it has ever been in an app
-      # build, rotate it.
+      # Accounts. Without these nobody can be identified and every AI
+      # endpoint answers anyone who can reach it — which is not a state to
+      # deploy in once there is a price list. The service says so in its
+      # startup log; /health deliberately no longer does, because that was an
+      # unauthenticated answer to "is the paywall switched on".
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_ANON_KEY
         sync: false
-      - key: SUPABASE_SERVICE_ROLE_KEY
+
+      # RevenueCat's SECRET key, which is what decides whether a caller has
+      # paid. The publishable keys ship inside the app and belong in
+      # mobile/.env; this one belongs only here. Missing it does not fail the
+      # deploy — it silently opens every AI endpoint, so check the startup log.
+      - key: REVENUECAT_SECRET_KEY
         sync: false
 
-      # Razorpay. The webhook secret is the one typed into the dashboard's
-      # webhook form; without it every webhook is rejected and no purchase ever
-      # becomes credits. The plan ids come from Subscriptions → Plans, and a
-      # subscription whose id is missing is simply not offered for sale.
-      - key: RAZORPAY_KEY_ID
-        sync: false
-      - key: RAZORPAY_KEY_SECRET
-        sync: false
-      - key: RAZORPAY_WEBHOOK_SECRET
-        sync: false
-      - key: RAZORPAY_PLAN_MONTHLY
-        sync: false
-      - key: RAZORPAY_PLAN_YEARLY
+      # Reads /v1/health/cache. Unset, that path 404s.
+      - key: METRICS_TOKEN
         sync: false
 
       - key: CORS_ORIGINS
-        # Narrow this before launch. The mobile app sends no credentials, so a
-        # wide value is not a session risk, but it does leave the API open to
-        # use from any web origin — and every request from one spends this
-        # project's model quota.
-        value: "*"
+        # Browser origins only. The native app sends no Origin header, so this
+        # governs `expo start --web` and any web build — not the phone. Unset,
+        # the server allows localhost and nothing else, which is the safe
+        # default; name real origins here when there is a web front end.
+        sync: false

@@ -30,13 +30,8 @@ import {
   View,
 } from 'react-native';
 
-import {
-  QUIET_ABOVE,
-  isSubscribed,
-  loadAllowance,
-  looksLikeCrisis,
-  type Allowance,
-} from '../../../src/api/allowance';
+import { looksLikeCrisis } from '../../../src/safety';
+import { usePurchases } from '../../../src/purchases/context';
 import { ApiError } from '../../../src/api/client';
 import { loadDisplayLanguage, saveDisplayLanguage } from '../../../src/api/storage';
 import {
@@ -44,7 +39,6 @@ import {
   loadLastDraw,
   loadTarotReading,
   newDraw,
-  readingRequestId,
   rememberRevealed,
 } from '../../../src/api/tarot';
 import type { TarotDraw, TarotReading } from '../../../src/api/types';
@@ -73,19 +67,14 @@ export default function Tarot() {
   const [readingError, setReadingError] = useState<string | null>(null);
   const [blocked, setBlocked] = useState<{ crisis: boolean } | null>(null);
 
-  const [allowance, setAllowance] = useState<Allowance | null>(null);
+  // `ready` matters as much as `pro`: unresolved is not the same as unpaid.
+  const { pro, ready: proReady, available: purchasesAvailable } = usePurchases();
 
   const t = strings(language);
 
   useEffect(() => {
     loadDisplayLanguage().then(setLanguage);
   }, []);
-
-  useEffect(() => {
-    void (async () => {
-      setAllowance(await loadAllowance(user?.id ?? null));
-    })();
-  }, [user]);
 
   // The spread the reader left behind, with the cards they had already turned.
   useEffect(() => {
@@ -163,10 +152,11 @@ export default function Tarot() {
   const read = useCallback(async () => {
     if (!drawn || readingLoading) return;
 
-    // Checked at the moment of asking rather than in the button's disabled
-    // state: the balance is read from the account and can be a message stale if
-    // two devices are talking at once.
-    if (allowance && allowance.balance <= 0) {
+    // A courtesy, not the gate — the server checks the entitlement itself and
+    // answers 402 below. Only once the SDK has resolved, because `pro` is false
+    // while it is still loading and a subscriber must not meet their own
+    // paywall during the first second of a launch.
+    if (purchasesAvailable && proReady && !pro) {
       setBlocked({ crisis: looksLikeCrisis(question) });
       return;
     }
@@ -175,8 +165,7 @@ export default function Tarot() {
     setReadingError(null);
 
     try {
-      const requestId = readingRequestId(drawn.seed, question, language);
-      setReading(await loadTarotReading(drawn.seed, question, language, requestId));
+      setReading(await loadTarotReading(drawn.seed, question, language));
     } catch (err) {
       if (err instanceof ApiError && err.status === 402) {
         setBlocked({ crisis: looksLikeCrisis(question) });
@@ -187,9 +176,8 @@ export default function Tarot() {
       }
     } finally {
       setReadingLoading(false);
-      setAllowance(await loadAllowance(user?.id ?? null));
     }
-  }, [drawn, question, language, readingLoading, allowance, user, t]);
+  }, [drawn, question, language, readingLoading, pro, proReady, purchasesAvailable, t]);
 
   const spreadName = useMemo(
     () => (drawn ? (language === 'hi' ? drawn.spread_hi : drawn.spread) : ''),
@@ -279,7 +267,6 @@ export default function Tarot() {
               <ReadingBlock
                 accountsAvailable={accountsAvailable}
                 signedIn={Boolean(user)}
-                allowance={allowance}
                 blocked={blocked}
                 reading={reading}
                 loading={readingLoading}
@@ -359,16 +346,15 @@ function QuestionField({
 }
 
 /**
- * The paid half, and everything that can stand between someone and it.
+ * The Pro half, and everything that can stand between someone and it.
  *
- * Split out because it is four mutually exclusive states — no account, out of
- * credits, a reading, or the offer of one — and reading four of those inline
- * inside the spread is how a screen becomes unmaintainable.
+ * Split out because it is four mutually exclusive states — no account, no
+ * subscription, a reading, or the offer of one — and reading four of those
+ * inline inside the spread is how a screen becomes unmaintainable.
  */
 function ReadingBlock({
   accountsAvailable,
   signedIn,
-  allowance,
   blocked,
   reading,
   loading,
@@ -382,7 +368,6 @@ function ReadingBlock({
 }: {
   accountsAvailable: boolean;
   signedIn: boolean;
-  allowance: Allowance | null;
   blocked: { crisis: boolean } | null;
   reading: TarotReading | null;
   loading: boolean;
@@ -412,19 +397,16 @@ function ReadingBlock({
     return (
       <Card style={styles.gate}>
         {blocked.crisis ? (
+          /* No price and no upgrade button. Someone who has said this is not a
+             conversion opportunity. */
           <>
             <Text style={styles.gateTitle}>{t.crisisHeading}</Text>
             <Text style={styles.helplines}>{t.crisisHelplines}</Text>
-            {isSubscribed(allowance) ? null : (
-              <Text style={styles.gateBody}>{t.comesBackTomorrow}</Text>
-            )}
           </>
         ) : (
           <>
-            <Text style={styles.gateTitle}>{t.outOfMessages}</Text>
-            <Text style={styles.gateBody}>
-              {isSubscribed(allowance) ? t.outOfMessagesPaid : t.outOfMessagesFree}
-            </Text>
+            <Text style={styles.gateTitle}>{t.proNeeded}</Text>
+            <Text style={styles.gateBody}>{t.proNeededWhy}</Text>
             <View style={styles.action}>
               <Button title={t.upgrade} onPress={onPlans} />
             </View>
@@ -455,11 +437,6 @@ function ReadingBlock({
     <Card style={styles.offer}>
       {error ? <ErrorNote message={error} /> : null}
       <QuestionField value={question} onChange={onQuestionChange} language={language} />
-      {/* Silent until it starts to matter. A permanent countdown makes people
-          ration what they ask at exactly the wrong moment. */}
-      {allowance && allowance.balance <= QUIET_ABOVE ? (
-        <Text style={styles.left}>{t.messagesLeft(allowance.balance)}</Text>
-      ) : null}
       <Button title={t.tarotRead} onPress={onRead} loading={loading} />
       <Text style={styles.note}>{t.tarotReadCost}</Text>
     </Card>

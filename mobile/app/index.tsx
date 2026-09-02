@@ -26,7 +26,7 @@ import { useSync } from '../src/sync/context';
 import { hasSeenAccounts, loadBirthDetails } from '../src/api/storage';
 import { colors } from '../src/theme';
 
-type Target = '/onboarding' | '/chart' | '/sign-in';
+type Target = '/onboarding' | '/home' | '/sign-in';
 
 export default function Index() {
   const { ready, session, available } = useAuth();
@@ -50,7 +50,7 @@ export default function Index() {
         setTarget('/sign-in');
         return;
       }
-      setTarget(birth ? '/chart' : '/onboarding');
+      setTarget(birth ? '/home' : '/onboarding');
     })();
 
     return () => {

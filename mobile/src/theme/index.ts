@@ -109,6 +109,48 @@ export const elementInk = {
   water: '#8EDCE5',
 } as const;
 
+/**
+ * A palette hex at an alpha.
+ *
+ * Every tinted surface in the app is one colour at four or five opacities — a
+ * border, a wash, a glow — and writing those as literal `rgba(...)` strings is
+ * how a hue ends up subtly different in the one place somebody retyped it.
+ * The tints are authored as `#RRGGBB`, which is the only form this accepts.
+ */
+export function alpha(hex: string, a: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`;
+}
+
+/**
+ * A palette hex, darkened.
+ *
+ * For the second stop of a button's gradient: one hue lit at the top and shaded
+ * at the bottom is what makes a filled pill look like a surface rather than a
+ * rectangle of paint, and deriving it means a tint only has to be chosen once.
+ */
+export function shade(hex: string, factor: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  const f = (channel: number) => Math.max(0, Math.min(255, Math.round(channel * factor)));
+  return `rgb(${f((n >> 16) & 255)}, ${f((n >> 8) & 255)}, ${f(n & 255)})`;
+}
+
+/**
+ * How hard a tinted surface leans on its colour.
+ *
+ * Named rather than numeric at the call site, so a card on one screen and a
+ * button on another cannot drift a hundredth apart. `wash` is deliberately
+ * faint: body text sits on top of it, and a tint strong enough to notice on its
+ * own is a tint strong enough to cost contrast.
+ */
+export const tintAlpha = {
+  border: 0.45,
+  glow: 0.18,
+  wash: 0.13,
+  washEnd: 0.02,
+  ink: 0.9,
+} as const;
+
 /** The brand fill. Two stops, used through expo-linear-gradient. */
 export const gradient = {
   brand: ['#9B8CFF', '#6B5BD6'] as const,

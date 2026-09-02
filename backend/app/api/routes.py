@@ -15,14 +15,12 @@ from __future__ import annotations
 
 import datetime as dt
 import json
-import uuid
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import StreamingResponse
 
-from .. import ai, auth, course, meanings, places, tarot
-from ..billing import store
+from .. import ai, auth, course, entitlements, meanings, places, ratelimit, tarot
 from ..ai import grounding
 from ..tarot import reading as tarot_reading
 from ..astro import ashtakoot, build_chart, navamsa_chart, panchang_for, vimshottari
@@ -328,17 +326,55 @@ def _require_interpreter() -> None:
         )
 
 
+def _paid(
+    request: Request,
+    account: auth.Account | None = Depends(entitlements.require_pro),
+) -> auth.Account | None:
+    """The dependency every endpoint that calls a model now carries.
+
+    It replaces `_charge`, which took a credit before generating a token and
+    was undone by the thing that made it convenient: the idempotency key came
+    from the client, and a repeated key was answered as "already paid". Sending
+    one fixed `request_id` forever therefore cost exactly one credit, ever. The
+    fix is not a better key — it is that there is no longer anything to meter.
+    A subscriber may ask; anyone else may not.
+
+    The rate limit rides along because a subscription is unlimited in the sense
+    a person means it, not in the sense a script does. Twenty a minute is far
+    above a conversation and far below a loop, and it is keyed on the account so
+    one shared office network cannot be throttled by one of its phones.
+
+    `account` is None only where RevenueCat is unconfigured and nothing is
+    gated, so the limit falls back to the address — which is the whole
+    protection an open deployment has, and the reason it is applied here rather
+    than only to subscribers.
+    """
+    key = account.id if account else f"ip:{ratelimit.client_key(request)}"
+    ratelimit.AI.check(key)
+    return account
+
+
 @router.post(
     "/interpret",
     response_model=InterpretResponse,
     summary="Explain a chart in plain language",
 )
-def interpret(payload: InterpretRequest, response: Response) -> InterpretResponse:
+def interpret(
+    payload: InterpretRequest,
+    response: Response,
+    _: auth.Account | None = Depends(_paid),
+) -> InterpretResponse:
     """A first reading of the chart.
 
     Everything factual in the response was computed before the model saw it;
     the model's role is translation. The `grounded` flag reports whether the
     text it produced actually agrees with the chart.
+
+    Gated, which it was not. This endpoint called the model with no account, no
+    charge and no limit, and `EXPO_PUBLIC_API_URL` is readable in any copy of
+    the shipped app — so it was an open key to somebody else's model quota. On
+    a free tier of twenty requests a day, that is not only a bill, it is a
+    denial of service against the people who have paid.
     """
     _require_interpreter()
     chart = _build(payload.birth)
@@ -359,7 +395,11 @@ def interpret(payload: InterpretRequest, response: Response) -> InterpretRespons
 
 
 @router.post("/tip", response_model=TipResponse, summary="One line for the home screen")
-def tip(payload: TipRequest, response: Response) -> TipResponse:
+def tip(
+    payload: TipRequest,
+    response: Response,
+    _: auth.Account | None = Depends(_paid),
+) -> TipResponse:
     """The daily line the app opens with.
 
     Two charts again, as in `/today`: the natal one the dasha runs from, and one
@@ -369,6 +409,10 @@ def tip(payload: TipRequest, response: Response) -> TipResponse:
     user: it is the first thing the app shows, so without caching on both sides
     a single launch would spend one of the twenty daily requests. `X-Cache` says
     which it was, and the client caches for the day on top of this.
+
+    Gated for the same reason as `/interpret`, and it matters more here: the
+    home screen opens this on launch, so an ungated version was one request per
+    app start by anyone who ever installed it.
     """
     _require_interpreter()
     natal = _build(payload.birth)
@@ -394,68 +438,30 @@ def tip(payload: TipRequest, response: Response) -> TipResponse:
     )
 
 
-def _charge(account: auth.Account | None, request_id: str | None) -> tuple[str | None, str, int]:
-    """Take the credit this message costs, before a single token is generated.
-
-    Returns (account id charged, the reference it was charged under, balance
-    left). The first is None on a deployment with no Supabase project, where
-    billing does not exist and the endpoint behaves as it always did — that is
-    what lets the engine be run locally without standing up payments.
-
-    Two failures, told apart on purpose. Not signed in is 401 and means "sign
-    in"; signed in with nothing left is 402 and means "top up". A single status
-    for both would leave the app guessing which screen to show.
-    """
-    if not store.is_configured():
-        return None, "", 0
-
-    if account is None:
-        raise HTTPException(status_code=401, detail="Sign in to ask a question.")
-
-    ref = request_id or str(uuid.uuid4())
-
-    try:
-        allowed, balance = store.consume_credit(account.id, ref)
-    except store.StoreError as exc:
-        # Falling open here would make the paywall optional for anyone who can
-        # cause a timeout, so it closes — and says so honestly rather than
-        # claiming the credits ran out.
-        raise HTTPException(
-            status_code=503, detail="Could not check your balance just now. Try again."
-        ) from exc
-
-    if not allowed:
-        raise HTTPException(
-            status_code=402,
-            detail="You have used all your messages. Top up or wait for tomorrow's.",
-        )
-
-    return account.id, ref, balance
-
-
 @router.post("/chat", summary="Ask a question about a chart (streamed)")
 def chat(
     payload: ChatRequest,
-    account: auth.Account | None = Depends(auth.optional_user),
+    _: auth.Account | None = Depends(_paid),
 ) -> StreamingResponse:
     """Stream an answer as server-sent events.
 
     Events are `token` while generating, then exactly one terminal event:
-    `done` carrying the grounding verdict and the balance left, or `error`. The
-    grounding check can only run on the complete text, so it arrives last
-    rather than gating the stream — the client should surface a failed check
-    after the fact.
+    `done` carrying the grounding verdict, or `error`. The grounding check can
+    only run on the complete text, so it arrives last rather than gating the
+    stream — the client should surface a failed check after the fact.
 
-    The credit is taken before the generator starts, not inside it. A
+    The entitlement is checked before the generator starts, not inside it. A
     `StreamingResponse` has already sent 200 by the time its body runs, so a
     refusal raised in there would arrive as an `error` event on a successful
-    response rather than as the 402 the app needs to act on.
+    response rather than as the 402 the app needs in order to open the paywall.
+
+    `done` no longer carries a balance, because there is no longer a balance. A
+    subscriber has an answer to every question they ask, and a screen counting
+    down was the last remnant of a currency this product does not sell any more.
     """
     _require_interpreter()
     chart = _build(payload.birth)
     history = [ai.Turn(role=t.role, content=t.content) for t in payload.history]
-
-    charged_to, ref, balance = _charge(account, payload.request_id)
 
     def events():
         collected: list[str] = []
@@ -469,14 +475,9 @@ def chat(
                 collected.append(chunk)
                 yield f"event: token\ndata: {json.dumps({'text': chunk})}\n\n"
         except ai.InterpretationUnavailable as exc:
-            # Nothing was said, so nothing was spent. Capacity on the model
-            # side is our problem, and charging for it would make a bad day for
-            # the service into a bad day for the person paying.
-            if charged_to and not collected:
-                try:
-                    store.refund_credit(charged_to, ref)
-                except store.StoreError:
-                    pass  # Logged upstream; a failed refund must not eat the error.
+            # There is nothing to refund now — the subscription paid for the
+            # month, not for this answer. What is left is to say so plainly
+            # rather than ending the stream on silence.
             yield f"event: error\ndata: {json.dumps({'detail': str(exc)})}\n\n"
             return
 
@@ -485,7 +486,6 @@ def chat(
         payload_out = {
             "grounded": not contradictions,
             "contradictions": contradictions,
-            "balance": balance,
         }
         yield f"event: done\ndata: {json.dumps(payload_out)}\n\n"
 
@@ -752,33 +752,29 @@ def tarot_draw(payload: TarotDrawRequest) -> TarotDrawResponse:
 )
 def tarot_reading_endpoint(
     payload: TarotReadingRequest,
-    account: auth.Account | None = Depends(auth.optional_user),
+    _: auth.Account | None = Depends(_paid),
 ) -> TarotReadingResponse:
     """One reading of a spread, in the reader's language.
 
     The cards are re-dealt here from the seed rather than accepted from the
-    client. That is what makes the charge honest in both directions: the reader
-    pays for a reading of the hand the server itself dealt, and a modified app
-    cannot assemble a flattering spread and buy words for it.
+    client. That was already true when a reading cost a credit, and it stays
+    true for a reason that outlived the credit: a modified app cannot assemble a
+    flattering spread and ask for words about it.
 
-    Charged before the model is called, and refunded if the model never answers.
-    Capacity on the provider's side is our problem, not the reader's.
+    Pro-only, like every other endpoint that calls a model. Turning the cards
+    over is still free — `/tarot/draw` deals them, and every line printed beside
+    them was written by a person — because nobody should have to subscribe to
+    look at three cards.
     """
     _require_interpreter()
 
     drawn = tarot.draw(payload.seed)
-    charged_to, ref, balance = _charge(account, payload.request_id)
 
     try:
         result = tarot_reading.interpret(
             drawn, question=payload.question, language=payload.language
         )
     except ai.InterpretationUnavailable as exc:
-        if charged_to:
-            try:
-                store.refund_credit(charged_to, ref)
-            except store.StoreError:
-                pass  # Logged upstream; a failed refund must not eat the error.
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
     return TarotReadingResponse(
@@ -787,5 +783,4 @@ def tarot_reading_endpoint(
         language=payload.language,
         grounded=result.model_grounded,
         contradictions=result.contradictions,
-        balance=balance if charged_to else None,
     )

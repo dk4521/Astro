@@ -41,6 +41,20 @@ export async function loadCourseIndex(language: CourseLanguage): Promise<CourseI
 }
 
 /**
+ * The index if it is already on the device, and null otherwise.
+ *
+ * For callers that want the chapter count but must not cause a request to get
+ * it — the home card, which paints before anything has been asked for. Someone
+ * who has never opened the course has no cached index and no progress to show,
+ * which is the right answer for them anyway.
+ */
+export async function loadCachedCourseIndex(
+  language: CourseLanguage,
+): Promise<CourseIndex | null> {
+  return readCache<CourseIndex>(INDEX_KEY(language));
+}
+
+/**
  * One chapter, cache first.
  *
  * The opposite policy to the index, and for the reader's sake: a chapter they

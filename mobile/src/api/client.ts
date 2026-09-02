@@ -84,9 +84,10 @@ export const API_NOT_CONFIGURED = !__DEV__ && LOOPBACK.test(API_BASE_URL);
  * `getSession()` returns the refreshed one, and supabase-js has already done
  * the refreshing.
  *
- * Absent is a valid answer. Endpoints that cost nothing answer anyway, and the
- * ones that cost a credit reply 401 — which is the app's cue to ask someone to
- * sign in, not a reason to have withheld the request.
+ * Absent is a valid answer. The deterministic endpoints answer anyway, and the
+ * ones behind Pro reply 401 — which is the app's cue to ask someone to sign in,
+ * not a reason to have withheld the request. A signed-in reader without a
+ * subscription gets 402 instead, which opens the plans screen.
  */
 async function authHeader(): Promise<Record<string, string>> {
   if (!supabase) return {};
@@ -241,8 +242,6 @@ export function fetchTip(
 export type ChatVerdict = {
   grounded: boolean;
   contradictions: string[];
-  /** Credits left after this message. Absent when billing is not configured. */
-  balance?: number;
 };
 
 export type ChatHandlers = {
@@ -275,12 +274,6 @@ export async function streamChat(
     question: string;
     language: Language;
     history: ChatTurn[];
-    /**
-     * Idempotency key for the credit this message costs. The same value twice
-     * is charged once, so a question whose stream died can be re-asked without
-     * paying for it again.
-     */
-    requestId?: string;
   },
   handlers: ChatHandlers,
   signal?: AbortSignal,
@@ -301,7 +294,6 @@ export async function streamChat(
         question: body.question,
         language: body.language,
         history: body.history,
-        request_id: body.requestId,
       }),
       signal,
     });
@@ -353,7 +345,7 @@ function isAbort(error: unknown): boolean {
 function dispatch(event: SseEvent, handlers: ChatHandlers): void {
   const { name } = event;
 
-  let payload: { text?: string; detail?: string; balance?: number } & Partial<ChatVerdict>;
+  let payload: { text?: string; detail?: string } & Partial<ChatVerdict>;
   try {
     payload = JSON.parse(event.data);
   } catch {
@@ -366,7 +358,6 @@ function dispatch(event: SseEvent, handlers: ChatHandlers): void {
     handlers.onVerdict({
       grounded: payload.grounded ?? true,
       contradictions: payload.contradictions ?? [],
-      balance: typeof payload.balance === 'number' ? payload.balance : undefined,
     });
   } else if (name === 'error') {
     // The stream can fail after text has already reached the reader — capacity
@@ -395,18 +386,17 @@ export function drawTarot(seed?: string): Promise<TarotDraw> {
 }
 
 /**
- * Read a spread. Costs one credit, and goes through the long timeout for the
- * same reason a chart reading does — a busy free tier walks its fallback chain
+ * Read a spread. Needs Pro, and goes through the long timeout for the same
+ * reason a chart reading does — a busy free tier walks its fallback chain
  * before anyone answers.
  *
- * The cards are not sent. The server deals them again from the seed, which is
- * what makes the charge honest in both directions.
+ * The cards are not sent. The server deals them again from the seed, so a
+ * modified app cannot assemble a flattering spread and ask for words about it.
  */
 export function fetchTarotReading(body: {
   seed: string;
   question: string | null;
   language: Language;
-  requestId?: string;
 }): Promise<TarotReading> {
   return request<TarotReading>(
     '/v1/tarot/reading',
@@ -416,7 +406,6 @@ export function fetchTarotReading(body: {
         seed: body.seed,
         question: body.question,
         language: body.language,
-        request_id: body.requestId,
       }),
     },
     INTERPRET_TIMEOUT_MS,

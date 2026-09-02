@@ -27,6 +27,16 @@ export const READING_NAMESPACE = 'kosmiq.reading.';
 export const TIP_NAMESPACE = 'kosmiq.tip.';
 
 /**
+ * The one line the home screen borrows from the chart.
+ *
+ * The lagna is arithmetic the backend already returns, but the home screen is
+ * the first thing a launch paints and it must not wait on a request to say
+ * something true. Kept here so the second launch onward reads it from disk, and
+ * so it works on a train.
+ */
+export const HOME_NAMESPACE = 'kosmiq.home.';
+
+/**
  * The current spread and whatever reading was paid for on it.
  *
  * Not cleared with the chart caches below: a tarot draw is not computed from
@@ -90,5 +100,6 @@ export async function clearChartCaches(): Promise<void> {
     clearNamespace(COURSE_NAMESPACE),
     clearNamespace(READING_NAMESPACE),
     clearNamespace(TIP_NAMESPACE),
+    clearNamespace(HOME_NAMESPACE),
   ]);
 }

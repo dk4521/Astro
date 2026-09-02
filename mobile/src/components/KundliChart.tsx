@@ -29,9 +29,17 @@
  * over this violet ground turns to silt, and twelve flat blocks read as
  * twelve blocks. Light fades, so it stays light.
  *
- * The square sits inside a mat with a hairline out at the edge — the double
- * border a printed kundli has. It also buys the margin that keeps a graha in a
- * corner triangle from touching the frame.
+ * The square runs edge to edge. It used to sit inside a mat with a second
+ * hairline out at the rim — the double border a printed kundli has — but a
+ * printed kundli is ink on a page with nothing behind it, and here that band
+ * was a stripe of empty glass between the chart and its own frame, on the one
+ * screen where the chart should be the biggest thing there is. The margin it
+ * bought is still there: a corner triangle's number sits at its centroid, which
+ * is a twelfth of the way in, and clears the rim by more than its own height.
+ *
+ * The frame and the glow moved out to the wrapping view, where a border can be
+ * rounded and a shadow can fall outside the square — neither of which an SVG
+ * that ends at its own viewBox can do.
  *
  * --- What the colour says -------------------------------------------------
  *
@@ -64,7 +72,8 @@ import Svg, {
   Text as SvgText,
 } from 'react-native-svg';
 
-import { colors, elementGlow, elementInk, grahaColour } from '../theme';
+import { alpha, colors, elementGlow, elementInk, grahaColour, radius, tintAlpha } from '../theme';
+import { useScreenTint } from '../theme/tint';
 import type { Chart } from '../api/types';
 
 const RASHI_ORDER = [
@@ -90,11 +99,15 @@ const GRAHA_ABBR: Record<string, string> = {
 /** Hairlines, as a share of the accent's own violet. */
 const LATTICE = 'rgba(185, 174, 255, 0.22)';
 const DIAMOND = 'rgba(185, 174, 255, 0.30)';
-const FRAME = 'rgba(185, 174, 255, 0.32)';
-const FRAME_OUTER = 'rgba(185, 174, 255, 0.15)';
 
-/** The mat between the outer hairline and the chart square, as a share of it. */
-const MAT = 0.038;
+/**
+ * The mat between the rim and the chart square, as a share of it.
+ *
+ * Zero: the chart is the square. Kept as a named constant rather than deleted
+ * because every coordinate in here still runs through `at()`, and one number is
+ * how it goes back if a border ever wants room again.
+ */
+const MAT = 0;
 
 type Point = readonly [number, number];
 
@@ -152,6 +165,9 @@ function marksRetrograde(graha: { graha: string; retrograde: boolean }): boolean
 }
 
 export function KundliChart({ chart, size }: { chart: Chart; size?: number }) {
+  // The chart wears the screen's colour, like every card on it.
+  const tint = useScreenTint();
+
   // Measured rather than assumed when the caller does not say. The old default
   // was a flat 320, which is wider than a 360dp phone leaves after the screen's
   // own padding — the chart ran off the right edge on the narrowest devices
@@ -184,7 +200,16 @@ export function KundliChart({ chart, size }: { chart: Chart; size?: number }) {
 
   return (
     <View
-      style={styles.wrap}
+      style={[
+        styles.wrap,
+        {
+          borderColor: alpha(tint, tintAlpha.border),
+          // Wider and warmer than a card's: this is the one figure on the
+          // screen, and the light around it is what stops a full-bleed square
+          // from reading as a hole cut in the page.
+          boxShadow: `0 0 28px ${alpha(tint, 0.26)}`,
+        },
+      ]}
       onLayout={(event) => setMeasured(Math.floor(event.nativeEvent.layout.width))}
     >
       {total > 0 ? (
@@ -270,18 +295,7 @@ export function KundliChart({ chart, size }: { chart: Chart; size?: number }) {
             strokeWidth={1.25}
           />
 
-          {/* The double border a printed kundli has: the chart square, and a
-              hairline out at the edge of the mat. */}
-          <Rect x={mat} y={mat} width={side} height={side} fill="none" stroke={FRAME} strokeWidth={1.25} />
-          <Rect
-            x={0.5}
-            y={0.5}
-            width={total - 1}
-            height={total - 1}
-            fill="none"
-            stroke={FRAME_OUTER}
-            strokeWidth={1}
-          />
+
 
           {HOUSE_NUMBERS.map((house) => {
             const found = elementOf(house);
@@ -296,8 +310,13 @@ export function KundliChart({ chart, size }: { chart: Chart; size?: number }) {
             // rendered blurry by the text rasteriser on both platforms.
             const unit = side / 320;
             const crowded = occupants.length > 4;
-            const glyph = Math.max(8, Math.round((crowded ? 9 : 11) * unit));
-            const numberSize = Math.max(7, Math.round(10 * unit));
+            // Sized up from 11 and 10. Those were legible held close and small
+            // at arm's length, which is the wrong test for the one figure on
+            // this screen a person is meant to read rather than glance at. The
+            // crowded case moves less, because a stellium of six has to fit
+            // inside a corner triangle a quarter of the chart tall.
+            const glyph = Math.max(10, Math.round((crowded ? 12 : 15) * unit));
+            const numberSize = Math.max(9, Math.round(13 * unit));
 
             // Two columns once a house holds more than three. A corner triangle
             // is only a quarter of the side tall, and a stellium stacked one
@@ -329,7 +348,9 @@ export function KundliChart({ chart, size }: { chart: Chart; size?: number }) {
 
                 {Array.from({ length: rows }, (_, row) => {
                   const inRow = occupants.slice(row * perRow, row * perRow + perRow);
-                  const gap = glyph * 2.4;
+                  // Column centres. Pulled in from 2.4 as the glyphs grew: the
+                  // pair has to stay inside a cell that did not.
+                  const gap = glyph * 2.1;
                   return inRow.map((graha, column) => (
                     <SvgText
                       key={graha.graha}
@@ -365,5 +386,16 @@ export function KundliChart({ chart, size }: { chart: Chart; size?: number }) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { width: '100%', aspectRatio: 1, alignItems: 'center', justifyContent: 'center' },
+  wrap: {
+    width: '100%',
+    aspectRatio: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    // Small on purpose. The corner cells are triangles whose tips reach the
+    // corners, and anything rounder than this starts eating them; this much
+    // only softens the rim, and the numbers sit a twelfth of the way in.
+    borderRadius: radius.sm,
+    overflow: 'hidden',
+  },
 });

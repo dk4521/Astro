@@ -362,6 +362,4 @@ export type TarotReading = {
    */
   grounded: boolean;
   contradictions: string[];
-  /** Credits left. Null where billing is not configured. */
-  balance: number | null;
 };

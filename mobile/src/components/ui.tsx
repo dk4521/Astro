@@ -16,20 +16,61 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 
-import { colors, gradient, radius, space, type } from '../theme';
+import { alpha, colors, radius, shade, space, tintAlpha, type } from '../theme';
+import { useScreenTint } from '../theme/tint';
 
 export function Label({ children }: { children: ReactNode }) {
   return <Text style={styles.label}>{children}</Text>;
 }
 
+/**
+ * A sheet of glass, lit in whatever colour the screen it is on wears.
+ *
+ * The tint is not a prop, and that is the point: two dozen cards across nine
+ * screens would each have to be told, and the one that was forgotten would be
+ * the one nobody noticed for a release. `useScreenTint` reads it from the
+ * route. Pass `plain` where a card must stay neutral — inside another tinted
+ * surface, where a second wash would just muddy the first.
+ */
 export function Card({
   children,
   style,
+  plain,
 }: {
   children: ReactNode;
   style?: ViewStyle;
+  plain?: boolean;
 }) {
-  return <View style={[styles.card, style]}>{children}</View>;
+  const tint = useScreenTint();
+
+  if (plain) return <View style={[styles.card, style]}>{children}</View>;
+
+  return (
+    <View
+      style={[
+        styles.card,
+        styles.cardTinted,
+        {
+          borderColor: alpha(tint, tintAlpha.border),
+          // The bloom outside the border. Supported since RN 0.76 on the new
+          // architecture, which this app is on; where it is not, the coloured
+          // border and the wash still carry the card on their own.
+          boxShadow: `0 0 16px ${alpha(tint, tintAlpha.glow)}`,
+        },
+        style,
+      ]}
+    >
+      {/* Lit from the top-left corner rather than evenly, so a card has a
+          direction and a stack of them does not read as striped. */}
+      <LinearGradient
+        colors={[alpha(tint, tintAlpha.wash), alpha(tint, tintAlpha.washEnd)]}
+        start={{ x: 0.05, y: 0 }}
+        end={{ x: 0.85, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+      {children}
+    </View>
+  );
 }
 
 export function Row({
@@ -90,6 +131,18 @@ export function Button({
 }) {
   const inactive = disabled || loading;
   const filled = variant === 'primary';
+
+  /**
+   * The brand button wears the screen's colour; the other three keep their own.
+   *
+   * That split is the whole rule. Sign in, sign out and send mean something by
+   * being green, red and gold everywhere in the app, and a send button that
+   * turned blue on one screen would have traded a meaning for a decoration. The
+   * brand button means "the thing this screen is for", so taking the screen's
+   * hue is the one case where changing colour says more rather than less.
+   */
+  const screen = useScreenTint();
+
   //: The tone's own colour. Null for `brand`, which is a gradient rather than a
   //: flat colour — so it is null everywhere the tone is used as *ink*.
   const solid = tone === 'brand' ? null : TONE_FILL[tone];
@@ -107,9 +160,16 @@ export function Button({
    * gradient is decoration over a button rather than the button itself. Nothing
    * changes where the gradient was already painting: it covers this exactly.
    */
-  const fill = solid ?? gradient.brand[1];
+  const fill = solid ?? shade(screen, 0.72);
 
-  const label = filled ? toneLabelColor(tone) : solid ?? colors.accentSoft;
+  //: Every tint in the palette is light enough to need dark ink, which is what
+  //: `toneLabelColor` already says about the brand gradient it replaces.
+  const label = filled ? toneLabelColor(tone) : solid ?? screen;
+
+  //: The glow, in whatever colour the button actually is. Dropped while
+  //: disabled: a button that cannot be pressed should not be the brightest
+  //: thing on the screen.
+  const glow = inactive ? undefined : `0 0 18px ${alpha(solid ?? screen, 0.3)}`;
 
   return (
     <Pressable
@@ -120,8 +180,8 @@ export function Button({
       style={({ pressed }) => [
         styles.button,
         // A solid tone paints itself; the gradient is a layer underneath.
-        filled ? { backgroundColor: fill } : null,
-        !filled && { borderWidth: 1, borderColor: solid ?? colors.border },
+        filled ? { backgroundColor: fill, boxShadow: glow } : null,
+        !filled && { borderWidth: 1, borderColor: alpha(solid ?? screen, tintAlpha.border) },
         inactive && styles.buttonDisabled,
         pressed && !inactive && styles.buttonPressed,
       ]}
@@ -138,9 +198,9 @@ export function Button({
         colors={
           filled
             ? tone === 'brand'
-              ? [...gradient.brand]
+              ? [screen, shade(screen, 0.72)]
               : ['transparent', 'transparent']
-            : [...gradient.brandSoft]
+            : [alpha(solid ?? screen, 0.20), alpha(solid ?? screen, 0.10)]
         }
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -217,6 +277,9 @@ const styles = StyleSheet.create({
     borderColor: colors.glassBorder,
     padding: space.md,
   },
+  // The wash is an absolutely-filled child, so it has to be clipped to the same
+  // rounded corners as the border it sits inside.
+  cardTinted: { overflow: 'hidden' },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',

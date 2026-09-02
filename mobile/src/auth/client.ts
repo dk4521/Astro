@@ -10,6 +10,12 @@
  * Two Expo details worth knowing, both verified against SDK 57 rather than
  * copied from the standard React Native guide:
  *
+ * - **The session is not in AsyncStorage.** The standard guide says to put it
+ *   there; AsyncStorage is a plain unencrypted file, and a refresh token is a
+ *   credential that mints access tokens until it is revoked. It lives in the
+ *   Keychain and the Android Keystore instead — see `./storage`, which also
+ *   moves an existing session across on first launch so nobody is signed out
+ *   by the upgrade.
  * - **No `react-native-url-polyfill`.** Expo's winter runtime installs `URL`
  *   and `URLSearchParams` globally, which is the only reason that polyfill is
  *   usually needed.
@@ -18,10 +24,11 @@
  *   so refresh is started and stopped with the foreground state.
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import Constants from 'expo-constants';
 import { AppState } from 'react-native';
+
+import { SecureSessionStore } from './storage';
 
 type Extra = { supabaseUrl?: string; supabaseAnonKey?: string };
 
@@ -55,7 +62,7 @@ export const supabase: SupabaseClient | null =
   URL_VALUE && ANON_KEY
     ? createClient(URL_VALUE, ANON_KEY, {
         auth: {
-          storage: AsyncStorage,
+          storage: SecureSessionStore,
           autoRefreshToken: true,
           persistSession: true,
           // There is no URL bar to read a session out of on a phone, and

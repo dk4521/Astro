@@ -22,30 +22,55 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
 import { useAuth } from '../../src/auth/context';
+import { DESTINATIONS } from '../../src/destinations';
+import { strings } from '../../src/i18n';
 import { colors, radius, space, type } from '../../src/theme';
 
 type Item = {
   route: string;
   label: string;
-  glyph: string;
+  /** Null where the row draws its icon instead — see `HomeIcon`. */
+  glyph: string | null;
+  /** Set on the one row that is selling something; grey otherwise. */
+  tint?: string;
   accountOnly?: boolean;
 };
 
+/**
+ * English whatever the display language is, which is what it has always been.
+ * The names themselves now come from the same table the home cards read, so a
+ * row and the card that leads to the same screen cannot end up called two
+ * different things.
+ */
+const EN = strings('en');
+
 const ITEMS: Item[] = [
-  { route: '/today', label: 'Today', glyph: '☉' },
-  { route: '/chart', label: 'Chart', glyph: '◈' },
-  { route: '/matching', label: 'Matching', glyph: '◎' },
-  // A crescent rather than a card suit: ♠ reads as poker, and the stock
-  // Android font is missing enough of the prettier symbols that the power
-  // glyph in this very sidebar once shipped as an empty box.
-  { route: '/tarot', label: 'Tarot', glyph: '☾' },
-  { route: '/reading', label: 'Chat', glyph: '❋' },
-  // Only with an account: a signed-out phone keeps no conversations at all, so
-  // the row would lead to a permanently empty screen.
-  { route: '/history', label: 'History', glyph: '↺', accountOnly: true },
-  { route: '/learn', label: 'Learn', glyph: '✦' },
-  { route: '/settings', label: 'Settings', glyph: '⚙' },
+  // Home is a sidebar row and not a home card, so it is the one destination
+  // this list still spells out. A drawn glyph rather than ⌂, which is exactly
+  // the class of character the stock Android font has been missing before.
+  { route: '/home', label: 'Home', glyph: null },
+  ...DESTINATIONS.map((destination) => ({
+    route: destination.route,
+    label: EN.hub[destination.key].title,
+    glyph: destination.glyph,
+    tint: destination.promote ? destination.tint : undefined,
+    accountOnly: destination.accountOnly,
+  })),
 ];
+
+function HomeIcon({ color }: { color: string }) {
+  return (
+    <Svg width={15} height={15} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M3.5 10.5 12 3.5 20.5 10.5 V20 a0.8 0.8 0 0 1 -0.8 0.8 H4.3 a0.8 0.8 0 0 1 -0.8 -0.8 Z"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
 
 function PowerIcon({ color }: { color: string }) {
   return (
@@ -107,8 +132,28 @@ function Sidebar() {
                 ]}
               >
                 <View style={[styles.marker, active && styles.markerActive]} />
-                <Text style={[styles.glyph, active && styles.glyphActive]}>{item.glyph}</Text>
-                <Text style={[styles.itemLabel, active && styles.itemLabelActive]}>
+                {item.glyph ? (
+                  <Text
+                    style={[
+                      styles.glyph,
+                      active && styles.glyphActive,
+                      item.tint ? { color: item.tint } : null,
+                    ]}
+                  >
+                    {item.glyph}
+                  </Text>
+                ) : (
+                  <View style={styles.glyphBox}>
+                    <HomeIcon color={active ? colors.accentSoft : colors.textFaint} />
+                  </View>
+                )}
+                <Text
+                  style={[
+                    styles.itemLabel,
+                    active && styles.itemLabelActive,
+                    item.tint ? { color: item.tint } : null,
+                  ]}
+                >
                   {item.label}
                 </Text>
               </Pressable>
@@ -225,6 +270,8 @@ const styles = StyleSheet.create({
   },
   markerActive: { backgroundColor: colors.accent },
   glyph: { fontSize: 15, color: colors.textFaint, width: 18, textAlign: 'center' },
+  // Same 18pt column as the text glyphs, so every label starts on one line.
+  glyphBox: { width: 18, alignItems: 'center' },
   glyphActive: { color: colors.accentSoft },
   itemLabel: {
     ...type.label,

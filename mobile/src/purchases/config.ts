@@ -47,7 +47,7 @@ export const PRO_ENTITLEMENT = 'kosmiq_pro';
 export const DEFAULT_OFFERING: string | null = null;
 
 /**
- * The three products, as configured in the stores and mapped in RevenueCat.
+ * The products, as configured in the stores and mapped in RevenueCat.
  *
  * Nothing in the app reads a price from this table — prices come from the store,
  * already localised and already in the reader's currency, and hard-coding one
@@ -55,11 +55,23 @@ export const DEFAULT_OFFERING: string | null = null;
  * These identifiers exist for two honest uses: matching a package back to a
  * label when drawing a custom list, and being greppable when someone asks what
  * this app sells.
+ *
+ * **Weekly is here because the market is India.** A week is what a lot of
+ * people can commit to at a UPI price point, and a subscription nobody can
+ * afford to start is not cheaper than one they can. It is also the term most
+ * likely to be cancelled after one cycle, which is fine: a week of Pro that
+ * ends is a better outcome than a month that was never bought.
+ *
+ * Adding one here changes nothing on its own. The offering in the RevenueCat
+ * dashboard decides what the paywall shows, and the entitlement decides what
+ * the app unlocks — which is why every gate asks about `kosmiq_pro` and no
+ * screen names a product.
  */
 export const PRODUCTS = {
   lifetime: 'lifetime',
   yearly: 'yearly',
   monthly: 'monthly',
+  weekly: 'weekly',
 } as const;
 
 export type ProductKey = keyof typeof PRODUCTS;
@@ -113,10 +125,10 @@ export const REVENUECAT_API_KEY = resolveApiKey();
 /**
  * True when a build has no usable key, so purchases are switched off.
  *
- * Not a thrown error. The rest of the app works without purchases — the free
- * six a day and everything they buy still function — so a missing key hides the
- * upgrade path and says so, exactly as a missing Razorpay configuration already
- * does on the plans screen.
+ * Not a thrown error. The rest of the app works without purchases: every chart,
+ * dasha, panchang, match and card draw is arithmetic and needs no subscription
+ * at all. A missing key hides the upgrade path and says so on the plans screen,
+ * rather than leaving a button that opens an empty paywall.
  */
 export const REVENUECAT_NOT_CONFIGURED = REVENUECAT_API_KEY === null;
 

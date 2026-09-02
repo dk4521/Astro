@@ -29,7 +29,6 @@ import {
 import { API_NOT_CONFIGURED } from '../../src/api/client';
 import { usePurchases } from '../../src/purchases/context';
 import { presentCustomerCenter } from '../../src/purchases/paywall';
-import { loadAllowance, type Allowance } from '../../src/api/allowance';
 import type { BirthDetails } from '../../src/api/types';
 import { toDisplayDate } from '../../src/format';
 import { ScreenHeader } from '../../src/components/ScreenHeader';
@@ -45,26 +44,6 @@ function sinceText(at: number | null): string {
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours} h ago`;
   return `${Math.floor(hours / 24)} d ago`;
-}
-
-const PLAN_LABEL: Record<'free' | 'monthly' | 'yearly', string> = {
-  free: 'Free',
-  monthly: 'Monthly',
-  yearly: 'Yearly',
-};
-
-/**
- * When the soonest-expiring credits go.
- *
- * Almost always tonight — the free six expire at midnight — so the common case
- * is a word rather than a date. A date here would be technically correct and
- * would read as a warning about something that happens every single day.
- */
-function expiryPhrase(at: Date): string {
-  const hours = (at.getTime() - Date.now()) / 3_600_000;
-  if (hours <= 24) return 'tonight';
-  if (hours <= 48) return 'tomorrow';
-  return `on ${at.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`;
 }
 
 export default function Settings() {
@@ -83,17 +62,6 @@ export default function Settings() {
   const [details, setDetails] = useState<BirthDetails | null>(null);
   const [readCount, setReadCount] = useState(0);
   const [name, setName] = useState('');
-  const [allowance, setAllowance] = useState<Allowance | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    loadAllowance(user?.id ?? null).then((next) => {
-      if (!cancelled) setAllowance(next);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [user]);
 
   useEffect(() => {
     let cancelled = false;
@@ -248,30 +216,19 @@ export default function Settings() {
           </View>
         </View>
 
-        {/* A summary, not a price list. Anything that costs money lives on
-            /plans, so this screen stays a place to check facts rather than a
-            second place to be sold to. */}
-        {user ? (
+        {/* There is no balance here any more, because there is no balance.
+            This card used to read out credits and what expired tonight; the
+            product sells access now, so the only fact worth stating to someone
+            without it is what it would get them — and that lives on /plans,
+            which this points at rather than duplicating. */}
+        {!pro ? (
           <View style={styles.section}>
-            <Label>Messages</Label>
+            <Label>Readings and questions</Label>
             <Card>
               <Row
                 label="Plan"
-                value={PLAN_LABEL[allowance?.plan ?? 'free']}
-                hint={
-                  allowance && allowance.plan !== 'free' && allowance.status
-                    ? allowance.status
-                    : 'Six free messages a day'
-                }
-              />
-              <Row
-                label="Balance"
-                value={allowance ? String(allowance.balance) : '—'}
-                hint={
-                  allowance?.expiresAt
-                    ? `Some expire ${expiryPhrase(allowance.expiresAt)}`
-                    : undefined
-                }
+                value="Free"
+                hint="Charts, dashas, panchang and matching. Readings need Pro."
               />
             </Card>
             <View style={styles.action}>

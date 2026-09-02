@@ -9,11 +9,11 @@
  * server nicely. The seed makes that cheap — the whole spread is twelve hex
  * characters, and re-dealing it is a free, deterministic call.
  *
- * **The reading is kept because it was paid for.** It costs a credit, and a
- * credit spent on text that vanishes when the screen unmounts is a credit
- * stolen. Keyed by the seed *and* the question, so asking a different question
- * of the same three cards is a new reading and is charged as one — which is
- * what it is.
+ * **The reading is kept because it cost something to make.** Not money any
+ * more — Pro covers it — but a model call and several seconds of waiting, and
+ * throwing that away when the screen unmounts is rude to the reader and
+ * wasteful to us. Keyed by the seed *and* the question, so asking a different
+ * question of the same three cards is a new reading, which is what it is.
  *
  * The deck is kept for the ordinary reason: it is 78 cards of static prose, it
  * should work on a train, and it should not be re-downloaded to open one card.
@@ -94,22 +94,24 @@ export async function rememberRevealed(draw: TarotDraw, revealed: string[]): Pro
 }
 
 /**
- * The reading for this spread, paid for once.
+ * The reading for this spread.
  *
  * Returns the stored one when the same question is asked of the same cards in
  * the same language — including across a reinstall of the screen, an app
  * restart, or a phone that went offline in between. A different question is a
  * different reading and goes to the server.
  *
+ * The cache is now a courtesy rather than an economy. It used to save the
+ * reader a credit; a subscription has no credits, so what it saves is a wait
+ * and a model call. Worth keeping for both.
+ *
  * An ungrounded reading is never kept, exactly as on the chart side: the app's
- * one visible failure should not be served back all day. The retry costs a
- * credit the reader was going to spend on a second attempt anyway.
+ * one visible failure should not be served back all day.
  */
 export async function loadTarotReading(
   seed: string,
   question: string,
   language: DisplayLanguage,
-  requestId: string,
 ): Promise<TarotReading> {
   const key = READING_KEY(seed, language);
 
@@ -120,7 +122,6 @@ export async function loadTarotReading(
     seed,
     question: question.trim() ? question : null,
     language,
-    requestId,
   });
 
   if (reading.grounded) {
@@ -130,36 +131,7 @@ export async function loadTarotReading(
   return reading;
 }
 
-/**
- * The idempotency key the credit is charged against.
- *
- * It identifies *this reading* — these cards, this language, this question —
- * rather than the account, and that has two consequences worth stating.
- *
- * A retry is free: a request that timed out, or one that came back naming a
- * card the shuffle never dealt, can be asked again without paying twice. The
- * reader did not get what they bought.
- *
- * A different question is not a retry. Asking something new of the same three
- * cards is a second model call and is charged as one — which is why the
- * question is hashed into the key rather than left out of it, and why leaving
- * it out was a quiet way to give away every reading after the first.
- */
-export function readingRequestId(
-  seed: string,
-  question: string,
-  language: DisplayLanguage,
-): string {
-  // djb2, which is plenty for telling two questions apart. Nothing here is
-  // trying to be a security property — collisions cost one free reading.
-  let hash = 5381;
-  for (let index = 0; index < question.length; index += 1) {
-    hash = ((hash << 5) + hash + question.charCodeAt(index)) | 0;
-  }
-  return `tarot-${seed}-${language}-${(hash >>> 0).toString(36)}`;
-}
-
-/** Whatever was already paid for on this spread, without asking the server. */
+/** Whatever was already read for this spread, without asking the server. */
 export async function cachedTarotReading(
   seed: string,
   language: DisplayLanguage,

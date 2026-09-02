@@ -199,15 +199,10 @@ export default function ChartScreen() {
 
           <View style={styles.section}>
             <KundliChart chart={reading.chart} />
-            <Text style={styles.caption}>
-              {t.chartCaptionOne}{'\n'}
-              {t.chartCaptionTwo}
-            </Text>
           </View>
 
           <View style={styles.section}>
             <Button title={t.readInWords} onPress={() => router.push('/reading')} />
-            <Text style={styles.caption}>{t.readInWordsNote}</Text>
           </View>
 
           <View style={styles.section}>

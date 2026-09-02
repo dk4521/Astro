@@ -19,6 +19,7 @@ from app.ai.client import Request
 from app.ai.interpret import Turn
 from app.ai.prompts import READING_REQUEST, reading_directive
 from app.astro import build_chart
+from app import main
 from app.main import app
 
 DELHI = dict(birth_local=dt.datetime(1947, 8, 15, 0, 0), latitude=28.6139, longitude=77.2090)
@@ -293,11 +294,14 @@ def test_the_endpoint_reports_hit_or_miss(monkeypatch):
     assert second.json()["text"] == first.json()["text"]
 
 
-def test_health_reports_cache_reuse(chart, model):
+def test_health_reports_cache_reuse(chart, model, monkeypatch):
     interpret.reading(chart, language="en", as_of=AS_OF)
     interpret.reading(chart, language="en", as_of=AS_OF)
 
-    body = TestClient(app).get("/health").json()["cache"]
+    # The stats left `/health` when it stopped answering "is the paywall on"
+    # to anyone who asked. They now need the operator's token.
+    monkeypatch.setattr(main, "_METRICS_TOKEN", "t0ken")
+    body = TestClient(app).get("/v1/health/cache", params={"token": "t0ken"}).json()
     assert body["hits"] == 1
     assert body["misses"] == 1
     assert body["entries"] == 1

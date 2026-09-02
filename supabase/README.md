@@ -8,9 +8,16 @@ Any region; the free tier is enough to start. Copy the **Project URL** and the
 ## 2. Run the schema
 
 Paste [schema.sql](schema.sql) into the SQL editor and run it. It creates
-`profiles`, `charts`, `course_progress`, `conversations` and `messages`, the
-credit tables (`credit_lots`, `credit_spends`, `subscriptions`, `payments`),
-and enables row-level security on all of them.
+`profiles`, `charts`, `course_progress`, `conversations` and `messages`, and
+enables row-level security on all of them.
+
+**Upgrading a project that ran an older copy?** The credit tables are gone —
+what someone has paid for is RevenueCat's answer now, not a balance in this
+database. Running the current schema.sql does not remove the old objects, it
+only stops creating them; use
+[migrations/2026-09-01-drop-credits.sql](migrations/2026-09-01-drop-credits.sql)
+to drop them, and read the warning at the top of it first, because it takes the
+Razorpay payment history with it.
 
 **The whole file is re-runnable, including the policies** — each is dropped
 before it is created. Run it again whenever the schema changes; there is no
@@ -25,25 +32,26 @@ ran. If you hit that error on an older copy of this file, take a newer one.
 to be public; without those policies these tables are an open API over everyone's
 birth details.
 
-**Do not skip the `revoke execute` lines at the end either.** PostgreSQL grants
-`execute` on a new function to `public` by default, and the credit functions are
-`security definer` — they run as their owner. Without those revokes,
-`grant_credits` is a public API for minting money, reachable from any device
-holding the anon key. Only `credit_summary`, which reads, stays available to a
-signed-in client.
+**If you ever add a `security definer` function, revoke it first.** PostgreSQL
+grants `execute` on a new function to `public` by default, and a `security
+definer` function runs as its owner — so a forgotten revoke turns one into a
+public API with the owner's privileges, reachable from any device holding the
+anon key. The credit functions that needed this are gone and the current schema
+defines none, which is why the file no longer ends in a wall of revokes. The
+rule outlives them.
 
-After running it, one query is worth pasting to confirm the revokes took:
+This is the query that says whether a client can call something it should not:
 
 ```sql
 select p.proname, has_function_privilege('authenticated', p.oid, 'execute') as client_can_call
-from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-where n.nspname = 'public' and p.proname in (
-  'grant_credits','consume_credit','refund_credit','ensure_grants',
-  'record_payment','record_subscription','credit_summary'
-) order by 1;
+from pg_proc p
+join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public' and p.prosecdef
+order by 1;
 ```
 
-Everything must read `false` except `credit_summary`.
+`handle_new_user` is the only row expected, and it is a trigger function rather
+than anything a client can reach.
 
 ## 3. Point the app at it
 
@@ -60,26 +68,31 @@ packager will not pick them up.
 Without these the app still runs. Accounts simply do not appear, and everything
 stays on the device, which is how it worked before auth existed.
 
-## 4. Give the backend a service-role key
+## 4. Let the backend verify who is asking
 
-Billing is the one thing the app cannot do for itself. Copy the **service_role**
-key from Settings → API into `backend/.env`:
+The backend needs to read the name on a token, and nothing more. The **anon**
+key is enough for that:
 
 ```
 SUPABASE_URL=https://xxxxxxxx.supabase.co
 SUPABASE_ANON_KEY=eyJhbGciOi...
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOi...
 ```
 
-The service-role key bypasses row-level security. It belongs on the server and
-nowhere else — never in an `EXPO_PUBLIC_` variable, never in a build. If it has
-ever been in a client bundle, rotate it.
+**No service-role key.** There used to be one here, because the backend wrote
+the credit ledger with it. There is no ledger, so there is nothing on this
+project the server needs to write, and a key that bypasses row-level security
+is not worth holding for a job that does not exist. If your `backend/.env` still
+has `SUPABASE_SERVICE_ROLE_KEY`, delete the line and rotate the key in
+Settings → API — including from Render's dashboard.
 
-Without it the backend reports `billing.credits: false` at `/health`, `/v1/chat`
-stays open to anyone who can reach it, and the pricing screen has nothing to
-sell. That is the right behaviour for local development and the wrong one for
-anything public — `/health` is where to check which of the three switches
-(`accounts`, `credits`, `payments`) are actually on.
+What someone has *paid for* is a separate question with a separate key, and it
+is not Supabase's: see `REVENUECAT_SECRET_KEY` in `backend/.env.example`.
+
+Without the two variables above, nobody can be identified and every AI endpoint
+answers whoever reaches it. That is the right behaviour for local development
+and the wrong one for anything public. The server says which switches are off in
+its startup log — `/health` deliberately does not, because that was an
+unauthenticated answer to "is the paywall on".
 
 ## 5. For testing, consider turning email confirmation off
 
@@ -100,8 +113,12 @@ happen. See `mobile/src/sync/`.
 | `charts` | both ways | Newest edit wins, compared by timestamp. Changing your details inserts a new row and demotes the old one, so an old conversation stays attached to the chart it was about |
 | `course_progress` | both ways | Union. Two devices reading different chapters add up rather than overwrite |
 | `conversations` / `messages` | up, read back on open | Append-only. The grounding verdict is stored with the message it describes |
-| `credit_lots` / `credit_spends` | server only | Written by `security definer` functions the backend calls with the service-role key. The app reads its balance through `credit_summary()` and can write nothing |
 | `profiles` | created by trigger | — |
+
+Subscriptions are not in that table, and are not in this database at all. The
+store took the payment, RevenueCat holds the record, and the backend asks
+RevenueCat. A copy here would be a copy that can go stale — and eventually one
+somebody tries to write.
 
 There is no queue of pending writes, deliberately. Every merge is a union or a
 timestamp comparison, so running it twice does what running it once did, and a

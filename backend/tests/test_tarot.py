@@ -352,8 +352,8 @@ def test_a_nonsense_seed_is_refused_rather_than_hashed():
 
 
 def test_the_reading_endpoint_deals_from_the_seed_not_from_the_client(stub, monkeypatch):
-    """A client cannot buy a reading of a spread it made up."""
-    monkeypatch.setattr(api_routes.store, "is_configured", lambda: False)
+    """A client cannot get a reading of a spread it made up."""
+    monkeypatch.setattr(api_routes.entitlements, "is_configured", lambda: False)
     response = client.post(
         "/v1/tarot/reading",
         json={"seed": "abc123", "question": "what now?", "language": "en",
@@ -365,8 +365,14 @@ def test_the_reading_endpoint_deals_from_the_seed_not_from_the_client(stub, monk
     assert "The Empress" in sent and "The Tower" not in sent
 
 
-def test_a_reading_costs_a_credit(stub, monkeypatch):
-    monkeypatch.setattr(api_routes.store, "is_configured", lambda: True)
+def test_a_reading_needs_a_subscription(stub, monkeypatch):
+    """The gate is the entitlement now, and it is checked on the server."""
+    monkeypatch.setattr(api_routes.entitlements, "is_configured", lambda: True)
+    monkeypatch.setattr(
+        api_routes.entitlements,
+        "entitlement_of",
+        lambda uid: api_routes.entitlements.Entitlement(active=True),
+    )
     # Overridden rather than monkeypatched: the route captured the real
     # dependency at import, so rebinding the module attribute would leave the
     # override keyed on a function nothing depends on.
@@ -374,62 +380,45 @@ def test_a_reading_costs_a_credit(stub, monkeypatch):
         id="user-1", email=None
     )
 
-    charged: list[tuple[str, str]] = []
-    monkeypatch.setattr(
-        api_routes.store,
-        "consume_credit",
-        lambda uid, ref: (charged.append((uid, ref)), (True, 12))[1],
-    )
-
     try:
-        response = client.post(
-            "/v1/tarot/reading", json={"seed": "abc123", "request_id": "req-1"}
-        )
+        response = client.post("/v1/tarot/reading", json={"seed": "abc123"})
     finally:
         app.dependency_overrides.clear()
 
     assert response.status_code == 200
-    assert response.json()["balance"] == 12
-    assert charged == [("user-1", "req-1")]
+    assert "balance" not in response.json()
 
 
-def test_a_reading_the_model_never_gave_is_refunded(monkeypatch):
-    """Capacity on the provider's side is our problem, not the reader's."""
-    from app import ai
-
-    class Failing:
-        def complete(self, request):
-            raise ai.InterpretationUnavailable("high demand")
-
-        def stream(self, request):
-            raise ai.InterpretationUnavailable("high demand")
-
-    set_client(Failing())
-    monkeypatch.setattr(api_routes.store, "is_configured", lambda: True)
-    monkeypatch.setattr(api_routes.store, "consume_credit", lambda uid, ref: (True, 3))
-
-    refunded: list[tuple[str, str]] = []
+def test_a_reader_without_a_subscription_is_sent_to_the_paywall(stub, monkeypatch):
+    """402, not 401 and not 403: the app opens the plans screen on this one."""
+    monkeypatch.setattr(api_routes.entitlements, "is_configured", lambda: True)
     monkeypatch.setattr(
-        api_routes.store, "refund_credit", lambda uid, ref: refunded.append((uid, ref))
+        api_routes.entitlements,
+        "entitlement_of",
+        lambda uid: api_routes.entitlements.NOT_ENTITLED,
     )
     app.dependency_overrides[auth.optional_user] = lambda: auth.Account(
         id="user-1", email=None
     )
 
     try:
-        response = client.post(
-            "/v1/tarot/reading", json={"seed": "abc123", "request_id": "req-2"}
-        )
+        response = client.post("/v1/tarot/reading", json={"seed": "abc123"})
     finally:
         app.dependency_overrides.clear()
-        set_client(None)
 
-    assert response.status_code == 502
-    assert refunded == [("user-1", "req-2")]
+    assert response.status_code == 402
+    assert stub.requests == []  # the model was never asked
+
+
+def test_turning_the_cards_over_stays_free(monkeypatch):
+    """Nobody should have to subscribe to look at three cards."""
+    monkeypatch.setattr(api_routes.entitlements, "is_configured", lambda: True)
+    assert client.post("/v1/tarot/draw", json={"seed": "abc123"}).status_code == 200
+    assert client.get("/v1/tarot/deck").status_code == 200
 
 
 def test_signing_in_is_required_once_billing_is_on(stub, monkeypatch):
-    """401 means sign in; 402 would mean top up. Two screens, two statuses."""
-    monkeypatch.setattr(api_routes.store, "is_configured", lambda: True)
+    """401 means sign in; 402 means subscribe. Two screens, two statuses."""
+    monkeypatch.setattr(api_routes.entitlements, "is_configured", lambda: True)
     response = client.post("/v1/tarot/reading", json={"seed": "abc123"})
     assert response.status_code == 401

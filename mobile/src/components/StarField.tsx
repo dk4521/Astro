@@ -227,18 +227,23 @@ type GlowDef = {
  * app's violet accent, but a dusty mauve-cream that could be either at a glance.
  * Alternating warm-leaning and cool-leaning stops keep the band from reading as
  * a single flat tone.
+ *
+ * The radii are half the spread they started at. At 38 % every glow reached the
+ * corners, ten of them summed everywhere at once, and the result was an even
+ * haze over the whole screen rather than a band — a band is only a band if the
+ * sky beside it stays black.
  */
 const MILKY_WAY: GlowDef[] = [
-  { id: 'mw0', cx: '18%', cy: '3%', r: '38%', color: '#C8BFD0', peak: 0.07 },
-  { id: 'mw1', cx: '24%', cy: '14%', r: '34%', color: '#D0C8BF', peak: 0.09 },
-  { id: 'mw2', cx: '30%', cy: '25%', r: '36%', color: '#C4BAC8', peak: 0.12 },
-  { id: 'mw3', cx: '38%', cy: '35%', r: '38%', color: '#CFC5BE', peak: 0.14 },
-  { id: 'mw4', cx: '46%', cy: '45%', r: '40%', color: '#C8BFC8', peak: 0.16 },
-  { id: 'mw5', cx: '54%', cy: '55%', r: '40%', color: '#D2CAC0', peak: 0.15 },
-  { id: 'mw6', cx: '62%', cy: '65%', r: '38%', color: '#C0B8C6', peak: 0.13 },
-  { id: 'mw7', cx: '70%', cy: '76%', r: '35%', color: '#CBC2BA', peak: 0.10 },
-  { id: 'mw8', cx: '78%', cy: '88%', r: '36%', color: '#C4BCC8', peak: 0.08 },
-  { id: 'mw9', cx: '84%', cy: '97%', r: '34%', color: '#CCC4BE', peak: 0.06 },
+  { id: 'mw0', cx: '18%', cy: '3%', r: '19%', color: '#C8BFD0', peak: 0.08 },
+  { id: 'mw1', cx: '24%', cy: '14%', r: '20%', color: '#D0C8BF', peak: 0.11 },
+  { id: 'mw2', cx: '30%', cy: '25%', r: '21%', color: '#C4BAC8', peak: 0.15 },
+  { id: 'mw3', cx: '38%', cy: '35%', r: '22%', color: '#CFC5BE', peak: 0.18 },
+  { id: 'mw4', cx: '46%', cy: '45%', r: '23%', color: '#C8BFC8', peak: 0.20 },
+  { id: 'mw5', cx: '54%', cy: '55%', r: '23%', color: '#D2CAC0', peak: 0.19 },
+  { id: 'mw6', cx: '62%', cy: '65%', r: '22%', color: '#C0B8C6', peak: 0.16 },
+  { id: 'mw7', cx: '70%', cy: '76%', r: '20%', color: '#CBC2BA', peak: 0.12 },
+  { id: 'mw8', cx: '78%', cy: '88%', r: '19%', color: '#C4BCC8', peak: 0.09 },
+  { id: 'mw9', cx: '84%', cy: '97%', r: '18%', color: '#CCC4BE', peak: 0.07 },
 ];
 
 // ---------------------------------------------------------------------------
@@ -261,11 +266,13 @@ type DarkLaneDef = {
 };
 
 const DARK_LANES: DarkLaneDef[] = [
-  { id: 'dl0', cx: '28%', cy: '20%', r: '13%', color: '#08061A', peak: 0.45 },
-  { id: 'dl1', cx: '40%', cy: '38%', r: '10%', color: '#0A0818', peak: 0.38 },
-  { id: 'dl2', cx: '50%', cy: '50%', r: '8%', color: '#08061A', peak: 0.32 },
-  { id: 'dl3', cx: '58%', cy: '60%', r: '11%', color: '#0A0818', peak: 0.40 },
-  { id: 'dl4', cx: '66%', cy: '73%', r: '9%', color: '#09071A', peak: 0.30 },
+  { id: 'dl0', cx: '28%', cy: '20%', r: '14%', color: '#04030C', peak: 0.62 },
+  { id: 'dl1', cx: '40%', cy: '38%', r: '11%', color: '#05040E', peak: 0.55 },
+  { id: 'dl2', cx: '50%', cy: '50%', r: '9%', color: '#04030C', peak: 0.48 },
+  { id: 'dl3', cx: '58%', cy: '60%', r: '12%', color: '#05040E', peak: 0.58 },
+  { id: 'dl4', cx: '66%', cy: '73%', r: '10%', color: '#04030C', peak: 0.45 },
+  { id: 'dl5', cx: '45%', cy: '44%', r: '7%', color: '#05040E', peak: 0.40 },
+  { id: 'dl6', cx: '73%', cy: '82%', r: '8%', color: '#04030C', peak: 0.38 },
 ];
 
 // ---------------------------------------------------------------------------
@@ -355,12 +362,16 @@ type Cloud = {
  * mauve-cream range — warm enough to complement the Milky Way glow, cool
  * enough to sit inside the violet theme. In pairs so no corner ends up
  * brighter than the corner opposite it.
+ *
+ * Their peaks are a third of what they were and their radii pulled back to the
+ * corners. At 0.16 across 58 % these four were the haze: a colour cast over
+ * every pixel, which is exactly what a night sky does not have.
  */
 const CLOUDS: Cloud[] = [
-  { id: 'violet', cx: '80%', cy: '8%', r: '58%', color: '#8B7BF7', peak: 0.16, period: 9000, delay: 0 },
-  { id: 'violetLow', cx: '20%', cy: '92%', r: '58%', color: '#8B7BF7', peak: 0.16, period: 11500, delay: 4200 },
-  { id: 'mauve', cx: '10%', cy: '30%', r: '45%', color: '#9B8AC0', peak: 0.11, period: 15000, delay: 5000 },
-  { id: 'warmDust', cx: '90%', cy: '70%', r: '45%', color: '#BFA898', peak: 0.10, period: 12000, delay: 2000 },
+  { id: 'violet', cx: '84%', cy: '6%', r: '42%', color: '#8B7BF7', peak: 0.055, period: 9000, delay: 0 },
+  { id: 'violetLow', cx: '16%', cy: '94%', r: '42%', color: '#8B7BF7', peak: 0.055, period: 11500, delay: 4200 },
+  { id: 'mauve', cx: '8%', cy: '28%', r: '34%', color: '#9B8AC0', peak: 0.035, period: 15000, delay: 5000 },
+  { id: 'warmDust', cx: '92%', cy: '72%', r: '34%', color: '#BFA898', peak: 0.032, period: 12000, delay: 2000 },
 ];
 
 // =========================================================================
@@ -472,7 +483,8 @@ function MilkyWayBand({
           {MILKY_WAY.map((glow) => (
             <RadialGradient key={glow.id} id={glow.id} cx={glow.cx} cy={glow.cy} r={glow.r}>
               <Stop offset="0" stopColor={glow.color} stopOpacity={String(glow.peak)} />
-              <Stop offset="0.45" stopColor={glow.color} stopOpacity={String(glow.peak * 0.45)} />
+              <Stop offset="0.35" stopColor={glow.color} stopOpacity={String(glow.peak * 0.5)} />
+              <Stop offset="0.7" stopColor={glow.color} stopOpacity={String(glow.peak * 0.12)} />
               <Stop offset="1" stopColor={glow.color} stopOpacity="0" />
             </RadialGradient>
           ))}
@@ -729,7 +741,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: '#0C0A18',
+    backgroundColor: '#05040E',
   },
   streak: { flex: 1, borderRadius: 1 },
 });
