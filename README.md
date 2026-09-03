@@ -726,3 +726,14 @@ Before the first store build: turn Supabase email confirmation back on
 5. Replace the bundled city list with a real geocoder if coverage becomes a problem.
 6. Divisional charts beyond D9 (D10 and friends need per-sign starting rules that
    `divisional_sign` deliberately does not encode yet).
+
+## Acknowledgments & Credits
+
+- **Astronomical Ephemeris:** Planetary ephemerides courtesy of **NASA JPL (Jet Propulsion Laboratory)** DE440s (Public Domain).
+- **Ephemeris Computation:** Powered by [Skyfield](https://rhodesmill.org/skyfield/) (MIT License) by Brandon Rhodes.
+- **Subscriptions & In-App Purchases:** Powered by [RevenueCat](https://www.revenuecat.com/).
+- **Safety & Mental Health Helplines:** Integrated with Tele-MANAS (14416), AASRA, Women Helpline (181), and National Emergency (112).
+
+## License
+
+This project is open source and licensed under the [MIT License](LICENSE) by Deepak Singh.
