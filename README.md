@@ -1,5 +1,7 @@
 # Enuma Sky
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-brightgreen.svg)](LICENSE)
+
 AI-powered Vedic astrology app built to take astrology back from fear and
 fatalism. Mobile-first (React Native + Expo), Python backend, Postgres/Supabase
 for user data.
