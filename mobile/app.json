@@ -7,12 +7,6 @@
     "icon": "./assets/icon.png",
     "scheme": "enumasky",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": true,
-    "splash": {
-      "backgroundColor": "#0B0A14",
-      "resizeMode": "contain",
-      "image": "./assets/splash-icon.png"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.enumasky.app"
@@ -38,7 +32,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "448741dd-dfd2-4196-aaac-5252fd05fc20"
+        "projectId": "769e8e4c-3a42-46c5-97d2-96701fb22a4b"
       }
     },
     "owner": "deepakss646"
