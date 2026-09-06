@@ -15,13 +15,19 @@
       "autoIncrement": true,
       "distribution": "internal",
       "environment": "preview",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://astro-16jw.onrender.com"
+      },
       "android": {
         "buildType": "apk"
       }
     },
     "production": {
       "autoIncrement": true,
-      "environment": "production"
+      "environment": "production",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://astro-16jw.onrender.com"
+      }
     }
   },
   "submit": {

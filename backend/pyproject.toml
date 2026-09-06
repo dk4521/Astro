@@ -32,3 +32,10 @@ dev = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+filterwarnings = [
+    "ignore::DeprecationWarning:skyfield",
+    "ignore::DeprecationWarning:google",
+    "ignore::DeprecationWarning:starlette",
+    "ignore::DeprecationWarning:anyio",
+    "ignore::starlette.exceptions.StarletteDeprecationWarning",
+]

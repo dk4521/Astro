@@ -141,9 +141,9 @@ async function request<T>(
     // failed".
     const reason =
       error instanceof Error && error.name === 'AbortError'
-        ? 'Request timed out'
-        : 'Could not reach the server';
-    throw new ApiError(`${reason} (${API_BASE_URL})`);
+        ? 'Request timed out. The server might be waking up.'
+        : 'Could not reach the server. Please check your internet or try again.';
+    throw new ApiError(reason);
   } finally {
     clearTimeout(timer);
   }
@@ -299,7 +299,7 @@ export async function streamChat(
     });
   } catch (error) {
     if (isAbort(error)) return;
-    throw new ApiError(`Could not reach the server (${API_BASE_URL})`);
+    throw new ApiError('Could not reach the server. Please try again.');
   }
 
   if (!response.ok) {
