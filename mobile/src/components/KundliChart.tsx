@@ -216,9 +216,9 @@ export function KundliChart({ chart, size }: { chart: Chart; size?: number }) {
         <Svg width={total} height={total} viewBox={`0 0 ${total} ${total}`}>
           <Defs>
             <LinearGradient id={`${uid}-bg`} x1="0" y1="0" x2="0.9" y2="1">
-              <Stop offset="0" stopColor="#2E2858" stopOpacity="0.84" />
-              <Stop offset="0.5" stopColor="#1C1934" stopOpacity="0.87" />
-              <Stop offset="1" stopColor="#191630" stopOpacity="0.90" />
+              <Stop offset="0" stopColor="#2E2858" stopOpacity="0.96" />
+              <Stop offset="0.5" stopColor="#1C1934" stopOpacity="0.98" />
+              <Stop offset="1" stopColor="#191630" stopOpacity="1" />
             </LinearGradient>
 
             {HOUSE_NUMBERS.map((house) => {

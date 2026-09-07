@@ -294,8 +294,6 @@ export default function Home() {
         />
 
         <View style={styles.page}>
-        <Text style={styles.kicker}>{t.hubKicker}</Text>
-
         <View style={styles.grid}>
           {LAYOUT.map(({ key, span }) => {
             const destination = DESTINATION[key];
@@ -382,6 +380,7 @@ export default function Home() {
                           {
                             backgroundColor: destination.tint,
                             width: `${progress.total ? (progress.done / progress.total) * 100 : 0}%`,
+                            boxShadow: `0 0 8px ${alpha(destination.tint, 0.6)}`,
                           },
                         ]}
                       />
@@ -431,7 +430,7 @@ const styles = StyleSheet.create({
   },
   cardHalf: { width: '48%', minHeight: 168 },
   cardFull: { width: '100%' },
-  pressed: { opacity: 0.65 },
+  pressed: { opacity: 0.85, transform: [{ scale: 0.96 }] },
 
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: space.xs + 2 },
   emoji: { fontSize: 15 },

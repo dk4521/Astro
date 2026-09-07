@@ -837,9 +837,9 @@ function Chevron() {
 }
 
 const BRAND_TYPE = {
-  fontSize: 13,
+  fontSize: 34,
   fontWeight: '700' as const,
-  letterSpacing: 6.5,
+  letterSpacing: 2,
   textAlign: 'center' as const,
 };
 
@@ -848,22 +848,22 @@ const styles = StyleSheet.create({
   moonLayer: { alignItems: 'center', justifyContent: 'center' },
 
   // The words live at the top of the frame; the Moon has the middle.
-  body: { alignSelf: 'stretch', alignItems: 'center', paddingTop: space.xl, gap: space.lg },
+  body: { alignSelf: 'stretch', alignItems: 'center', paddingTop: 140, gap: space.lg },
 
   brand: { alignItems: 'center', justifyContent: 'center' },
   brandRow: { flexDirection: 'row' },
   brandLetter: {
     ...BRAND_TYPE,
     textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 13,
+    textShadowRadius: 18,
   },
-  brandGap: { marginRight: 6 },
+  brandGap: { marginRight: 8 },
   brandBloomRow: { position: 'absolute', left: 0, right: 0, top: 0, justifyContent: 'center' },
   brandBloomLetter: {
     ...BRAND_TYPE,
     opacity: 0.45,
     textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 24,
+    textShadowRadius: 32,
   },
 
   words: { alignItems: 'center', gap: space.md, paddingHorizontal: space.lg },

@@ -98,7 +98,7 @@ export function HubIcon({
         strokeWidth={4.4}
         strokeLinecap="round"
         strokeLinejoin="round"
-        opacity={0.16}
+        opacity={name === 'today' ? 0.35 : 0.16}
       >
         {shape}
       </G>

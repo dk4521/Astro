@@ -802,7 +802,7 @@ const styles = StyleSheet.create({
   langText: { fontSize: 12, fontWeight: '600', color: colors.textFaint },
   langTextActive: { color: colors.accentSoft },
   content: { paddingHorizontal: space.lg, paddingTop: space.lg },
-  kicker: { ...type.label, color: colors.accent },
+  kicker: { ...type.label, color: '#CBA3F0', letterSpacing: 1.2, opacity: 0.95 },
   pickerBlock: { marginBottom: space.xl, gap: space.md },
   personaGrid: {
     flexDirection: 'row',
