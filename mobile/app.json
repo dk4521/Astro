@@ -22,6 +22,7 @@
       },
       "predictiveBackGestureEnabled": false
     },
+    "platforms": ["android", "ios"],
     "web": {
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
@@ -36,6 +37,12 @@
         "projectId": "769e8e4c-3a42-46c5-97d2-96701fb22a4b"
       }
     },
-    "owner": "deepakss646"
+    "owner": "deepakss646",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/769e8e4c-3a42-46c5-97d2-96701fb22a4b"
+    }
   }
 }
