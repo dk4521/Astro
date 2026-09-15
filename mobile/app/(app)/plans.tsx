@@ -214,11 +214,7 @@ function ProSection() {
           </>
         ) : (
           <>
-            <Text style={styles.planTitle}>Weekly, monthly, yearly or once</Text>
-            <Text style={styles.planSub}>
-              Billed by {Platform.OS === 'ios' ? 'the App Store' : 'Google Play'}. Cancel any time.
-            </Text>
-            <View style={styles.action}>
+            <View style={styles.actionTop}>
               <Button
                 title={busy === 'paywall' ? 'Opening…' : 'See plans'}
                 onPress={open}
@@ -292,14 +288,14 @@ export default function Plans() {
         ) : null}
 
         <View style={styles.section}>
-          <Label>What Pro covers</Label>
+          <Text style={styles.labelHighlight}>What Pro covers</Text>
           <Card>
             <Bullets items={INCLUDED} />
           </Card>
         </View>
 
         <View style={styles.section}>
-          <Label>Free, and staying that way</Label>
+          <Text style={styles.labelHighlight}>Free, and staying that way</Text>
           <Card>
             <Bullets items={ALWAYS_FREE} muted />
           </Card>
@@ -323,6 +319,12 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   content: { paddingHorizontal: space.md, paddingTop: space.md, gap: space.lg },
   section: { gap: space.sm },
+  labelHighlight: { 
+    ...type.label, 
+    color: colors.accent, 
+    fontSize: 12,
+    letterSpacing: 1.5,
+  },
 
   cardCurrent: { borderColor: colors.accent },
 
@@ -334,6 +336,7 @@ const styles = StyleSheet.create({
   bulletMuted: { ...type.body, color: colors.textMuted, lineHeight: 21 },
 
   action: { marginTop: space.md },
+  actionTop: { marginTop: 0 },
 
   note: { ...type.body, fontSize: 13, color: colors.textMuted, lineHeight: 19, marginTop: space.sm },
   muted: { ...type.body, color: colors.textMuted },

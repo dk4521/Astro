@@ -83,11 +83,6 @@ export default function LearnIndex() {
         <Text style={styles.kicker}>
           {language === 'hi' ? 'ज्योतिष, शुरू से' : 'Jyotisha, from the ground up'}
         </Text>
-        <Text style={styles.blurb}>
-          {language === 'hi'
-            ? 'तीस अध्याय, बुनियादी से मध्यम तक। हर अध्याय एक विचार समझाता है और फिर उसे आपकी अपनी कुंडली में दिखाता है — वही गणना किए गए आँकड़े, कोई बनाया हुआ उदाहरण नहीं।'
-            : 'Thirty chapters, basic to intermediate. Each explains an idea and then shows it in your own chart — the same computed numbers, not a generated example.'}
-        </Text>
 
         {loading && !index ? (
           <View style={styles.loading}>

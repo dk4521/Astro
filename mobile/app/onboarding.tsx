@@ -101,7 +101,7 @@ export default function Onboarding() {
   const isoTime = toIsoTime(time);
   const dateValid = isoDate !== null;
   const timeValid = isoTime !== null;
-  const ready = dateValid && timeValid && place !== null;
+  const ready = dateValid && timeValid && place !== null && name.trim().length > 0;
 
   const submit = useCallback(async () => {
     if (!ready || !place || !isoDate || !isoTime) return;
@@ -142,17 +142,16 @@ export default function Onboarding() {
         <Text style={styles.kicker}>Enuma Sky</Text>
         <Text style={styles.title}>Your birth chart{'\n'}starts with three facts.</Text>
 
-        {/* Not one of the three, and deliberately first anyway: it is the only
-            field here that is about the person rather than the arithmetic, and
-            it is the one the home screen greets them by. Optional — the button
-            below never waits on it. */}
+        {/* First because it is about the person, not the arithmetic. The home
+            screen greets by name, so collecting it here keeps that greeting
+            warm from the very first session. */}
         <View style={styles.field}>
           <Label>Your name</Label>
           <TextInput
             style={styles.input}
             value={name}
             onChangeText={setName}
-            placeholder="Optional"
+            placeholder="e.g. Aarav"
             placeholderTextColor={colors.textFaint}
             autoCorrect={false}
             maxLength={40}

@@ -100,10 +100,14 @@ export function configurePurchases(): boolean {
   // until auth resolves, or configuring twice. Anonymous-then-alias is the
   // documented path and it keeps a purchase made before signing in attachable
   // to the account afterwards.
-  Purchases.configure({
-    apiKey: REVENUECAT_API_KEY,
-    appUserID: null,
-  });
+  try {
+    Purchases.configure({
+      apiKey: REVENUECAT_API_KEY,
+      appUserID: null,
+    });
+  } catch (e) {
+    console.warn('Skipping RevenueCat configure in Expo Go to prevent crash:', e);
+  }
 
   configured = true;
   return true;

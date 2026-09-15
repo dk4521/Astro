@@ -51,17 +51,16 @@ import Svg, { Circle, Defs, RadialGradient, Rect, Stop } from 'react-native-svg'
  * above it.
  */
 const TINTS = [
+  '#FFFFFF', // white
   '#FFFFFF',
-  '#FFFFFF',
-  '#FFFFFF',
-  '#F4F2FF', // blue-white
-  '#A8D8FF', // sky blue
-  '#FFD6E8', // light pink
-  '#FFE9B8', // pale gold
-  '#D8C8FF', // soft violet
-  '#B6F0E0', // faint teal
-  '#FFE0D0', // warm peach
-  '#E8DDD0', // soft cream
+  '#E6F0FF', // blue-white
+  '#E6F0FF',
+  '#99CCFF', // deep blue
+  '#99CCFF',
+  '#FFDAB9', // soft peach
+  '#FFB770', // amber / orange-gold
+  '#FFB770',
+  '#FF8C69', // deep reddish-orange
 ];
 
 type Star = {
@@ -196,18 +195,15 @@ const LAYERS: Layer[] = [
 // Animated total: 30+28+26+24+22+20+18+16 = 184
 
 // ---------------------------------------------------------------------------
-// Static star populations (no animation — zero Reanimated cost)
-// ---------------------------------------------------------------------------
-
-/** Micro stars concentrated in the Milky Way band — the river of light. */
-const BAND_STARS = buildBandBiased(260, 1337);
+/** Micro stars concentrated where the Milky Way band used to be (original 260 + 100 extra = 360). */
+const BAND_STARS = buildBandBiased(360, 1337);
 
 /** Micro stars scattered everywhere — the faint background dust. */
 const SCATTER_STARS = buildMicro(156, 4201);
 
 /** All static stars, combined for a single SVG render pass. */
 const ALL_STATIC: Star[] = [...BAND_STARS, ...SCATTER_STARS];
-// Static total: 416. Grand total with animated: 600.
+// Static total: 516. Grand total with animated: 700.
 
 // ---------------------------------------------------------------------------
 // Milky Way glow — radial gradients along the diagonal band
@@ -294,16 +290,16 @@ type Bright = {
  * sky around it.
  */
 const BRIGHT: Bright[] = [
-  { x: 0.09, y: 0.07, size: 3.0, color: '#A8D8FF', period: 2900, delay: 0 },
-  { x: 0.91, y: 0.13, size: 3.4, color: '#FFD6E8', period: 3700, delay: 600 },
+  { x: 0.09, y: 0.07, size: 3.0, color: '#99CCFF', period: 2900, delay: 0 },
+  { x: 0.91, y: 0.13, size: 3.4, color: '#FFB770', period: 3700, delay: 600 },
   { x: 0.22, y: 0.22, size: 2.8, color: '#FFFFFF', period: 4600, delay: 1200 },
-  { x: 0.94, y: 0.36, size: 3.1, color: '#FFE9B8', period: 5400, delay: 300 },
-  { x: 0.08, y: 0.50, size: 2.8, color: '#D8C8FF', period: 4100, delay: 1900 },
-  { x: 0.45, y: 0.44, size: 3.5, color: '#E8DDD0', period: 5800, delay: 900 },
-  { x: 0.93, y: 0.61, size: 3.3, color: '#A8D8FF', period: 6200, delay: 800 },
-  { x: 0.60, y: 0.68, size: 2.9, color: '#FFE0D0', period: 4800, delay: 2100 },
-  { x: 0.05, y: 0.78, size: 2.9, color: '#FFD6E8', period: 5100, delay: 2400 },
-  { x: 0.95, y: 0.88, size: 2.7, color: '#B6F0E0', period: 3300, delay: 1600 },
+  { x: 0.94, y: 0.36, size: 3.1, color: '#FF8C69', period: 5400, delay: 300 },
+  { x: 0.08, y: 0.50, size: 2.8, color: '#E6F0FF', period: 4100, delay: 1900 },
+  { x: 0.45, y: 0.44, size: 3.5, color: '#FFB770', period: 5800, delay: 900 },
+  { x: 0.93, y: 0.61, size: 3.3, color: '#99CCFF', period: 6200, delay: 800 },
+  { x: 0.60, y: 0.68, size: 2.9, color: '#FFFFFF', period: 4800, delay: 2100 },
+  { x: 0.05, y: 0.78, size: 2.9, color: '#FF8C69', period: 5100, delay: 2400 },
+  { x: 0.95, y: 0.88, size: 2.7, color: '#E6F0FF', period: 3300, delay: 1600 },
 ];
 
 // ---------------------------------------------------------------------------
@@ -702,13 +698,7 @@ export function StarField() {
           makes the band read as light rather than as a lighter shade of dark. */}
       <View style={styles.base} pointerEvents="none" />
 
-      {/* Milky Way: the diagonal band of glow with dark dust lanes cut in. */}
-      <MilkyWayBand width={width} height={height} />
-
-      {/* Nebula clouds: subtle colour breathing at the corners and edges. */}
-      {CLOUDS.map((cloud) => (
-        <NebulaCloud key={cloud.id} cloud={cloud} width={width} height={height} />
-      ))}
+      {/* Milky Way and Nebula clouds removed for a completely clean background. */}
 
       {/* Static micro stars: ~400 tiny dots, many concentrated in the band.
           Zero animation cost — they render once and the native layer caches. */}

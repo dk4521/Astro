@@ -100,13 +100,12 @@ function seeded(seed: number): () => number {
  * else here.
  */
 const HERO_TINTS = [
-  '#FFFFFF',
-  '#FFFFFF',
-  '#F4F2FF', // blue-white
-  '#CFE2FF', // sky blue
-  '#FFE6C0', // pale gold
-  '#E8D9FF', // pale violet
-  '#FFD9E6', // nebula pink
+  '#FFFFFF', // white
+  '#E6F0FF', // blue-white
+  '#99CCFF', // deep blue
+  '#FFDAB9', // soft peach
+  '#FFB770', // amber / orange-gold
+  '#FF8C69', // deep reddish-orange
 ];
 
 type HeroStar = { x: number; y: number; r: number; o: number; tint: string };
@@ -153,10 +152,10 @@ const HERO_STARS: HeroStar[][] = (() => {
  * is fewer than it takes to write a rule.
  */
 const SPARKS = [
-  { x: 0.14, y: 0.20, size: 15, tint: '#CFE2FF', period: 5200, delay: 0 },
-  { x: 0.83, y: 0.29, size: 19, tint: '#FFE6C0', period: 6400, delay: 900 },
-  { x: 0.09, y: 0.62, size: 13, tint: '#FFD9E6', period: 4700, delay: 2100 },
-  { x: 0.90, y: 0.71, size: 16, tint: '#E8D9FF', period: 7100, delay: 1400 },
+  { x: 0.14, y: 0.20, size: 15, tint: '#99CCFF', period: 5200, delay: 0 },
+  { x: 0.83, y: 0.29, size: 19, tint: '#FFB770', period: 6400, delay: 900 },
+  { x: 0.09, y: 0.62, size: 13, tint: '#FF8C69', period: 4700, delay: 2100 },
+  { x: 0.90, y: 0.71, size: 16, tint: '#E6F0FF', period: 7100, delay: 1400 },
   { x: 0.30, y: 0.86, size: 12, tint: '#FFFFFF', period: 5800, delay: 3000 },
 ];
 
@@ -333,28 +332,7 @@ function Sparkle({
           </RadialGradient>
         </Defs>
         <Circle cx={c} cy={c} r={c} fill={`url(#${id})`} />
-        <G stroke={spark.tint} strokeLinecap="round">
-          {/* The long pair is the diffraction cross; the short diagonals are
-              what stops it looking like a plus sign. */}
-          <Line x1={c - arm} y1={c} x2={c + arm} y2={c} strokeWidth={0.9} strokeOpacity={0.4} />
-          <Line x1={c} y1={c - arm} x2={c} y2={c + arm} strokeWidth={0.9} strokeOpacity={0.4} />
-          <Line
-            x1={c - arm * 0.42}
-            y1={c - arm * 0.42}
-            x2={c + arm * 0.42}
-            y2={c + arm * 0.42}
-            strokeWidth={0.7}
-            strokeOpacity={0.18}
-          />
-          <Line
-            x1={c + arm * 0.42}
-            y1={c - arm * 0.42}
-            x2={c - arm * 0.42}
-            y2={c + arm * 0.42}
-            strokeWidth={0.7}
-            strokeOpacity={0.18}
-          />
-        </G>
+
         <Circle cx={c} cy={c} r={spark.size * 0.17} fill="#FFFFFF" fillOpacity={0.95} />
       </Svg>
     </Animated.View>
@@ -593,29 +571,6 @@ function Brand() {
 
   return (
     <View style={styles.brand}>
-      {/* The bloom: the same row again, blurred, underneath. Per-letter
-          shadows give the tube; this gives the haze around it, which is the
-          half people read as neon.
-
-          It has to be the *same shape* — one Text per glyph — and not one Text
-          reading "ENUMA SKY". Tracking is not applied identically to a string of
-          glyphs and to a row of one-glyph strings, so the single Text came out
-          wider and hung a ghost E off the left of the word and a ghost Y off
-          the right. Two rows built the same way cannot disagree. */}
-      <View style={[styles.brandRow, styles.brandBloomRow]} pointerEvents="none">
-        {BRAND.map((letter, index) => (
-          <Text
-            key={index}
-            style={[
-              styles.brandBloomLetter,
-              letter.gap ? styles.brandGap : null,
-              { color: letter.colour, textShadowColor: letter.colour },
-            ]}
-          >
-            {letter.char}
-          </Text>
-        ))}
-      </View>
       <View style={styles.brandRow}>
         {BRAND.map((letter, index) => (
           <BrandLetter
@@ -663,7 +618,6 @@ function BrandLetter({
       style={[
         styles.brandLetter,
         gap ? styles.brandGap : null,
-        { textShadowColor: alpha(colour, 0.85) },
         style,
       ]}
     >
@@ -753,31 +707,12 @@ export function Welcome({
         />
       </Animated.View>
 
-      <Galaxy width={width} height={height} scrollY={scrollY} />
 
-      {/* Dark at both ends and clear through the middle: the words sit on the
-          top of the frame and the button on the bottom of it, and neither is
-          allowed to depend on the photograph happening to be black there. */}
-      <LinearGradient
-        colors={[
-          alpha(colors.bg, 0.72),
-          alpha(colors.bg, 0.2),
-          alpha(colors.bg, 0.02),
-          alpha(colors.bg, 0.4),
-        ]}
-        locations={[0, 0.24, 0.66, 1]}
-        style={StyleSheet.absoluteFill}
-        pointerEvents="none"
-      />
 
-      <Animated.View style={[styles.body, body]} pointerEvents="none">
+      <Animated.View style={[styles.body, body, { bottom: height / 2 + (width * MOON_WIDTH * MOON_ASPECT) / 2 + 2 }]} pointerEvents="none">
         <Brand />
         <View style={styles.words}>
           <View>
-            {/* Two copies of one string: a wide soft one for the glow and a
-                clean one for the reading. One Text cannot do both — a shadow
-                broad enough to bloom takes the letterforms with it. */}
-            <Animated.Text style={[styles.greetingHalo, halo]}>{greeting}</Animated.Text>
             <Text style={styles.greeting}>{greeting}</Text>
           </View>
           <LinearGradient
@@ -827,7 +762,7 @@ function Chevron() {
   return (
     <Animated.View style={style}>
       <Svg width={26} height={16} viewBox="0 0 26 16" fill="none">
-        <G stroke={colors.accentSoft} strokeWidth={2.3} strokeLinecap="round">
+        <G stroke="#F5D27A" strokeWidth={2.3} strokeLinecap="round">
           <Line x1={2.6} y1={3} x2={13} y2={12.6} />
           <Line x1={23.4} y1={3} x2={13} y2={12.6} />
         </G>
@@ -847,47 +782,21 @@ const styles = StyleSheet.create({
   hero: { alignItems: 'center', overflow: 'hidden' },
   moonLayer: { alignItems: 'center', justifyContent: 'center' },
 
-  // The words live at the top of the frame; the Moon has the middle.
-  body: { alignSelf: 'stretch', alignItems: 'center', paddingTop: 140, gap: space.lg },
+  // The words live above the Moon, positioned exactly via inline bottom style.
+  body: { position: 'absolute', left: 0, right: 0, alignItems: 'center', justifyContent: 'flex-end', gap: space.md },
 
   brand: { alignItems: 'center', justifyContent: 'center' },
   brandRow: { flexDirection: 'row' },
   brandLetter: {
     ...BRAND_TYPE,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 18,
   },
   brandGap: { marginRight: 8 },
-  brandBloomRow: { position: 'absolute', left: 0, right: 0, top: 0, justifyContent: 'center' },
-  brandBloomLetter: {
-    ...BRAND_TYPE,
-    opacity: 0.45,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 32,
-  },
 
   words: { alignItems: 'center', gap: space.md, paddingHorizontal: space.lg },
   greeting: {
     ...type.display,
     color: colors.text,
     textAlign: 'center',
-    textShadowColor: alpha(colors.accentSoft, 0.55),
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 14,
-  },
-  greetingHalo: {
-    ...type.display,
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    // The saturated accent rather than the pale one. A neon sign is a white
-    // core in a coloured haze; a pale haze behind white letters is just fog.
-    color: colors.accent,
-    textAlign: 'center',
-    textShadowColor: colors.accent,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 20,
   },
   // A lit hairline, so the name and the sentence read as two things rather
   // than as one paragraph with a gap in it.
@@ -898,9 +807,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 22,
     maxWidth: 300,
-    textShadowColor: alpha(colors.accent, 0.45),
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 10,
   },
 
   // Lifted well clear of the gesture bar, where a control at the very bottom
@@ -916,9 +822,9 @@ const styles = StyleSheet.create({
   cueText: {
     ...type.label,
     fontSize: 11,
-    color: colors.accentSoft,
+    color: '#F5D27A',
     letterSpacing: 2.4,
-    textShadowColor: alpha(colors.accent, 0.6),
+    textShadowColor: alpha('#F5D27A', 0.6),
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 10,
   },
@@ -929,9 +835,9 @@ const styles = StyleSheet.create({
     height: 52,
     borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: alpha(colors.accentSoft, 0.5),
+    borderColor: alpha('#F5D27A', 0.5),
     backgroundColor: colors.glass,
-    boxShadow: `0 0 20px ${alpha(colors.accent, 0.4)}`,
+    boxShadow: `0 0 20px ${alpha('#F5D27A', 0.4)}`,
     alignItems: 'center',
     justifyContent: 'center',
   },

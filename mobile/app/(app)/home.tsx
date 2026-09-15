@@ -412,23 +412,23 @@ const styles = StyleSheet.create({
   // whatever is left over, so the cards fit any screen width. A percentage
   // width plus a fixed gap overflows on a narrow phone and drops to one column.
   grid: {
-    marginTop: space.md,
+    marginTop: 8,
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    rowGap: space.md,
+    rowGap: 8,
   },
   card: {
     backgroundColor: colors.glass,
     borderWidth: 1.5,
-    borderRadius: radius.lg,
-    padding: space.md,
-    gap: space.sm,
+    borderRadius: radius.md,
+    padding: 12,
+    gap: space.xs,
     // The wash is an absolutely-filled child, so it has to be clipped to the
     // same rounded corners as the border it sits inside.
     overflow: 'hidden',
   },
-  cardHalf: { width: '48%', minHeight: 168 },
+  cardHalf: { width: '49%', minHeight: 140 },
   cardFull: { width: '100%' },
   pressed: { opacity: 0.85, transform: [{ scale: 0.96 }] },
 
