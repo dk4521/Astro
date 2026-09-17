@@ -93,8 +93,7 @@ def _build_request(
 
 
 def _verify(text: str, chart: Chart, language: str, cached: bool = False) -> Interpretation:
-    contradictions = grounding.check(text, chart)
-    status = grounding.evaluate_status(text, chart, contradictions)
+    contradictions, status = grounding.check_and_evaluate(text, chart)
     return Interpretation(
         text=text,
         language=language,

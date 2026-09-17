@@ -484,10 +484,10 @@ def chat(
             return
 
         text = "".join(collected)
-        contradictions = [str(c) for c in grounding.check(text, chart)]
-        grounding_status = grounding.evaluate_status(text, chart, grounding.check(text, chart)).value
+        contradictions_list, status = grounding.check_and_evaluate(text, chart)
+        contradictions = [str(c) for c in contradictions_list]
         payload_out = {
-            "grounding_status": grounding_status,
+            "grounding_status": status.value,
             "contradictions": contradictions,
         }
         yield f"event: done\ndata: {json.dumps(payload_out)}\n\n"

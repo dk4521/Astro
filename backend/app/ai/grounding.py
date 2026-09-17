@@ -79,6 +79,9 @@ _NAKSHATRA_ALIASES = {name.lower(): name for name in K.NAKSHATRAS}
 _NAKSHATRA_ALIASES.update(dict(zip(K.NAKSHATRAS_HI, K.NAKSHATRAS)))
 
 
+import functools
+
+@functools.lru_cache(maxsize=256)
 def extract_claims(text: str) -> list[StructuredClaim]:
     """Uses LLM to extract placement claims from text."""
     system_instruction = (
@@ -183,16 +186,61 @@ def check(text: str, chart: Chart) -> list[Contradiction]:
             
     return unique
 
-def evaluate_status(text: str, chart: Chart, contradictions: list[Contradiction]) -> GroundingStatus:
+def evaluate_status(claims: list[StructuredClaim], contradictions: list[Contradiction]) -> GroundingStatus:
     """Determine the categorical status of the generated text based on extracted claims and contradictions."""
     if contradictions:
         return GroundingStatus.CONTRADICTORY_CLAIM
     
     # Check if there are any claims to classify as FACTUAL_PLACEMENT vs TRADITIONAL_INTERPRETATION
-    claims = extract_claims(text)
     if claims:
         return GroundingStatus.FACTUAL_PLACEMENT
     return GroundingStatus.TRADITIONAL_INTERPRETATION
+
+def check_and_evaluate(text: str, chart: Chart) -> tuple[list[Contradiction], GroundingStatus]:
+    claims = extract_claims(text)
+    
+    found: list[Contradiction] = []
+    for claim in claims:
+        graha = _normalize_planet(claim.planet)
+        if not graha:
+            continue
+            
+        chart_placement = chart.grahas[graha].placement
+        chart_house = chart.grahas[graha].house
+        
+        if claim.claim_type == ClaimType.PLANET_RASHI:
+            asserted = _normalize_rashi(claim.value)
+            if asserted and asserted != chart_placement.rashi:
+                found.append(Contradiction(
+                    claim=claim.original_text, graha=graha,
+                    asserted=asserted, actual=chart_placement.rashi, kind="rashi"
+                ))
+        elif claim.claim_type == ClaimType.PLANET_NAKSHATRA:
+            asserted = _normalize_nakshatra(claim.value)
+            if asserted and asserted != chart_placement.nakshatra:
+                found.append(Contradiction(
+                    claim=claim.original_text, graha=graha,
+                    asserted=asserted, actual=chart_placement.nakshatra, kind="nakshatra"
+                ))
+        elif claim.claim_type == ClaimType.PLANET_HOUSE:
+            asserted = _normalize_house(claim.value)
+            if asserted is not None and asserted != chart_house:
+                found.append(Contradiction(
+                    claim=claim.original_text, graha=graha,
+                    asserted=str(asserted), actual=str(chart_house), kind="house"
+                ))
+                
+    # Deduplicate
+    unique: list[Contradiction] = []
+    seen: set[tuple[str, str, str]] = set()
+    for finding in found:
+        key = (finding.graha, finding.kind, finding.asserted)
+        if key not in seen:
+            seen.add(key)
+            unique.append(finding)
+            
+    status = evaluate_status(claims, unique)
+    return unique, status
 
 
 class SafetyCheckResult(BaseModel):
