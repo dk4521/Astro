@@ -100,7 +100,7 @@ def test_a_cached_answer_is_still_checked_against_the_chart(chart, model):
 
     assert model.calls == 0, "the seeded entry should have been used"
     assert result.cached is True
-    assert result.model_grounded is False
+    assert result.grounding_status == 'CONTRADICTORY_CLAIM'
     assert "Simha" in result.contradictions[0]
 
 
@@ -117,7 +117,7 @@ def test_an_ungrounded_reading_is_never_stored(chart, monkeypatch):
     first = interpret.reading(chart, language="en", as_of=AS_OF)
     second = interpret.reading(chart, language="en", as_of=AS_OF)
 
-    assert first.model_grounded is False
+    assert first.grounding_status == 'CONTRADICTORY_CLAIM'
     assert client.calls == 2, "the model should have been asked again"
     assert second.cached is False
     assert cache.stats().entries == 0

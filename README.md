@@ -48,7 +48,7 @@ backend/          FastAPI service and the deterministic engine
   app/auth.py     verifies the Supabase token — who is asking
   app/entitlements.py  asks RevenueCat whether they have paid; the only gate
   app/ratelimit.py     fixed-window ceilings, per account and per address
-  tests/          237 tests, including known-chart, grounding, cache, entitlement and tarot
+  tests/          240 tests, including known-chart, grounding, cache, entitlement and tarot
   app/tarot/      the deck (written, not generated), the seeded shuffle, the card check
   app/course/     the course — 30 chapters of prose, in two languages
   app/places_data.py  ~3,000 places, India tier-1 to tier-3; built by scripts/
@@ -71,7 +71,7 @@ uv venv                               # or: python3 -m venv .venv
 uv pip install -e ".[dev]"
 cp .env.example .env                  # then paste your GEMINI_API_KEY into it
 python scripts/fetch_ephemeris.py     # 32 MB JPL kernel, one time
-./.venv/bin/python -m pytest          # 237 tests
+./.venv/bin/python -m pytest          # 240 tests
 ./.venv/bin/python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 

@@ -256,7 +256,7 @@ def test_a_reading_is_grounded_when_it_names_only_what_was_dealt(stub):
     stub.reply = "The Empress is tending something that is nearly ready."
     result = reading.interpret(drawn, "how is work going?", "en")
 
-    assert result.model_grounded
+    assert result.grounding_status != 'CONTRADICTORY_CLAIM'
     assert result.contradictions == []
 
 
@@ -265,7 +265,7 @@ def test_a_reading_that_invents_a_card_is_not_grounded(stub):
     stub.reply = "The Tower is here, so nothing will hold."
     result = reading.interpret(drawn, None, "en")
 
-    assert not result.model_grounded
+    assert result.grounding_status == 'CONTRADICTORY_CLAIM'
     assert "major-tower" in " ".join(result.contradictions) or "The Tower" in " ".join(
         result.contradictions
     )
@@ -277,7 +277,7 @@ def test_a_reading_that_reaches_for_the_chart_is_not_grounded(stub):
     stub.reply = "The Empress, and your Saturn dasha, both say the same thing."
     result = reading.interpret(drawn, None, "en")
 
-    assert not result.model_grounded
+    assert result.grounding_status == 'CONTRADICTORY_CLAIM'
     assert any("astrology" in line for line in result.contradictions)
 
 
