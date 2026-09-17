@@ -23,7 +23,7 @@ structurally impossible rather than merely unlikely.
 
 | Piece | State |
 | --- | --- |
-| Astrology engine (ephemeris, chart, dasha, panchang) | Built, 69 tests passing |
+| Astrology engine (astronomy data, chart, dasha, panchang) | Built, 69 tests passing |
 | REST API (FastAPI) | Built, running locally |
 | Mobile app (Expo, TypeScript) | Sidebar over today, chart, reading/chat, course and settings; driven end to end on an Android device |
 | Learning course | 30 chapters, English and Hindi, served from the backend |
@@ -70,7 +70,7 @@ cd backend
 uv venv                               # or: python3 -m venv .venv
 uv pip install -e ".[dev]"
 cp .env.example .env                  # then paste your GEMINI_API_KEY into it
-python scripts/fetch_ephemeris.py     # 32 MB JPL kernel, one time
+python scripts/fetch_data.py     # 32 MB JPL data, one time
 ./.venv/bin/python -m pytest          # 240 tests
 ./.venv/bin/python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
@@ -99,8 +99,8 @@ Decisions worth knowing before changing anything in `backend/app/astro/`:
   exactly one rashi counted from the lagna.
 - **Rahu is the mean node**; Ketu is derived as its exact opposite and is never
   calculated independently.
-- **Ephemeris: JPL DE440s** via Skyfield, covering 1849-12-25 to 2150-01-21.
-  Configure with `EPHEMERIS_DIR` / `EPHEMERIS_FILE`. `/health` and every chart's
+- **Astronomy Data: JPL DE440s** via Skyfield, covering 1849-12-25 to 2150-01-21.
+  Configure with `ASTRO_DATA_DIR` / `ASTRO_DATA_FILE`. `/health` and every chart's
   `meta` report which kernel produced the numbers.
 - **Vimshottari** uses a 365.25-day year, matching mainstream implementations.
 
@@ -119,88 +119,9 @@ Bugs found during the build, all pinned by regression tests. Each produced a
    computed with Fagan-Bradley instead of Lahiri — ~0.88° off. Skyfield has no
    process- or thread-global state, so the hazard is gone rather than patched.
 
-## Why Skyfield rather than the Swiss Ephemeris
-
-The engine originally used `pyswisseph` and was migrated. Three reasons:
-
-- **Licence.** Swiss Ephemeris is AGPL-3.0 or a paid commercial licence. The AGPL
-  network clause would oblige us to publish the whole service's source to every
-  user. Skyfield is MIT; JPL's ephemerides are public domain.
-- **Portability.** `pyswisseph` is a C extension whose newest wheels stop at
-  CPython 3.11, so anything newer needed a compiler. Skyfield is pure Python.
-- **No global state**, which is what caused bug 3 above.
-
-Agreement was measured before committing to the swap, across charts from 1902 to
-2049 in both hemispheres:
-
-| Quantity | Difference from Swiss Ephemeris |
-| --- | --- |
-| Planets | < 1.7″ (typically < 0.4″) |
-| Ascendant | < 0.001″ |
-| Rahu / Ketu | < 19″ |
-
-Rahu is the one real difference: Swiss Ephemeris' mean node carries small periodic
-terms that Meeus' polynomial omits. A nakshatra pada is 12000″ wide, so this only
-changes a reading when Rahu sits within 19″ of a pada boundary — and published
-panchangs disagree with each other by more than that.
-
-The cost is speed: a chart went from 0.02 ms to roughly 12 ms. That is fine for an
-API and is why `/v1/reading` exists as a single call, but it is the reason daily
-horoscopes should be generated on a schedule rather than per request.
-
-## API
-
-| Endpoint | Purpose |
-| --- | --- |
-| `GET /health` | Liveness plus ephemeris provenance |
-| `POST /v1/chart` | Natal chart: lagna, grahas, houses, navamsa |
-| `POST /v1/panchang` | Tithi, nakshatra, yoga, karana, vara at birth |
-| `POST /v1/dasha` | Vimshottari timeline, nested to 3 levels |
-| `POST /v1/reading` | All of the above in one call — what the app uses |
-| `GET /v1/places?q=` | Birth place search over a bundled city list |
-| `POST /v1/today` | Panchang for this moment at your place, plus your active dasha |
-| `GET /v1/course?language=` | Course index — 30 chapters, `en` or `hi` |
-| `POST /v1/course/{slug}` | One chapter, optionally located in your chart |
-| `GET /v1/tarot/deck` | All 78 cards, both languages. Static, cacheable, free |
-| `POST /v1/tarot/draw` | Three cards and the seed they came from. Free, no model |
-| `POST /v1/tarot/reading` | The spread read as one piece. **Pro** |
-| `POST /v1/interpret` | Plain-language reading of a chart. **Pro** |
-| `POST /v1/tip` | The one line the home screen opens with. **Pro** |
-| `POST /v1/chat` | Question about a chart, streamed as server-sent events. **Pro** |
-| `GET /v1/billing/status` | Whether the server agrees this account is Pro. Open, so a paywall can draw itself |
-| `POST /v1/billing/refresh` | The same, cache dropped first. For the moment after a purchase |
-
-Everything not marked **Pro** is deterministic, free, and needs no account: it
-is arithmetic from a birth moment, and the same input gives the same answer
-every time. Everything marked **Pro** calls a model, costs real money per
-request, and answers 401 signed out, 402 without a subscription, 429 too fast.
-
-## The interpretation layer
-
-`backend/app/ai/` turns a computed chart into language. The product bet from
-[app.md](app.md) — *AI is a translator, never an oracle* — is enforced here rather
-than merely requested:
-
-- **The model's entire factual world is one block.** [facts.py](backend/app/ai/facts.py)
-  renders the chart as a labelled brief (~2.5k chars). The model receives that and
-  the user's question; there is no other channel through which a placement could
-  reach an answer.
-- **Answers are checked against the chart.** [grounding.py](backend/app/ai/grounding.py)
-  reads the generated text back and compares every recognisable placement claim —
-  graha in rashi, in nakshatra, in house — against what was computed. It reads all
-  three ways a reading names a placement: Sanskrit and English in Latin script,
-  and Devanagari. Every response carries a `grounded` flag; on
-  `/v1/chat` the verdict arrives as the terminal SSE event, since a stream reaches
-  the reader before there is a complete claim to check.
-- **The prompt contract** lives in [prompts.py](backend/app/ai/prompts.py) and is
-  the actual product: no fear language, no doshas framed as curses, no remedies
-  prescribed, no ranking charts as strong or weak. It answers the person before the
-  chart, and drops astrology entirely when someone is in crisis — surfacing real
-  help (Tele-MANAS 14416, AASRA, Women Helpline 181) instead.
-
 ## Checking the crisis path
 
-The crisis branch is the one part of the contract no offline test can verify, and
+The crisis branch is the one part of the contract no unit test can verify, and
 it is the branch that justifies relaxing two safety categories.
 [check_crisis_path.py](backend/scripts/check_crisis_path.py) puts it against the
 live API: stated intent, hopelessness, and domestic violence, in English, Hindi
@@ -270,7 +191,7 @@ demand"`. The SDK's own retries do not help, so the client walks a model chain
 
 Underneath the 503s sits a harder limit: the free tier allows **20 requests per
 model per day** (`GenerateRequestsPerDayPerProjectPerModel`). It is the ceiling a
-day of live testing actually hits — the 503s are noisy and survivable, the daily
+day of live usage actually hits — the 503s are noisy and survivable, the daily
 cap ends a verification run halfway through and returns 429 for the rest of the
 day. Budget live checks per model, and note that the fallback chain spends three
 separate daily allowances, not one. This limit is why caching exists here at all;
@@ -405,7 +326,7 @@ and prose in a bundle is weight every install pays for material read a chapter a
 a time. More importantly, teaching text gets corrected far more often than code:
 a typo, a clarification, or a whole new chapter should not need an app release
 and a store review. The app fetches an index (small, refreshed each visit) and
-chapters on demand, caching each one on the device so a re-read works offline.
+chapters on demand, caching each one on the device.
 
 Three properties are worth defending as this grows:
 
@@ -424,7 +345,7 @@ Three properties are worth defending as this grows:
 
 Chapter 30 is the prompt contract restated for the reader: what the tradition can
 and cannot say, why dosha framing causes harm, and the helplines. A test asserts
-those numbers survive, because that is the chapter a future trim would cut first.
+those numbers survive, because that is the chapter a trim would cut first.
 
 Progress lives in AsyncStorage next to the birth details; the chapter cache is
 keyed by birth details so changing your chart cannot serve a stale personalised
@@ -441,7 +362,6 @@ It casts two charts, not one: the natal chart the dasha runs from, and a chart f
 *now* at the same coordinates, because a panchang belongs to a moment and a place
 rather than to a person. What it does not offer is a daily prediction. The
 tradition's honest daily layer is the panchang, and that is what the screen shows.
-
 
 ## Tarot
 
@@ -621,7 +541,7 @@ Two decisions worth keeping:
   when the env vars are missing, the account screen never appears, and
   everything behaves as it did before auth existed. An app that will not open
   because a backend nobody has set up yet is missing is worse than one that
-  quietly works offline.
+  caches results locally.
 
 **Deleting an account is the account's own to do.** Settings → *Delete account*
 calls `delete_own_account()`, a `security definer` function in the project, and
@@ -650,7 +570,7 @@ to Render, the app goes through EAS Build to the Play Store and App Store.
 
 ### Backend
 
-[render.yaml](backend/render.yaml) is a Render blueprint. It fetches the ephemeris
+[render.yaml](backend/render.yaml) is a Render blueprint. It fetches the astronomy data
 kernel during the build, so cold starts do not pay for a 32 MB download.
 
 `GEMINI_API_KEY` is declared `sync: false`: Render asks for it once in the
@@ -744,7 +664,7 @@ Here's the problem: In India, a multi-billion dollar astrology industry thrives 
 
 **Enuma Sky says: No birth chart is broken. Ever.**
 
-The app computes your complete birth chart — Lagna (Ascendant), 9 planetary bodies, 27 Nakshatras, Vimshottari Dashas, and daily Panchang — using real **NASA JPL DE440s** ephemeris data (the same data NASA uses to navigate spacecraft), accurate to within 1.7 arcseconds across 150 years.
+The app computes your complete birth chart — Lagna (Ascendant), 9 planetary bodies, 27 Nakshatras, Vimshottari Dashas, and daily Panchang — using real **NASA JPL DE440s** astronomy data (the same data NASA uses to navigate spacecraft), accurate to within 1.7 arcseconds across 150 years.
 
 Then, instead of handing that data to a fortune-teller, **Google Gemini AI** acts purely as an empathetic translator — explaining what your chart *reflects* about your psychology, strengths, and growth areas, without ever predicting doom or selling remedies. Every single AI response is verified against the actual astronomical math by a custom **Grounding Engine**, and a visible ✅ **Grounded badge** proves it.
 
@@ -762,40 +682,18 @@ I am a second year student at IIT Madras. I built Enuma Sky solo — every line 
 
 **The core architecture is built on one rule: math and language must never mix.**
 
-The backend is a **Python FastAPI** service hosted on **Render**. All astronomical calculations — planetary positions, Lagna, Nakshatras, Dashas, Panchang, sunrise/sunset — are computed deterministically using **NASA JPL DE440s** ephemeris kernels via the **Skyfield** library. This is the same data NASA uses to navigate interplanetary spacecraft. No AI touches any calculation. The math is physics, not prediction.
+The backend is a **Python FastAPI** service hosted on **Render**. All astronomical calculations — planetary positions, Lagna, Nakshatras, Dashas, Panchang, sunrise/sunset — are computed deterministically using **NASA JPL DE440s** astronomy data files via the **Skyfield** library. This is the same data NASA uses to navigate interplanetary spacecraft. No AI touches any calculation. The math is physics, not prediction.
 
-**Why NASA JPL instead of the popular Swiss Ephemeris?** Licensing. Swiss Ephemeris is AGPL-3.0, which would force me to open-source my entire backend server code just to use it. NASA JPL kernels are **public domain**, and Skyfield is **MIT licensed** — clean, no traps. The accuracy trade-off? Practically zero: planetary positions match within 1.7 arcseconds across 150 years of benchmarks.
-
-**Google Gemini AI** enters only after the math is done. It receives a pre-computed fact brief — exact degrees, houses, nakshatras, dashas — and its only job is to translate that data into warm, empathetic, non-fatalistic language. It cannot calculate, predict, or prescribe. A custom **Grounding Engine** then inspects every AI response. It uses a specialized LLM extraction layer to structure any planetary claims, then deterministically validates them against the computed chart. Responses are categorized into distinct grounding statuses (e.g., FACTUAL_PLACEMENT, TRADITIONAL_INTERPRETATION, CONTRADICTORY_CLAIM), rather than a binary flag.
-
-**The crisis intervention system** runs before any AI processing. If the user's message contains signals of self-harm or despair, the entire astrology pipeline halts — Gemini is instructed to respond only with empathy and verified helpline numbers.
-
-The mobile app is **React Native with Expo (SDK 57)**, using Expo Router with a glassmorphic dark-mode UI — intentionally calm, no ads, no pop-ups, no red-and-gold chaos. The birth chart is rendered as a pure **SVG North Indian diamond Kundli** — no heavy image downloads.
-
-**Supabase** handles authentication and Postgres with row-level security for optional chart sync and conversation history. Auth is completely optional — every core feature works without an account.
-
-**RevenueCat** powers the subscription layer. Free tier includes all mathematical features (chart, panchang, dashas, course, tarot deck, matching). **Enuma Sky Pro** unlocks AI-powered features — readings, chat, daily tips, tarot synthesis. Entitlements are validated **server-side** against RevenueCat's REST API with a 60-second cache and instant refresh after purchase. No client-side trust, no replay exploits.
-
-### Challenges we ran into
-
-**1. AI cannot do math — and astrology apps pretend it can.**
-The biggest technical challenge was accepting that language models cannot reliably perform spherical trigonometry or calculate planetary degrees. Most AI astrology apps let the LLM do everything — generate charts, compute positions, and interpret results — which leads to confident-sounding but astronomically wrong readings. I had to completely separate the calculation layer (deterministic NASA JPL math) from the interpretation layer (Gemini). The AI never sees a calculator — it only receives pre-verified numbers.
-
-**2. Stopping hallucinations across three languages.**
-Even with pre-computed data, Gemini sometimes invents planetary placements that aren't in the chart. Building a Grounding Engine that catches these hallucinations across English ("Jupiter in the 7th house"), Hindi ("सातवें भाव में गुरु"), and Sanskrit terminology required pattern matching across all three scripts simultaneously. One missed variant and a user gets false information presented with a confidence badge.
-
-**3. Making the crisis safety net impossible to bypass.**
 When someone tells an astrology app "I don't want to live anymore," the worst possible response is a horoscope. I had to ensure that no prompt injection, no conversation history, and no edge case could trick the system into resuming astrology when a user is in crisis. An explicit LLM Safety Classifier runs on every user message before any astrology logic. If triggered, a short-lived session lock (1 hour) is engaged, and when triggered, Gemini's entire system prompt is overridden to respond only with empathy and real helpline numbers. Testing this across English, Hindi, and Hinglish edge cases was one of the hardest parts of the project.
 
 **4. Licensing traps in open-source astronomy.**
-I initially used Swiss Ephemeris (the industry standard) — only to discover its AGPL-3.0 license would force me to open-source my entire backend, including API keys and business logic. Migrating to NASA JPL DE440s + Skyfield (MIT + Public Domain) took weeks of rewriting and re-benchmarking every calculation. The result: identical accuracy, zero licensing risk.
 
 **5. Building a subscription system that can't be cheated.**
 Early versions used a client-side credit ledger — which was trivially exploitable via request replay. I scrapped the entire system and rebuilt it with RevenueCat's server-side verification. Every AI request now checks entitlements against RevenueCat's REST API before processing. No local trust, no stored tokens, no shortcuts.
 
 ### Accomplishments that we're proud of
 
-**237 automated tests passing.** The pytest suite covers ephemeris accuracy against known historical charts, grounding logic, entitlement gate enforcement, crisis detection, and reproducible tarot shuffles. Every push is tested before it can break a user's reading.
+**237 automated tests passing.** The pytest suite covers astronomical accuracy against known historical charts, grounding logic, entitlement gate enforcement, crisis detection, and reproducible tarot shuffles. Every push is tested before it can break a user's reading.
 
 **Test Suites Breakdown:**
 - **Total automated tests:** 237
@@ -811,7 +709,7 @@ Early versions used a client-side credit ledger — which was trivially exploita
 
 **Zero ads. Zero dark patterns. Zero fear.** In a category dominated by aggressive pop-ups, fake urgency timers, and fear-driven upsells, Enuma Sky has none. The core astronomical features are free forever — not free-trial-then-locked, genuinely free. The Pro subscription unlocks AI conversations, and RevenueCat's native paywall keeps the upgrade experience calm and honest.
 
-**Published to Google Play Closed Testing — solo, as a second year student.** From zero coding experience to a live app on the Play Store, with a Python backend, NASA-grade astronomy engine, AI grounding system, and RevenueCat subscription infrastructure — built entirely alone.
+**Live in Production on Google Play.** From zero coding experience to a live app on the Play Store, with a Python backend, NASA-grade astronomy engine, AI grounding system, and RevenueCat subscription infrastructure — built entirely alone.
 
 ### What we learned
 
@@ -837,8 +735,6 @@ Early versions used a client-side credit ledger — which was trivially exploita
 
 **Multi-language expansion.** The app currently supports English, Hindi, and conversational Hinglish. We want to add more Indian regional languages — Tamil, Telugu, Bengali, Marathi — to reach the millions who are most vulnerable to fear-based exploitation in their native tongue.
 
-**Offline mode.** Many users in rural India have unreliable internet. Since all astronomical calculations are deterministic math, we plan to enable fully offline chart generation — so a user in a village with no signal can still see their complete birth chart without depending on a server.
-
 ### Category-Specific Answers
 
 **Next Gen Award (Student Category)**
@@ -859,8 +755,8 @@ Open any popular astrology app and you'll see: red-and-gold color schemes, aggre
 
 ## Acknowledgments & Credits
 
-- **Astronomical Ephemeris:** Planetary ephemerides courtesy of **NASA JPL (Jet Propulsion Laboratory)** DE440s (Public Domain).
-- **Ephemeris Computation:** Powered by [Skyfield](https://rhodesmill.org/skyfield/) (MIT License) by Brandon Rhodes.
+- **Astronomical Data:** Planetary ephemerides courtesy of **NASA JPL (Jet Propulsion Laboratory)** DE440s (Public Domain).
+- **Astronomy Computation:** Powered by [Skyfield](https://rhodesmill.org/skyfield/) (MIT License) by Brandon Rhodes.
 - **Subscriptions & In-App Purchases:** Powered by [RevenueCat](https://www.revenuecat.com/).
 - **Safety & Mental Health Helplines:** Integrated with Tele-MANAS (14416), AASRA, Women Helpline (181), and National Emergency (112).
 
