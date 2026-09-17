@@ -23,12 +23,12 @@ structurally impossible rather than merely unlikely.
 
 | Piece | State |
 | --- | --- |
-| Astrology engine (ephemeris, chart, dasha, panchang) | Built, 216 tests passing |
+| Astrology engine (ephemeris, chart, dasha, panchang) | Built, 69 tests passing |
 | REST API (FastAPI) | Built, running locally |
 | Mobile app (Expo, TypeScript) | Sidebar over today, chart, reading/chat, course and settings; driven end to end on an Android device |
 | Learning course | 30 chapters, English and Hindi, served from the backend |
 | Today | Panchang for this moment plus the active dasha — no model, no quota |
-| Tarot | 78-card deck in two languages, seeded shuffle, three-card spread; the written meanings and the draw are free, reading the spread together needs Pro. 36 tests |
+| Tarot | 78-card deck in two languages, seeded shuffle, three-card spread; the written meanings and the draw are free, reading the spread together needs Pro. 37 tests |
 | AI interpretation layer | Built on Gemini, verified against the live API |
 | Crisis-support path | Checked live, one breach found and closed; re-check pending on two models |
 | Accounts | Email sign-in/sign-up, optional |
@@ -48,7 +48,7 @@ backend/          FastAPI service and the deterministic engine
   app/auth.py     verifies the Supabase token — who is asking
   app/entitlements.py  asks RevenueCat whether they have paid; the only gate
   app/ratelimit.py     fixed-window ceilings, per account and per address
-  tests/          251 tests, including known-chart, grounding, cache, entitlement and tarot
+  tests/          237 tests, including known-chart, grounding, cache, entitlement and tarot
   app/tarot/      the deck (written, not generated), the seeded shuffle, the card check
   app/course/     the course — 30 chapters of prose, in two languages
   app/places_data.py  ~3,000 places, India tier-1 to tier-3; built by scripts/
@@ -71,7 +71,7 @@ uv venv                               # or: python3 -m venv .venv
 uv pip install -e ".[dev]"
 cp .env.example .env                  # then paste your GEMINI_API_KEY into it
 python scripts/fetch_ephemeris.py     # 32 MB JPL kernel, one time
-./.venv/bin/python -m pytest          # 153 tests
+./.venv/bin/python -m pytest          # 237 tests
 ./.venv/bin/python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
@@ -795,7 +795,13 @@ Early versions used a client-side credit ledger — which was trivially exploita
 
 ### Accomplishments that we're proud of
 
-**250+ automated tests passing.** The pytest suite covers ephemeris accuracy against known historical charts, grounding logic across three scripts, entitlement gate enforcement, crisis detection across English/Hindi/Hinglish, and reproducible tarot shuffles. Every push is tested before it can break a user's reading.
+**237 automated tests passing.** The pytest suite covers ephemeris accuracy against known historical charts, grounding logic, entitlement gate enforcement, crisis detection, and reproducible tarot shuffles. Every push is tested before it can break a user's reading.
+
+**Test Suites Breakdown:**
+- **Total automated tests:** 237
+- **Astro Engine & Matching tests:** 69
+- **AI Grounding & Tarot tests:** 87
+- **Backend API & Subscriptions tests:** 81
 
 **The Grounded badge is visible to users.** Most AI apps hide their verification. Enuma Sky shows a ✅ Grounded badge on every verified reading — and flags it when verification fails. Users see the math behind the magic. Full transparency, no hand-waving.
 
