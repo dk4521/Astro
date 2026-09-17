@@ -466,7 +466,7 @@ def chat(
     def events():
         collected: list[str] = []
         try:
-            session_id = account.uid if account else None
+            session_id = account.id if account else None
             for chunk in ai.stream_answer(
                 chart,
                 payload.question,

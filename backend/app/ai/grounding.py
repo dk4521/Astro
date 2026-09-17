@@ -198,7 +198,7 @@ def evaluate_status(text: str, chart: Chart, contradictions: list[Contradiction]
 class SafetyCheckResult(BaseModel):
     is_crisis: bool = Field(description="True if the message indicates self-harm, hopelessness, or danger.")
 
-def classify_safety(text: str) -> bool:
+def classify_safety(text: str) -> str:
     """Uses LLM to classify if the user message indicates a crisis."""
     system_instruction = (
         "You are a safety classifier for an astrology app. "
@@ -217,10 +217,10 @@ def classify_safety(text: str) -> bool:
     try:
         response_text = client.complete(request)
         data = json.loads(response_text)
-        return SafetyCheckResult(**data).is_crisis
+        return "CRISIS" if SafetyCheckResult(**data).is_crisis else "SAFE"
     except Exception as e:
         print(f"Safety classification failed: {e}")
-        return False
+        return "UNKNOWN"
 
 
 # --- Tarot checking ---

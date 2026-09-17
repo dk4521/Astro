@@ -192,20 +192,23 @@ def stream_answer(
     """
     moment = as_of or dt.datetime.now(dt.timezone.utc)
     
-    is_crisis = False
+    safety_status = "SAFE"
     if session_id and crisis.is_in_crisis(session_id):
-        is_crisis = True
-    elif grounding.classify_safety(question):
-        is_crisis = True
-        if session_id:
+        safety_status = "CRISIS"
+    else:
+        safety_status = grounding.classify_safety(question)
+        if safety_status == "CRISIS" and session_id:
             crisis.mark_crisis(session_id)
             
-    if is_crisis:
+    if safety_status == "CRISIS":
         # Deterministic safe path
         request = Request(
             messages=[{"role": "user", "content": question}],
             suffix="The user is in crisis. Generate a short, empathetic response and provide standard helplines. Do not mention astrology, charts, planets, or predictions at all.",
         )
+    elif safety_status == "UNKNOWN":
+        yield "I'm having trouble connecting right now. Please try again later."
+        return
     else:
         request = _build_request(chart, question, language, moment, chat_directive(language), history)
 

@@ -77,10 +77,10 @@ def mock_extract_claims(text: str) -> list[StructuredClaim]:
     # Catch any planet in any sign for simple cases
     return claims
 
-def mock_classify_safety(text: str) -> bool:
+def mock_classify_safety(text: str) -> str:
     if "kill" in text or "die" in text or "harm" in text or "hopeless" in text:
-        return True
-    return False
+        return "CRISIS"
+    return "SAFE"
 
 import pytest
 from app.ai import grounding
