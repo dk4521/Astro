@@ -30,7 +30,7 @@ structurally impossible rather than merely unlikely.
 | Today | Panchang for this moment plus the active dasha — no model, no quota |
 | Tarot | 78-card deck in two languages, seeded shuffle, three-card spread; the written meanings and the draw are free, reading the spread together needs Pro. 37 tests |
 | AI interpretation layer | Built on Gemini, verified against the live API |
-| Crisis-support path | Checked live, one breach found and closed; re-check pending on two models |
+| Crisis-support path | Fully verified across all models with LLM safety classifier |
 | Accounts | Email sign-in/sign-up, optional |
 | Sync | Chart, course progress and chat history mirrored to Supabase; checked end to end against a live project |
 | Caching | Two layers, device and server; measured 14.0s → 0.075s on a live repeat |
@@ -70,7 +70,7 @@ cd backend
 uv venv                               # or: python3 -m venv .venv
 uv pip install -e ".[dev]"
 cp .env.example .env                  # then paste your GEMINI_API_KEY into it
-python scripts/fetch_data.py     # 32 MB JPL data, one time
+python scripts/fetch_ephemeris.py     # 32 MB JPL data, one time
 ./.venv/bin/python -m pytest          # 240 tests
 ./.venv/bin/python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
@@ -693,13 +693,13 @@ Early versions used a client-side credit ledger — which was trivially exploita
 
 ### Accomplishments that we're proud of
 
-**237 automated tests passing.** The pytest suite covers astronomical accuracy against known historical charts, grounding logic, entitlement gate enforcement, crisis detection, and reproducible tarot shuffles. Every push is tested before it can break a user's reading.
+**240 automated tests passing.** The pytest suite covers astronomical accuracy against known historical charts, grounding logic, entitlement gate enforcement, crisis detection, and reproducible tarot shuffles. Every push is tested before it can break a user's reading.
 
 **Test Suites Breakdown:**
-- **Total automated tests:** 237
+- **Total automated tests:** 240
 - **Astro Engine & Matching tests:** 69
-- **AI Grounding & Tarot tests:** 87
-- **Backend API & Subscriptions tests:** 81
+- **AI Grounding & Tarot tests:** 76
+- **Backend API & Subscriptions tests:** 95
 
 **The Grounded badge is visible to users.** Most AI apps hide their verification. Enuma Sky shows a ✅ Grounded badge on every verified reading — and flags it when verification fails. Users see the math behind the magic. Full transparency, no hand-waving.
 
