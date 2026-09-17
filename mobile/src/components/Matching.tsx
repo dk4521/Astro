@@ -172,7 +172,7 @@ export function Matching({
 
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>
-                {language === 'hi' ? 'कुल गुण मिलान' : 'Total Score'}
+                {language === 'hi' ? 'पारंपरिक अष्टकूट अंक' : 'Traditional Ashtakoot score'}
               </Text>
               <Text style={styles.total}>{t.matchScore(total, match.maximum)}</Text>
             </View>
@@ -293,19 +293,17 @@ const styles = StyleSheet.create({
   resultAdmin: { ...type.mono, color: colors.textFaint },
 
   totalRow: { 
-    alignItems: 'center', 
+    alignItems: 'baseline', 
     paddingVertical: space.md,
     marginTop: space.md,
     backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: '#D4AF37',
-    borderRadius: radius.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: space.lg,
   },
-  totalLabel: { ...type.heading, color: '#D4AF37', fontSize: 18 },
-  total: { ...type.display, color: '#FFFFFF', fontSize: 24, fontWeight: '700' },
+  totalLabel: { ...type.heading, color: colors.text },
+  total: { ...type.heading, color: colors.text },
   parties: {
     gap: space.xs,
     paddingBottom: space.md,

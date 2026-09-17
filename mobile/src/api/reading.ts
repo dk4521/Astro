@@ -44,7 +44,7 @@ export async function loadInterpretation(
 
   const interpretation = await fetchInterpretation(birth, language);
 
-  if (interpretation.grounded) {
+  if (interpretation.grounding_status !== "CONTRADICTORY_CLAIM" && interpretation.grounding_status !== "SAFETY_BLOCK") {
     await writeCache(key, interpretation);
     // Yesterday's reading for this chart and language is now unreachable — the
     // key it lives under can never be asked for again. Pruning on write keeps

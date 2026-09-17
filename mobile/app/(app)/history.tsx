@@ -182,9 +182,9 @@ const styles = StyleSheet.create({
   userRow: { alignItems: 'flex-end', marginTop: space.lg },
   userBubble: {
     maxWidth: '88%',
-    backgroundColor: 'rgba(58, 50, 110, 0.88)',
+    backgroundColor: 'rgba(30, 30, 30, 0.88)',
     borderWidth: 1,
-    borderColor: 'rgba(185, 174, 255, 0.30)',
+    borderColor: 'rgba(255, 255, 255, 0.15)',
     borderRadius: radius.md,
     paddingHorizontal: space.md,
     paddingVertical: space.sm + 2,

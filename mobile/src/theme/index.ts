@@ -8,10 +8,10 @@
 
 export const colors = {
   // Backgrounds, darkest to lightest.
-  bg: '#0B0A14',
-  surface: '#141222',
-  surfaceRaised: '#1C1930',
-  border: '#2A2640',
+  bg: '#000000',
+  surface: '#0F0F0F',
+  surfaceRaised: '#1C1C1C',
+  border: '#2A2A2A',
 
   // Text.
   text: '#F4F2FF',
@@ -21,14 +21,14 @@ export const colors = {
   // Translucent surfaces. Every screen sits over the star field, so a card is
   // a sheet of glass rather than a fill: opaque enough that body text reads
   // cleanly, sheer enough that the sky behind it is still a sky.
-  glass: 'rgba(26, 23, 48, 0.82)',
-  glassRaised: 'rgba(40, 35, 72, 0.86)',
-  glassBorder: 'rgba(185, 174, 255, 0.20)',
+  glass: 'rgba(0, 0, 0, 0.82)',
+  glassRaised: 'rgba(15, 15, 15, 0.86)',
+  glassBorder: 'rgba(255, 255, 255, 0.12)',
 
   // Accents. Used sparingly — a highlighted value, an active state.
   accent: '#8B7BF7',
   accentSoft: '#B9AEFF',
-  accentDim: 'rgba(139, 123, 247, 0.14)',
+  accentDim: 'rgba(255, 255, 255, 0.12)',
 
   // Buttons. The three named ones carry meaning by colour — leaving and
   // entering an account, and sending. Everything else takes the brand gradient,
@@ -155,7 +155,7 @@ export const tintAlpha = {
 export const gradient = {
   brand: ['#9B8CFF', '#6B5BD6'] as const,
   /** For outline buttons, where the fill sits under text rather than behind it. */
-  brandSoft: ['rgba(155, 140, 255, 0.22)', 'rgba(107, 91, 214, 0.16)'] as const,
+  brandSoft: ['rgba(255, 255, 255, 0.15)', 'rgba(255, 255, 255, 0.08)'] as const,
 };
 
 export const space = {

@@ -259,7 +259,7 @@ const EN: Strings = {
   matchYou: 'You',
   matchThem: 'Them',
   matchCaption:
-    'A score out of 36 is not a fact about two people. It is what this procedure returns, shown in full so it cannot be used on you as a number you did not see the working for.',
+    'This number is a traditional compatibility framework, not a scientific measure of relationship quality or future marital success. It is what this procedure returns, shown in full so it cannot be used on you as a number you did not see the working for.',
   koots: {
     varna: 'Varna',
     vashya: 'Vashya',
@@ -416,7 +416,7 @@ const HI: Strings = {
   matchYou: 'आप',
   matchThem: 'वे',
   matchCaption:
-    '36 में से मिला अंक दो व्यक्तियों के बारे में तथ्य नहीं है। यह बस इस विधि का परिणाम है, पूरा दिखाया हुआ — ताकि कोई इसे आप पर ऐसी संख्या की तरह न चला सके जिसका हिसाब आपने देखा ही न हो।',
+    'यह संख्या एक पारंपरिक अनुकूलता ढांचा है, न कि संबंध की गुणवत्ता या भविष्य की वैवाहिक सफलता का वैज्ञानिक माप। यह बस इस विधि का परिणाम है, पूरा दिखाया हुआ — ताकि कोई इसे आप पर ऐसी संख्या की तरह न चला सके जिसका हिसाब आपने देखा ही न हो।',
   koots: {
     varna: 'वर्ण',
     vashya: 'वश्य',

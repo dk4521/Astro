@@ -234,7 +234,7 @@ class ChatRequest(BaseModel):
 class InterpretResponse(BaseModel):
     text: str
     language: Language
-    grounded: bool = Field(
+    grounding_status: str = Field(
         description=(
             "False when the text contradicts the computed chart. Checked after "
             "generation, not requested of the model."
@@ -307,7 +307,7 @@ class TipResponse(BaseModel):
     text: str
     language: Language
     companion: str | None = None
-    grounded: bool = Field(
+    grounding_status: str = Field(
         description="False when the line named a placement it was told not to name"
     )
 
@@ -504,7 +504,7 @@ class TarotReadingResponse(BaseModel):
     seed: str
     text: str
     language: Language
-    grounded: bool = Field(
+    grounding_status: str = Field(
         description=(
             "False when the reading named a card that was not dealt, or reached "
             "for astrology in a reply that was told there is no chart here."

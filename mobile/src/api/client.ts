@@ -240,7 +240,7 @@ export function fetchTip(
 }
 
 export type ChatVerdict = {
-  grounded: boolean;
+  grounding_status: string;
   contradictions: string[];
 };
 
@@ -356,7 +356,7 @@ function dispatch(event: SseEvent, handlers: ChatHandlers): void {
     handlers.onToken(payload.text);
   } else if (name === 'done') {
     handlers.onVerdict({
-      grounded: payload.grounded ?? true,
+      grounding_status: payload.grounding_status ?? 'TRADITIONAL_INTERPRETATION',
       contradictions: payload.contradictions ?? [],
     });
   } else if (name === 'error') {

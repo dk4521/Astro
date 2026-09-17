@@ -234,7 +234,7 @@ export default function Settings() {
             onChangeText={setName}
             onEndEditing={() => saveName(name)}
             onBlur={() => saveName(name)}
-            placeholder="Optional"
+            placeholder="Enter your name"
             placeholderTextColor={colors.textFaint}
             autoCorrect={false}
             maxLength={40}

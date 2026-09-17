@@ -293,8 +293,8 @@ export default function Home() {
           onCue={toGrid}
         />
 
-        <View style={styles.page}>
-        <View style={styles.grid}>
+        <View style={[styles.page, { minHeight: viewport }]}>
+          <View style={styles.grid}>
           {LAYOUT.map(({ key, span }) => {
             const destination = DESTINATION[key];
             const full = span === 'full';
@@ -308,11 +308,11 @@ export default function Home() {
                   styles.card,
                   full ? styles.cardFull : styles.cardHalf,
                   {
-                    borderColor: alpha(destination.tint, 0.5),
+                    borderColor: alpha(destination.tint, 0.8),
                     // The bloom outside the border. Supported since RN 0.76 on
                     // the new architecture, which this app is on; where it is
                     // not, the coloured border and wash still carry the card.
-                    boxShadow: `0 0 18px ${alpha(destination.tint, 0.22)}`,
+                    boxShadow: `0 0 24px ${alpha(destination.tint, 0.4)}`,
                   },
                   pressed && styles.pressed,
                 ]}
@@ -320,13 +320,13 @@ export default function Home() {
                 {/* The wash. Lit from the icon's corner so the card has a
                     direction, rather than being evenly tinted all over. */}
                 <LinearGradient
-                  colors={[alpha(destination.tint, 0.17), alpha(destination.tint, 0.02)]}
+                  colors={[alpha(destination.tint, 0.35), alpha(destination.tint, 0.05)]}
                   start={{ x: 0.05, y: 0 }}
                   end={{ x: 0.85, y: 1 }}
                   style={StyleSheet.absoluteFill}
                 />
 
-                <HubIcon name={key} tint={destination.tint} size={full ? 34 : 40} />
+                <HubIcon name={key} tint={destination.tint} size={full ? 28 : 32} />
 
                 <View style={styles.titleRow}>
                   <Text style={styles.emoji}>{destination.emoji}</Text>
@@ -405,7 +405,7 @@ const styles = StyleSheet.create({
   // No horizontal padding: the hero above is full-bleed, and the grid brings
   // its own in `page`.
   content: { paddingBottom: space.xxl },
-  page: { paddingHorizontal: space.lg },
+  page: { paddingHorizontal: space.lg, justifyContent: 'center' },
   kicker: { ...type.label, color: colors.accent },
 
   // Two columns without a column gap: `space-between` supplies the gutter from
@@ -416,7 +416,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    rowGap: 8,
+    alignContent: 'center',
+    flex: 1,
+    rowGap: 10,
   },
   card: {
     backgroundColor: colors.glass,
@@ -428,14 +430,14 @@ const styles = StyleSheet.create({
     // same rounded corners as the border it sits inside.
     overflow: 'hidden',
   },
-  cardHalf: { width: '49%', minHeight: 140 },
+  cardHalf: { width: '49%', minHeight: 125 },
   cardFull: { width: '100%' },
   pressed: { opacity: 0.85, transform: [{ scale: 0.96 }] },
 
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: space.xs + 2 },
   emoji: { fontSize: 15 },
-  cardTitle: { ...type.heading, fontSize: 19, color: colors.text },
-  cardBlurb: { ...type.body, fontSize: 13, color: colors.textMuted, lineHeight: 19 },
+  cardTitle: { ...type.heading, fontSize: 18, color: colors.text },
+  cardBlurb: { ...type.body, fontSize: 13, color: colors.textMuted, lineHeight: 18 },
 
   // Panchang under the date. A hairline rather than a gap: the rows below it
   // are a different kind of thing from the greeting above, and on a card this

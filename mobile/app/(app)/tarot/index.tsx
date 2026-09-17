@@ -426,7 +426,7 @@ function ReadingBlock({
         {/* Shown rather than hidden. A reading that named a card the shuffle
             never dealt is the product's one visible failure, and covering it up
             would be worse than printing it. */}
-        {reading.grounded ? null : (
+        {reading.grounding_status === "FACTUAL_PLACEMENT" || reading.grounding_status === "TRADITIONAL_INTERPRETATION" ? null : (
           <Text style={styles.flagged}>{t.tarotUngrounded}</Text>
         )}
       </Card>

@@ -163,7 +163,7 @@ export type Interpretation = {
    * generation rather than requested of the model, so it is a measurement and
    * the app should show it rather than assume it.
    */
-  grounded: boolean;
+  grounding_status: string;
   contradictions: string[];
 };
 
@@ -206,7 +206,7 @@ export type Tip = {
   language: Language;
   companion: string | null;
   /** False when the line named a placement it was told not to name. */
-  grounded: boolean;
+  grounding_status: string;
 };
 
 export type ChatTurn = {
@@ -360,6 +360,6 @@ export type TarotReading = {
    * astrology in a reply that was told there is no chart here. Measured after
    * generation, so the app shows it rather than assuming it.
    */
-  grounded: boolean;
+  grounding_status: string;
   contradictions: string[];
 };

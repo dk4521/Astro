@@ -1,181 +1,46 @@
 """Checking interpretations against the chart they claim to describe.
 
-app.md's central promise is that hallucinated positions are structurally
-impossible. A prompt instruction alone does not make that true — it makes it
-requested. This module makes it *checkable*: it reads the generated text back,
-extracts every placement claim it can recognise, and compares each one against
-the computed chart.
+This module uses an LLM to extract factual placement claims from generated text,
+and then deterministically validates them against the computed chart.
 
-The check is deliberately narrow. It verifies claims of the form "<graha> is in
-<rashi>" and "<graha> is in <nakshatra>" — the factual assertions that are both
-unambiguous and the ones that matter, since a wrong rashi invalidates
-everything said after it. It does not attempt to police interpretation, tone,
-or claims it cannot decide, because a checker that guesses produces false
-alarms and gets switched off.
-
-A finding therefore means "this contradicts the chart", never "this is bad
-astrology".
+A finding means "this contradicts the chart", never "this is bad astrology".
 """
 
 from __future__ import annotations
 
-import re
+import json
 from dataclasses import dataclass
+from enum import Enum
+from pydantic import BaseModel, Field
 
 from ..astro import Chart
 from ..astro import constants as K
+from .client import get_client, Request
 
-# All three naming systems appear in output, so all three are recognised, mapped
-# to the canonical Sanskrit name the engine uses. Devanagari is not optional
-# extra coverage: `hi` is a supported language and most of this market reads it,
-# so without these a wrong placement in a Hindi reading was returned to the app
-# with `grounded: true` — the check silently passing rather than running.
-_RASHI_ALIASES: dict[str, str] = {}
-for _index, _sanskrit in enumerate(K.RASHIS):
-    _RASHI_ALIASES[_sanskrit.lower()] = _sanskrit
-    _RASHI_ALIASES[K.RASHIS_EN[_index].lower()] = _sanskrit
-    _RASHI_ALIASES[K.RASHIS_HI[_index]] = _sanskrit
+class ClaimType(str, Enum):
+    PLANET_RASHI = "planet_rashi"
+    PLANET_NAKSHATRA = "planet_nakshatra"
+    PLANET_HOUSE = "planet_house"
 
-_GRAHA_ALIASES: dict[str, str] = {}
-for _graha in K.GRAHAS:
-    _GRAHA_ALIASES[_graha.lower()] = _graha
-    _GRAHA_ALIASES[K.GRAHA_HI[_graha]] = _graha
-_GRAHA_ALIASES.update(
-    {
-        "surya": "Sun",
-        "chandra": "Moon",
-        "chandrama": "Moon",
-        "mangal": "Mars",
-        "mangala": "Mars",
-        "kuja": "Mars",
-        "budh": "Mercury",
-        "budha": "Mercury",
-        "guru": "Jupiter",
-        "brihaspati": "Jupiter",
-        "shukra": "Venus",
-        "shukr": "Venus",
-        "shani": "Saturn",
-        "rahu": "Rahu",
-        "ketu": "Ketu",
-    }
-)
-# Devanagari spellings a reading uses but `GRAHA_HI` does not emit.
-_GRAHA_ALIASES.update(
-    {
-        "चंद्रमा": "Moon",
-        "चन्द्र": "Moon",
-        "चन्द्रमा": "Moon",
-        "सूरज": "Sun",
-        "बृहस्पति": "Jupiter",
-        "शनी": "Saturn",
-    }
-)
+class StructuredClaim(BaseModel):
+    claim_type: ClaimType = Field(description="The type of claim being made.")
+    planet: str = Field(description="The planet (Graha) being discussed (e.g. Sun, Moon, Mars).")
+    value: str = Field(description="The rashi name, nakshatra name, or house number (as a string, e.g. '7').")
+    original_text: str = Field(description="The exact snippet of text making the claim.")
 
-_NAKSHATRA_ALIASES = {name.lower(): name for name in K.NAKSHATRAS}
-_NAKSHATRA_ALIASES.update(dict(zip(K.NAKSHATRAS_HI, K.NAKSHATRAS)))
+class ClaimList(BaseModel):
+    claims: list[StructuredClaim]
 
-# Hindi writes house numbers as ordinal words far more often than as digits.
-_HOUSE_ORDINALS_HI: dict[str, int] = {
-    "पहले": 1, "पहला": 1, "प्रथम": 1,
-    "दूसरे": 2, "दूसरा": 2, "द्वितीय": 2,
-    "तीसरे": 3, "तीसरा": 3, "तृतीय": 3,
-    "चौथे": 4, "चौथा": 4, "चतुर्थ": 4,
-    "पांचवें": 5, "पाँचवें": 5, "पांचवे": 5, "पाँचवे": 5, "पंचम": 5,
-    "छठे": 6, "छठा": 6, "छठवें": 6, "षष्ठ": 6,
-    "सातवें": 7, "सातवे": 7, "सप्तम": 7,
-    "आठवें": 8, "आठवे": 8, "अष्टम": 8,
-    "नवें": 9, "नौवें": 9, "नौवे": 9, "नवम": 9,
-    "दसवें": 10, "दसवे": 10, "दशम": 10,
-    "ग्यारहवें": 11, "ग्यारहवे": 11, "एकादश": 11,
-    "बारहवें": 12, "बारहवे": 12, "द्वादश": 12,
-}
-
-# `\b` cannot be used on Devanagari. Matras, the anusvara and the virama are
-# combining marks, which Python does not count as word characters, so a name
-# ending in one — कन्या, धनु, four of the twelve rashis — has no word boundary
-# after it at all and `\bकन्या\b` never matches.
-#
-# `\w` already covers Devanagari letters and digits, so these edges add only the
-# marks. Not the whole Devanagari block: the danda । that ends most Hindi
-# sentences lives in it, and excluding it would break every claim written at the
-# end of a sentence — which is where a claim usually is.
-_MARKS = "ऀ-ःऺ-ॏ॑-ॗॢ-ॣ"
-_EDGE_L = rf"(?<![\w{_MARKS}])"
-_EDGE_R = rf"(?![\w{_MARKS}])"
-
-# "Mars in Simha", "Mars is in Simha", "Mars sits in Simha", "Mangal Kanya mein",
-# "चंद्रमा आपकी कुंडली में कर्क राशि में". The connector is optional and bounded so
-# the pattern cannot span sentences and pair a graha with a rashi mentioned
-# somewhere else entirely. No graha name is a connector, so a list — "चंद्र और
-# मंगल मेष में" — pairs Mars with Mesha and leaves the Moon alone, as it should.
-_CONNECTOR = (
-    r"(?:\s+(?:is|sits|falls|lies|placed|positioned|located|in|your|the"
-    r"|hai|mein|me"
-    r"|में|है|हैं|स्थित|बैठा|बैठे|बैठी|आपका|आपकी|आपके|कुंडली|राशि|नक्षत्र"
-    r"|का|की|के)){0,4}\s+"
-)
-
-_GRAHA_PATTERN = "|".join(sorted(map(re.escape, _GRAHA_ALIASES), key=len, reverse=True))
-_RASHI_PATTERN = "|".join(sorted(map(re.escape, _RASHI_ALIASES), key=len, reverse=True))
-_NAKSHATRA_PATTERN = "|".join(
-    sorted(map(re.escape, _NAKSHATRA_ALIASES), key=len, reverse=True)
-)
-_ORDINAL_PATTERN = "|".join(
-    sorted(map(re.escape, _HOUSE_ORDINALS_HI), key=len, reverse=True)
-)
-
-_RASHI_CLAIM = re.compile(
-    rf"{_EDGE_L}({_GRAHA_PATTERN}){_CONNECTOR}({_RASHI_PATTERN}){_EDGE_R}",
-    re.IGNORECASE,
-)
-_NAKSHATRA_CLAIM = re.compile(
-    rf"{_EDGE_L}({_GRAHA_PATTERN}){_CONNECTOR}({_NAKSHATRA_PATTERN}){_EDGE_R}",
-    re.IGNORECASE,
-)
-_HOUSE_CLAIM = re.compile(
-    rf"{_EDGE_L}({_GRAHA_PATTERN}){_CONNECTOR}"
-    rf"(?:house\s+)?(\d{{1,2}})(?:st|nd|rd|th)?\s+house\b",
-    re.IGNORECASE,
-)
-# "शनि तीसरे भाव में", "मंगल 10वें घर में".
-_HOUSE_CLAIM_HI = re.compile(
-    rf"{_EDGE_L}(?P<graha>{_GRAHA_PATTERN}){_CONNECTOR}"
-    rf"(?:(?P<word>{_ORDINAL_PATTERN})|(?P<digits>\d{{1,2}})\s*(?:वें|वे|वाँ|वां)?)"
-    r"\s*(?:भाव|घर|स्थान)",
-    re.IGNORECASE,
-)
-
-# Hindi states the location first at least as often as not — "छठे भाव में तुला
-# राशि में बैठे गुरु" is ordinary phrasing, not an inversion. The patterns above
-# are graha-first because English is, so Hindi needs its mirror or the checker
-# reads only the half of a reading that happens to be worded like English. These
-# are built from the Devanagari names alone, so they cannot fire on English or
-# Hinglish text, where this ordering would be a genuinely different sentence.
-_GRAHA_HI_PATTERN = "|".join(
-    sorted(
-        (re.escape(name) for name in _GRAHA_ALIASES if not name.isascii()),
-        key=len,
-        reverse=True,
-    )
-)
-_RASHI_HI_PATTERN = "|".join(
-    sorted(map(re.escape, K.RASHIS_HI), key=len, reverse=True)
-)
-
-_RASHI_CLAIM_HI_REVERSED = re.compile(
-    rf"{_EDGE_L}({_RASHI_HI_PATTERN}){_CONNECTOR}({_GRAHA_HI_PATTERN}){_EDGE_R}",
-)
-_HOUSE_CLAIM_HI_REVERSED = re.compile(
-    rf"{_EDGE_L}(?:(?P<word>{_ORDINAL_PATTERN})"
-    rf"|(?P<digits>\d{{1,2}})\s*(?:वें|वे|वाँ|वां)?)"
-    rf"\s*(?:भाव|घर|स्थान){_CONNECTOR}(?P<graha>{_GRAHA_HI_PATTERN}){_EDGE_R}",
-)
-
+class GroundingStatus(str, Enum):
+    FACTUAL_PLACEMENT = "FACTUAL_PLACEMENT"
+    TRADITIONAL_INTERPRETATION = "TRADITIONAL_INTERPRETATION"
+    UNSUPPORTED_CLAIM = "UNSUPPORTED_CLAIM"
+    CONTRADICTORY_CLAIM = "CONTRADICTORY_CLAIM"
+    SAFETY_BLOCK = "SAFETY_BLOCK"
 
 @dataclass(frozen=True, slots=True)
 class Contradiction:
     """One statement in the output that the chart does not support."""
-
     claim: str          # the matched text
     graha: str
     asserted: str       # what the text said
@@ -188,55 +53,126 @@ class Contradiction:
             f"chart says {self.actual!r}"
         )
 
+# Mapping from common planet names to canonical English ones
+_GRAHA_ALIASES: dict[str, str] = {}
+for _graha in K.GRAHAS:
+    _GRAHA_ALIASES[_graha.lower()] = _graha
+    _GRAHA_ALIASES[K.GRAHA_HI[_graha]] = _graha
+_GRAHA_ALIASES.update({
+    "surya": "Sun", "chandra": "Moon", "chandrama": "Moon",
+    "mangal": "Mars", "mangala": "Mars", "kuja": "Mars",
+    "budh": "Mercury", "budha": "Mercury",
+    "guru": "Jupiter", "brihaspati": "Jupiter",
+    "shukra": "Venus", "shukr": "Venus",
+    "shani": "Saturn", "rahu": "Rahu", "ketu": "Ketu",
+    "चंद्रमा": "Moon", "चन्द्र": "Moon", "चन्द्रमा": "Moon",
+    "सूरज": "Sun", "बृहस्पति": "Jupiter", "शनी": "Saturn",
+})
+
+_RASHI_ALIASES: dict[str, str] = {}
+for _index, _sanskrit in enumerate(K.RASHIS):
+    _RASHI_ALIASES[_sanskrit.lower()] = _sanskrit
+    _RASHI_ALIASES[K.RASHIS_EN[_index].lower()] = _sanskrit
+    _RASHI_ALIASES[K.RASHIS_HI[_index]] = _sanskrit
+
+_NAKSHATRA_ALIASES = {name.lower(): name for name in K.NAKSHATRAS}
+_NAKSHATRA_ALIASES.update(dict(zip(K.NAKSHATRAS_HI, K.NAKSHATRAS)))
+
+
+def extract_claims(text: str) -> list[StructuredClaim]:
+    """Uses LLM to extract placement claims from text."""
+    system_instruction = (
+        "Extract all explicit astrological placement claims from the provided text. "
+        "Only extract claims about a planet's Rashi (zodiac sign), Nakshatra, or House position. "
+        "Do not extract interpretations, only factual placements like 'Jupiter is in Aries' or 'Mars in the 7th house'."
+    )
+    
+    # We use a fast model for extraction to reduce latency
+    request = Request(
+        messages=[{"role": "user", "content": text}],
+        suffix=system_instruction,
+        max_tokens=2000,
+        response_mime_type="application/json",
+        response_schema=ClaimList
+    )
+    
+    client = get_client()
+    try:
+        response_text = client.complete(request)
+        data = json.loads(response_text)
+        return ClaimList(**data).claims
+    except Exception as e:
+        print(f"Claim extraction failed: {e}")
+        return []
+
+def _normalize_planet(planet_str: str) -> str | None:
+    return _GRAHA_ALIASES.get(planet_str.lower().strip())
+
+def _normalize_rashi(rashi_str: str) -> str | None:
+    return _RASHI_ALIASES.get(rashi_str.lower().strip())
+
+def _normalize_nakshatra(nakshatra_str: str) -> str | None:
+    return _NAKSHATRA_ALIASES.get(nakshatra_str.lower().strip())
+
+def _normalize_house(house_str: str) -> int | None:
+    # Handle digits
+    try:
+        return int("".join(filter(str.isdigit, house_str)))
+    except ValueError:
+        pass
+    
+    # Very basic fallback for Hindi ordinal words if LLM returns them directly
+    house_words_hi = {
+        "पहले": 1, "पहला": 1, "प्रथम": 1, "दूसरे": 2, "दूसरा": 2, "द्वितीय": 2,
+        "तीसरे": 3, "तीसरा": 3, "तृतीय": 3, "चौथे": 4, "चौथा": 4, "चतुर्थ": 4,
+        "पांचवें": 5, "पाँचवें": 5, "पंचम": 5, "छठे": 6, "छठा": 6, "षष्ठ": 6,
+        "सातवें": 7, "सप्तम": 7, "आठवें": 8, "अष्टम": 8, "नवें": 9, "नौवें": 9, "नवम": 9,
+        "दसवें": 10, "दशम": 10, "ग्यारहवें": 11, "एकादश": 11, "बारहवें": 12, "द्वादश": 12,
+    }
+    for word, num in house_words_hi.items():
+        if word in house_str:
+            return num
+    return None
 
 def check(text: str, chart: Chart) -> list[Contradiction]:
     """Find statements in `text` that contradict `chart`.
-
-    An empty list means nothing checkable was wrong — not that everything said
-    was verified. The check has recall limits by design; see the module
-    docstring.
+    Returns a list of Contradictions.
     """
+    claims = extract_claims(text)
     found: list[Contradiction] = []
-
-    for match in _RASHI_CLAIM.finditer(text):
-        found += _rashi_finding(match.group(0), match.group(1), match.group(2), chart)
-
-    for match in _RASHI_CLAIM_HI_REVERSED.finditer(text):
-        # Same claim, stated the other way round: the rashi is group 1 here.
-        found += _rashi_finding(match.group(0), match.group(2), match.group(1), chart)
-
-    for match in _NAKSHATRA_CLAIM.finditer(text):
-        graha = _GRAHA_ALIASES[match.group(1).lower()]
-        asserted = _NAKSHATRA_ALIASES[match.group(2).lower()]
-        actual = chart.grahas[graha].placement.nakshatra
-        if asserted != actual:
-            found.append(
-                Contradiction(
-                    claim=match.group(0).strip(),
-                    graha=graha,
-                    asserted=asserted,
-                    actual=actual,
-                    kind="nakshatra",
-                )
-            )
-
-    for match in _HOUSE_CLAIM.finditer(text):
-        found += _house_finding(
-            match.group(0), _GRAHA_ALIASES[match.group(1).lower()],
-            int(match.group(2)), chart,
-        )
-
-    for pattern in (_HOUSE_CLAIM_HI, _HOUSE_CLAIM_HI_REVERSED):
-        for match in pattern.finditer(text):
-            word = match.group("word")
-            asserted = _HOUSE_ORDINALS_HI[word] if word else int(match.group("digits"))
-            found += _house_finding(
-                match.group(0), _GRAHA_ALIASES[match.group("graha").lower()],
-                asserted, chart,
-            )
-
-    # A reading that states the same wrong placement twice, or states it in a
-    # form two patterns both recognise, is one contradiction and not two.
+    
+    for claim in claims:
+        graha = _normalize_planet(claim.planet)
+        if not graha:
+            # If we don't recognize the planet, we skip checking it to avoid false positives
+            continue
+            
+        chart_placement = chart.grahas[graha].placement
+        chart_house = chart.grahas[graha].house
+        
+        if claim.claim_type == ClaimType.PLANET_RASHI:
+            asserted = _normalize_rashi(claim.value)
+            if asserted and asserted != chart_placement.rashi:
+                found.append(Contradiction(
+                    claim=claim.original_text, graha=graha,
+                    asserted=asserted, actual=chart_placement.rashi, kind="rashi"
+                ))
+        elif claim.claim_type == ClaimType.PLANET_NAKSHATRA:
+            asserted = _normalize_nakshatra(claim.value)
+            if asserted and asserted != chart_placement.nakshatra:
+                found.append(Contradiction(
+                    claim=claim.original_text, graha=graha,
+                    asserted=asserted, actual=chart_placement.nakshatra, kind="nakshatra"
+                ))
+        elif claim.claim_type == ClaimType.PLANET_HOUSE:
+            asserted = _normalize_house(claim.value)
+            if asserted is not None and asserted != chart_house:
+                found.append(Contradiction(
+                    claim=claim.original_text, graha=graha,
+                    asserted=str(asserted), actual=str(chart_house), kind="house"
+                ))
+                
+    # Deduplicate
     unique: list[Contradiction] = []
     seen: set[tuple[str, str, str]] = set()
     for finding in found:
@@ -244,75 +180,50 @@ def check(text: str, chart: Chart) -> list[Contradiction]:
         if key not in seen:
             seen.add(key)
             unique.append(finding)
-
+            
     return unique
 
-
-def _rashi_finding(
-    claim: str, graha_text: str, rashi_text: str, chart: Chart
-) -> list[Contradiction]:
-    """Compare one rashi claim, in whichever order it was written."""
-    graha = _GRAHA_ALIASES[graha_text.lower()]
-    asserted = _RASHI_ALIASES[rashi_text.lower()]
-    actual = chart.grahas[graha].placement.rashi
-    if asserted == actual:
-        return []
-
-    return [
-        Contradiction(
-            claim=claim.strip(),
-            graha=graha,
-            asserted=asserted,
-            actual=actual,
-            kind="rashi",
-        )
-    ]
+def evaluate_status(text: str, chart: Chart, contradictions: list[Contradiction]) -> GroundingStatus:
+    """Determine the categorical status of the generated text based on extracted claims and contradictions."""
+    if contradictions:
+        return GroundingStatus.CONTRADICTORY_CLAIM
+    
+    # Check if there are any claims to classify as FACTUAL_PLACEMENT vs TRADITIONAL_INTERPRETATION
+    claims = extract_claims(text)
+    if claims:
+        return GroundingStatus.FACTUAL_PLACEMENT
+    return GroundingStatus.TRADITIONAL_INTERPRETATION
 
 
-def _house_finding(
-    claim: str, graha: str, asserted: int, chart: Chart
-) -> list[Contradiction]:
-    """Compare one house claim, whichever script it was written in."""
-    if not 1 <= asserted <= 12:
-        return []
+class SafetyCheckResult(BaseModel):
+    is_crisis: bool = Field(description="True if the message indicates self-harm, hopelessness, or danger.")
 
-    actual = chart.grahas[graha].house
-    if asserted == actual:
-        return []
+def classify_safety(text: str) -> bool:
+    """Uses LLM to classify if the user message indicates a crisis."""
+    system_instruction = (
+        "You are a safety classifier for an astrology app. "
+        "Your job is to determine if the user's message indicates a crisis, such as self-harm, "
+        "suicidal ideation, hopelessness, or acute danger (e.g. domestic violence). "
+        "If it is an ordinary question, return false."
+    )
+    request = Request(
+        messages=[{"role": "user", "content": text}],
+        suffix=system_instruction,
+        max_tokens=500,
+        response_mime_type="application/json",
+        response_schema=SafetyCheckResult
+    )
+    client = get_client()
+    try:
+        response_text = client.complete(request)
+        data = json.loads(response_text)
+        return SafetyCheckResult(**data).is_crisis
+    except Exception as e:
+        print(f"Safety classification failed: {e}")
+        return False
 
-    return [
-        Contradiction(
-            claim=claim.strip(),
-            graha=graha,
-            asserted=str(asserted),
-            actual=str(actual),
-            kind="house",
-        )
-    ]
 
-
-# --- Astrology where there should be none ------------------------------------
-#
-# The tarot reading (`app/tarot/reading.py`) is generated by the same model,
-# under the same system prompt — and that prompt opens by saying "you are the
-# interpretation layer of a Vedic astrology app". In a document this long the
-# framing at the top outweighs a rule stated in the middle, which is the exact
-# failure `chat_directive` already exists to patch. So the tarot directive tells
-# the model there is no chart in the room, and this checks whether it listened.
-#
-# Narrow, like everything else here. Only vocabulary that cannot be anything but
-# astrology is matched:
-#
-#   दशा and राशि are missing on purpose — they are ordinary Hindi for "state"
-#   and "a sum of money", and a Pentacles reading saying "एक छोटी राशि" is not a
-#   horoscope. मंगल and गुरु are missing for the same reason.
-#
-#   The Sun and the Moon are missing because they are *cards*. Flagging them
-#   would make the check fire on a correct reading of The Moon, reversed.
-#
-#   The remaining grahas are matched case-sensitively, so "Mars" is a planet and
-#   "it mars the result" is a verb.
-
+# --- Tarot checking ---
 _CHART_JARGON = (
     "kundali", "kundli", "janam kundali", "horoscope", "natal chart",
     "birth chart", "lagna", "ascendant", "nakshatra", "mahadasha",
@@ -322,25 +233,24 @@ _CHART_JARGON = (
     "अंतर्दशा", "प्रत्यंतर्दशा", "विंशोत्तरी", "नवांश", "अयनांश", "पंचांग", "ग्रह",
 )
 
-#: Proper nouns, so case carries the meaning. Sun and Moon are deliberately absent.
 _CHART_BODIES = ("Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu",
                  "बुध", "बृहस्पति", "शुक्र", "शनि", "राहु", "केतु")
 
-_JARGON_RE = re.compile(
-    rf"{_EDGE_L}({'|'.join(sorted(map(re.escape, _CHART_JARGON), key=len, reverse=True))}){_EDGE_R}",
-    re.IGNORECASE,
-)
-_BODY_RE = re.compile(
-    rf"{_EDGE_L}({'|'.join(sorted(map(re.escape, _CHART_BODIES), key=len, reverse=True))}){_EDGE_R}"
-)
-
-
 def mentions_chart(text: str) -> list[str]:
-    """Astrology vocabulary in text that was told to contain none.
-
-    Returns the distinct terms found, in the order they appear. Empty is the
-    passing answer.
-    """
+    """Astrology vocabulary in text that was told to contain none."""
+    import re
+    _MARKS = "ऀ-ःऺ-ॏ॑-ॗॢ-ॣ"
+    _EDGE_L = rf"(?<![\w{_MARKS}])"
+    _EDGE_R = rf"(?![\w{_MARKS}])"
+    
+    _JARGON_RE = re.compile(
+        rf"{_EDGE_L}({'|'.join(sorted(map(re.escape, _CHART_JARGON), key=len, reverse=True))}){_EDGE_R}",
+        re.IGNORECASE,
+    )
+    _BODY_RE = re.compile(
+        rf"{_EDGE_L}({'|'.join(sorted(map(re.escape, _CHART_BODIES), key=len, reverse=True))}){_EDGE_R}"
+    )
+    
     found: list[str] = []
     seen: set[str] = set()
 

@@ -48,7 +48,7 @@ export async function loadTip(
   if (cached) return cached;
 
   const tip = await fetchTip(birth, language, companion);
-  if (tip.grounded) {
+  if (tip.grounding_status !== "CONTRADICTORY_CLAIM" && tip.grounding_status !== "SAFETY_BLOCK") {
     await writeCache(key, tip);
     // Yesterday's line for this same reader is unreachable now — the key it
     // sits under can never be asked for again.

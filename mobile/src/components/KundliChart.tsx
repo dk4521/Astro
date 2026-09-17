@@ -97,8 +97,8 @@ const GRAHA_ABBR: Record<string, string> = {
 };
 
 /** Hairlines, as a share of the accent's own violet. */
-const LATTICE = 'rgba(185, 174, 255, 0.22)';
-const DIAMOND = 'rgba(185, 174, 255, 0.30)';
+const LATTICE = 'rgba(255, 255, 255, 0.15)';
+const DIAMOND = 'rgba(255, 255, 255, 0.20)';
 
 /**
  * The mat between the rim and the chart square, as a share of it.

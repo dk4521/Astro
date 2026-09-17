@@ -109,7 +109,7 @@ type Message = {
   role: 'user' | 'assistant';
   text: string;
   streaming?: boolean;
-  grounded?: boolean;
+  grounding_status?: string;
   contradictions?: string[];
 };
 
@@ -121,33 +121,51 @@ type Message = {
  * achievement. The loud case is loud.
  */
 function GroundingNote({
-  grounded,
+  grounding_status,
   contradictions,
 }: {
-  grounded?: boolean;
+  grounding_status?: string;
   contradictions?: string[];
 }) {
-  if (grounded === undefined) return null;
+  if (grounding_status === undefined) return null;
 
-  if (grounded) {
-    return <Text style={styles.groundedOk}>✓ Checked against your computed chart</Text>;
+  if (grounding_status === 'FACTUAL_PLACEMENT') {
+    return (
+      <View>
+        <Text style={styles.groundedOk}>✓ Placement verified</Text>
+        <Text style={styles.groundedOk}>Interpretation is generated from the traditional framework and is not a scientific prediction.</Text>
+      </View>
+    );
+  }
+  
+  if (grounding_status === 'TRADITIONAL_INTERPRETATION') {
+    return (
+      <View>
+        <Text style={styles.groundedOk}>Traditional framework interpretation.</Text>
+        <Text style={styles.groundedOk}>Interpretation is generated from the traditional framework and is not a scientific prediction.</Text>
+      </View>
+    );
   }
 
-  return (
-    <View style={styles.groundedBad}>
-      <Text style={styles.groundedBadTitle}>
-        This disagrees with your chart
-      </Text>
-      {(contradictions ?? []).map((line) => (
-        <Text key={line} style={styles.groundedBadLine}>
-          {line}
+  if (grounding_status === 'CONTRADICTORY_CLAIM' || grounding_status === 'UNSUPPORTED_CLAIM') {
+    return (
+      <View style={styles.groundedBad}>
+        <Text style={styles.groundedBadTitle}>
+          This disagrees with your chart
         </Text>
-      ))}
-      <Text style={styles.groundedBadFoot}>
-        The chart screen holds the computed values. Those are the correct ones.
-      </Text>
-    </View>
-  );
+        {(contradictions ?? []).map((line) => (
+          <Text key={line} style={styles.groundedBadLine}>
+            {line}
+          </Text>
+        ))}
+        <Text style={styles.groundedBadFoot}>
+          The chart screen holds the computed values. Those are the correct ones.
+        </Text>
+      </View>
+    );
+  }
+  
+  return null;
 }
 
 export default function ReadingScreen() {
@@ -255,7 +273,7 @@ export default function ReadingScreen() {
           id: nextId.current++,
           role: turn.role,
           text: turn.content,
-          grounded: turn.grounded,
+          grounding_status: turn.grounding_status,
           contradictions: turn.contradictions,
         })),
       );
@@ -308,7 +326,7 @@ export default function ReadingScreen() {
             ? {
                 ...message,
                 text: result.text,
-                grounded: result.grounded,
+                grounding_status: result.grounding_status,
                 contradictions: result.contradictions,
                 streaming: false,
               }
@@ -318,7 +336,7 @@ export default function ReadingScreen() {
       void recordTurn({
           role: 'assistant',
           content: result.text,
-          grounded: result.grounded,
+          grounding_status: result.grounding_status,
           contradictions: result.contradictions,
         }, language, persona?.id ?? null);
     } catch (err) {
@@ -488,7 +506,7 @@ export default function ReadingScreen() {
       // Left uninitialised on purpose: `= null` would narrow it to `null` for
       // the read below, since TypeScript does not track the assignment made
       // inside `onVerdict`.
-      let verdict: { grounded: boolean; contradictions: string[] } | undefined;
+      let verdict: { grounding_status: string; contradictions: string[] } | undefined;
 
       try {
         await streamChat(
@@ -506,7 +524,7 @@ export default function ReadingScreen() {
             },
             onVerdict: (next) => {
               verdict = next;
-              update({ grounded: next.grounded, contradictions: next.contradictions });
+              update({ grounding_status: next.grounding_status, contradictions: next.contradictions });
             },
           },
           controller.signal,
@@ -539,7 +557,7 @@ export default function ReadingScreen() {
           void recordTurn({
               role: 'assistant',
               content: answer,
-              grounded: verdict?.grounded,
+              grounding_status: verdict?.grounding_status,
               contradictions: verdict?.contradictions,
             }, language, persona?.id ?? null);
         }
@@ -712,7 +730,7 @@ export default function ReadingScreen() {
               )}
               {message.streaming ? null : (
                 <GroundingNote
-                  grounded={message.grounded}
+                  grounding_status={message.grounding_status}
                   contradictions={message.contradictions}
                 />
               )}
@@ -916,9 +934,9 @@ const styles = StyleSheet.create({
   userRow: { alignItems: 'flex-end', marginTop: space.xl },
   userBubble: {
     maxWidth: '88%',
-    backgroundColor: 'rgba(58, 50, 110, 0.88)',
+    backgroundColor: 'rgba(30, 30, 30, 0.88)',
     borderWidth: 1,
-    borderColor: 'rgba(185, 174, 255, 0.30)',
+    borderColor: 'rgba(255, 255, 255, 0.15)',
     borderRadius: radius.md,
     paddingHorizontal: space.md,
     paddingVertical: space.sm + 2,

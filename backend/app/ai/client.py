@@ -123,6 +123,8 @@ class Request:
     # choice above all, so a stable prefix stays stable across users.
     suffix: str | None = None
     max_tokens: int = MAX_TOKENS
+    response_mime_type: str | None = None
+    response_schema: Any | None = None
 
 
 def _system_instruction(suffix: str | None) -> str:
@@ -245,6 +247,8 @@ class GeminiClient:
             automatic_function_calling=types.AutomaticFunctionCallingConfig(
                 disable=True
             ),
+            response_mime_type=request.response_mime_type,
+            response_schema=request.response_schema,
         )
 
     def _check(self, response: Any, *, streaming: bool = False) -> None:

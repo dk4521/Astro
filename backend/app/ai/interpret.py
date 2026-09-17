@@ -26,7 +26,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass, field
 
 from ..astro import Chart, panchang_for, vimshottari
-from . import cache, grounding
+from . import cache, grounding, crisis
 from .client import Request, get_client
 from .facts import build_brief
 from .facts import build_daily_brief
@@ -39,7 +39,7 @@ class Interpretation:
 
     text: str
     language: str
-    model_grounded: bool
+    grounding_status: str
     contradictions: list[str] = field(default_factory=list)
     #: True when this text came from the cache rather than the model. Reported
     #: as a response header so a slow first reading and an instant second one
@@ -94,10 +94,11 @@ def _build_request(
 
 def _verify(text: str, chart: Chart, language: str, cached: bool = False) -> Interpretation:
     contradictions = grounding.check(text, chart)
+    status = grounding.evaluate_status(text, chart, contradictions)
     return Interpretation(
         text=text,
         language=language,
-        model_grounded=not contradictions,
+        grounding_status=status.value,
         contradictions=[str(c) for c in contradictions],
         cached=cached,
     )
@@ -110,7 +111,7 @@ def _complete(request: Request, chart: Chart, language: str) -> Interpretation:
         return _verify(stored, chart, language, cached=True)
 
     result = _verify(get_client().complete(request), chart, language)
-    if result.model_grounded:
+    if result.grounding_status != "CONTRADICTORY_CLAIM":
         cache.put(request, result.text)
     return result
 
@@ -175,6 +176,7 @@ def stream_answer(
     language: str = "hinglish",
     as_of: dt.datetime | None = None,
     history: list[Turn] | None = None,
+    session_id: str | None = None,
 ) -> Iterator[str]:
     """Stream an answer token by token.
 
@@ -189,7 +191,23 @@ def stream_answer(
     asking the same question twice comes back instantly.
     """
     moment = as_of or dt.datetime.now(dt.timezone.utc)
-    request = _build_request(chart, question, language, moment, chat_directive(language), history)
+    
+    is_crisis = False
+    if session_id and crisis.is_in_crisis(session_id):
+        is_crisis = True
+    elif grounding.classify_safety(question):
+        is_crisis = True
+        if session_id:
+            crisis.mark_crisis(session_id)
+            
+    if is_crisis:
+        # Deterministic safe path
+        request = Request(
+            messages=[{"role": "user", "content": question}],
+            suffix="The user is in crisis. Generate a short, empathetic response and provide standard helplines. Do not mention astrology, charts, planets, or predictions at all.",
+        )
+    else:
+        request = _build_request(chart, question, language, moment, chat_directive(language), history)
 
     stored = cache.get(request)
     if stored is not None:

@@ -48,7 +48,7 @@ def _verify(text: str, drawn: Draw, language: str, cached: bool) -> Interpretati
     return Interpretation(
         text=text,
         language=language,
-        model_grounded=not contradictions,
+        grounding_status='FACTUAL_PLACEMENT' if not contradictions else 'CONTRADICTORY_CLAIM',
         contradictions=contradictions,
         cached=cached,
     )
@@ -76,6 +76,6 @@ def interpret(
         return _verify(stored, drawn, language, cached=True)
 
     result = _verify(get_client().complete(request), drawn, language, cached=False)
-    if result.model_grounded:
+    if result.grounding_status != 'CONTRADICTORY_CLAIM':
         cache.put(request, result.text)
     return result

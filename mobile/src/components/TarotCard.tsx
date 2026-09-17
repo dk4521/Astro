@@ -797,7 +797,7 @@ const styles = StyleSheet.create({
   band: {
     alignSelf: 'stretch',
     alignItems: 'center',
-    backgroundColor: 'rgba(10, 8, 18, 0.34)',
+    backgroundColor: 'rgba(10, 10, 10, 0.34)',
     borderRadius: radius.sm,
     paddingVertical: 1,
   },
@@ -819,7 +819,7 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: GILT_SOFT,
-    backgroundColor: 'rgba(10, 8, 18, 0.34)',
+    backgroundColor: 'rgba(10, 10, 10, 0.34)',
     borderRadius: radius.sm,
     paddingTop: 3,
     paddingBottom: 1,

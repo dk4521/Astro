@@ -124,7 +124,7 @@ export async function loadTarotReading(
     language,
   });
 
-  if (reading.grounded) {
+  if (reading.grounding_status !== "CONTRADICTORY_CLAIM" && reading.grounding_status !== "SAFETY_BLOCK") {
     await writeCache(key, { question, reading } satisfies StoredReading);
   }
 

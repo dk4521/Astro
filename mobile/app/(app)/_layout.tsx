@@ -95,7 +95,7 @@ function Sidebar() {
   return (
     <View style={styles.panel}>
       <LinearGradient
-        colors={['rgba(34, 29, 64, 0.96)', 'rgba(18, 16, 32, 0.93)', 'rgba(9, 8, 18, 0.97)']}
+        colors={['rgba(20, 20, 20, 0.96)', 'rgba(10, 10, 10, 0.93)', 'rgba(0, 0, 0, 0.97)']}
         locations={[0, 0.55, 1]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0.9, y: 1 }}
@@ -211,7 +211,7 @@ export default function AppLayout() {
         // 272 left 140dp of empty air: the longest label, SETTINGS, ends at
         // 132dp. Measured off a screenshot rather than guessed.
         drawerStyle: { backgroundColor: 'transparent', width: 200 },
-        overlayColor: 'rgba(11, 10, 20, 0.55)',
+        overlayColor: 'rgba(0, 0, 0, 0.55)',
         // Transparent: the root star field is the background now.
         sceneStyle: { backgroundColor: 'transparent' },
       }}
@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     right: 0,
     width: StyleSheet.hairlineWidth * 2,
-    backgroundColor: 'rgba(185, 174, 255, 0.22)',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
   },
   scroll: { backgroundColor: 'transparent' },
   content: {
@@ -258,7 +258,7 @@ const styles = StyleSheet.create({
     paddingRight: space.md,
     borderRadius: radius.md,
   },
-  itemActive: { backgroundColor: 'rgba(139, 123, 247, 0.16)' },
+  itemActive: { backgroundColor: 'rgba(255, 255, 255, 0.12)' },
   itemPressed: { opacity: 0.6 },
   // Sits in the row's left gutter so labels stay on one vertical line whether
   // or not the row is the active one.

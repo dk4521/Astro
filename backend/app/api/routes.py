@@ -362,7 +362,7 @@ def _paid(
 def interpret(
     payload: InterpretRequest,
     response: Response,
-    _: auth.Account | None = Depends(_paid),
+    account: auth.Account | None = Depends(_paid),
 ) -> InterpretResponse:
     """A first reading of the chart.
 
@@ -389,7 +389,7 @@ def interpret(
     return InterpretResponse(
         text=result.text,
         language=payload.language,
-        grounded=result.model_grounded,
+        grounding_status=result.grounding_status,
         contradictions=result.contradictions,
     )
 
@@ -398,7 +398,7 @@ def interpret(
 def tip(
     payload: TipRequest,
     response: Response,
-    _: auth.Account | None = Depends(_paid),
+    account: auth.Account | None = Depends(_paid),
 ) -> TipResponse:
     """The daily line the app opens with.
 
@@ -434,14 +434,14 @@ def tip(
         text=result.text,
         language=payload.language,
         companion=payload.companion,
-        grounded=result.model_grounded,
+        grounding_status=result.grounding_status,
     )
 
 
 @router.post("/chat", summary="Ask a question about a chart (streamed)")
 def chat(
     payload: ChatRequest,
-    _: auth.Account | None = Depends(_paid),
+    account: auth.Account | None = Depends(_paid),
 ) -> StreamingResponse:
     """Stream an answer as server-sent events.
 
@@ -466,11 +466,13 @@ def chat(
     def events():
         collected: list[str] = []
         try:
+            session_id = account.uid if account else None
             for chunk in ai.stream_answer(
                 chart,
                 payload.question,
                 language=payload.language,
                 history=history,
+                session_id=session_id,
             ):
                 collected.append(chunk)
                 yield f"event: token\ndata: {json.dumps({'text': chunk})}\n\n"
@@ -483,8 +485,9 @@ def chat(
 
         text = "".join(collected)
         contradictions = [str(c) for c in grounding.check(text, chart)]
+        grounding_status = grounding.evaluate_status(text, chart, grounding.check(text, chart)).value
         payload_out = {
-            "grounded": not contradictions,
+            "grounding_status": grounding_status,
             "contradictions": contradictions,
         }
         yield f"event: done\ndata: {json.dumps(payload_out)}\n\n"
@@ -752,7 +755,7 @@ def tarot_draw(payload: TarotDrawRequest) -> TarotDrawResponse:
 )
 def tarot_reading_endpoint(
     payload: TarotReadingRequest,
-    _: auth.Account | None = Depends(_paid),
+    account: auth.Account | None = Depends(_paid),
 ) -> TarotReadingResponse:
     """One reading of a spread, in the reader's language.
 
@@ -781,6 +784,6 @@ def tarot_reading_endpoint(
         seed=drawn.seed,
         text=result.text,
         language=payload.language,
-        grounded=result.model_grounded,
+        grounding_status=result.grounding_status,
         contradictions=result.contradictions,
     )

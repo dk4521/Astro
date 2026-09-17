@@ -29,14 +29,14 @@ const HISTORY_LIMIT = 100;
 export type StoredTurn = {
   role: 'user' | 'assistant';
   content: string;
-  grounded?: boolean;
+  grounding_status?: string;
   contradictions?: string[];
 };
 
 type MessageRow = {
   role: 'user' | 'assistant';
   content: string;
-  grounded: boolean | null;
+  grounding_status: string | null;
   contradictions: string[] | null;
 };
 
@@ -161,7 +161,7 @@ export async function fetchTurns(conversationId: string): Promise<StoredTurn[]> 
   // would return the *start* of a long conversation rather than where it left off.
   const { data, error } = await supabase
     .from('messages')
-    .select('role, content, grounded, contradictions')
+    .select('role, content, grounding_status, contradictions')
     .eq('conversation_id', conversationId)
     .order('created_at', { ascending: false })
     .limit(HISTORY_LIMIT);
@@ -173,7 +173,7 @@ export async function fetchTurns(conversationId: string): Promise<StoredTurn[]> 
     .map((row: MessageRow) => ({
       role: row.role,
       content: row.content,
-      grounded: row.grounded ?? undefined,
+      grounding_status: row.grounding_status ?? undefined,
       contradictions: row.contradictions ?? undefined,
     }));
 }
@@ -190,7 +190,7 @@ export async function appendTurn(
     user_id: userId,
     role: turn.role,
     content: turn.content,
-    grounded: turn.grounded ?? null,
+    grounding_status: turn.grounding_status ?? null,
     contradictions: turn.contradictions ?? null,
   });
 
