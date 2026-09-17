@@ -23,7 +23,9 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -191,6 +193,12 @@ export default function ReadingScreen() {
   // and — if that message sounded like trouble — lead with help instead.
   const [blocked, setBlocked] = useState<{ crisis: boolean } | null>(null);
 
+  useEffect(() => {
+    if (pro && blocked && !blocked.crisis) {
+      setBlocked(null);
+    }
+  }, [pro, blocked]);
+
   const [details, setDetails] = useState<BirthDetails | null>(null);
   const [language, setLanguage] = useState<Language>('hinglish');
   const t = chromeFor(language);
@@ -201,6 +209,7 @@ export default function ReadingScreen() {
   const [question, setQuestion] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const scroller = useRef<ScrollView>(null);
   const abort = useRef<AbortController | null>(null);
@@ -729,8 +738,6 @@ export default function ReadingScreen() {
           ) : (
             <>
               <Text style={styles.spentTitle}>{t.proNeeded}</Text>
-              <Text style={styles.spentBody}>{t.proNeededWhy}</Text>
-              <Text style={styles.spentMuted}>{t.proNeededFree}</Text>
               <View style={styles.spentAction}>
                 <Button title={t.upgrade} onPress={() => router.push('/plans')} />
               </View>
@@ -749,18 +756,40 @@ export default function ReadingScreen() {
             moment — and it was never honest anyway, since the number it drew
             came from a ledger the app could not enforce. */}
         <View style={styles.composerRow}>
-        <TextInput
-          style={styles.input}
-          value={question}
-          onChangeText={setQuestion}
-          placeholder="Ask about your chart"
-          placeholderTextColor={colors.textFaint}
-          multiline
-          maxLength={2000}
-          editable={!sending}
-          onSubmitEditing={() => ask(question)}
-          returnKeyType="send"
-        />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Menu"
+          onPress={() => setMenuOpen(true)}
+          style={({ pressed }) => [
+            styles.send,
+            { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.border },
+            pressed && styles.pressed,
+          ]}
+        >
+          <Text style={[styles.sendText, { color: colors.textFaint, fontWeight: '400' }]}>+</Text>
+        </Pressable>
+        <View style={[styles.input, { flexDirection: 'row', alignItems: 'flex-end', paddingRight: space.xs, paddingVertical: 0 }]}>
+          <TextInput
+            style={{ flex: 1, color: colors.text, fontSize: 16, maxHeight: 120, paddingTop: space.sm + 2, paddingBottom: space.sm + 2 }}
+            value={question}
+            onChangeText={setQuestion}
+            placeholder="Ask about your chart"
+            placeholderTextColor={colors.textFaint}
+            multiline
+            maxLength={2000}
+            editable={!sending}
+            onSubmitEditing={() => ask(question)}
+            returnKeyType="send"
+          />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Voice Chat"
+            onPress={() => Alert.alert('Coming Soon', 'Real-time Voice AI is coming soon! (After the hackathon)')}
+            style={({ pressed }) => [{ padding: space.sm, paddingBottom: space.sm + 4 }, pressed && styles.pressed]}
+          >
+            <Text style={{ fontSize: 18 }}>🎙️</Text>
+          </Pressable>
+        </View>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={sending ? 'Stop' : 'Send'}
@@ -779,6 +808,21 @@ export default function ReadingScreen() {
       ) : null}
       </>
       )}
+      <Modal visible={menuOpen} transparent={true} animationType="fade" onRequestClose={() => setMenuOpen(false)}>
+        <Pressable style={styles.menuOverlay} onPress={() => setMenuOpen(false)}>
+          <View style={styles.menuBox}>
+            <Pressable style={({ pressed }) => [styles.menuItem, pressed && styles.pressed]} onPress={() => { setMenuOpen(false); setMessages([]); releaseConversation(); }}>
+              <Text style={styles.menuItemText}>✨  New Chat</Text>
+            </Pressable>
+            <Pressable style={({ pressed }) => [styles.menuItem, pressed && styles.pressed]} onPress={() => { setMenuOpen(false); Alert.alert('Coming Soon', 'Share feature will be available after the hackathon!'); }}>
+              <Text style={styles.menuItemText}>🔗  Share</Text>
+            </Pressable>
+            <Pressable style={({ pressed }) => [styles.menuItem, pressed && styles.pressed]} onPress={() => { setMenuOpen(false); Alert.alert('Coming Soon', 'Image upload will be available after the hackathon!'); }}>
+              <Text style={styles.menuItemText}>🖼️  Upload Image</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -961,4 +1005,34 @@ const styles = StyleSheet.create({
   helplinesQuiet: { ...type.mono, color: colors.textFaint, marginTop: space.sm, lineHeight: 18 },
 
   sendText: { fontSize: 18, fontWeight: '700', color: colors.bg },
+  
+  menuOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'flex-end',
+    paddingHorizontal: space.md,
+    paddingBottom: 110,
+  },
+  menuBox: {
+    backgroundColor: '#1E1E24',
+    borderRadius: radius.md,
+    paddingVertical: space.sm,
+    width: 200,
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  menuItem: {
+    paddingVertical: space.md,
+    paddingHorizontal: space.md + 4,
+  },
+  menuItemText: {
+    ...type.body,
+    color: colors.text,
+    fontSize: 16,
+  },
 });

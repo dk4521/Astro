@@ -101,7 +101,6 @@ export default function ChapterScreen() {
               {chapter.part} · {chapter.level} · {chapter.minutes} min
             </Text>
             <Text style={styles.title}>{chapter.title}</Text>
-            <Text style={styles.summary}>{chapter.summary}</Text>
 
             {chapter.sections.map((section) => (
               <View key={section.heading} style={styles.section}>
@@ -168,8 +167,8 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: space.lg, paddingTop: space.lg, paddingBottom: space.xxl },
   loading: { paddingVertical: space.xxl, alignItems: 'center' },
   retry: { marginTop: space.md },
-  level: { ...type.label, color: colors.accent },
-  title: { ...type.display, color: colors.text, marginTop: space.sm },
+  level: { ...type.label, color: 'rgba(255, 255, 255, 0.6)', fontSize: 15 },
+  title: { ...type.display, color: '#FFFFFF', marginTop: space.sm, fontSize: 32, fontWeight: '700' },
   summary: {
     ...type.body,
     color: colors.textMuted,
@@ -183,33 +182,32 @@ const styles = StyleSheet.create({
   },
   section: {
     marginTop: space.lg,
-    gap: space.md,
-    backgroundColor: colors.glass,
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
-    borderRadius: radius.md,
-    padding: space.md,
+    gap: space.lg,
+    backgroundColor: 'transparent',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    paddingBottom: space.xl,
   },
-  heading: { ...type.heading, color: colors.text },
-  paragraph: { ...type.body, color: colors.text, lineHeight: 24 },
+  heading: { ...type.heading, color: '#FFFFFF', fontSize: 22, fontWeight: '600' },
+  paragraph: { ...type.body, color: 'rgba(255, 255, 255, 0.9)', fontSize: 18, lineHeight: 28 },
   aside: {
-    borderLeftWidth: 2,
-    borderLeftColor: colors.accent,
+    borderLeftWidth: 3,
+    borderLeftColor: 'rgba(255, 255, 255, 0.3)',
     paddingLeft: space.md,
     paddingVertical: space.xs,
   },
-  asideText: { ...type.mono, color: colors.textMuted, lineHeight: 20 },
+  asideText: { ...type.mono, color: 'rgba(255, 255, 255, 0.7)', fontSize: 15, lineHeight: 22 },
   yours: {
     marginTop: space.xxl,
-    backgroundColor: colors.glass,
+    backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: colors.accent,
-    borderRadius: radius.md,
-    padding: space.md,
-    gap: space.sm,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: radius.lg,
+    padding: space.lg,
+    gap: space.md,
   },
-  yoursLabel: { ...type.label, color: colors.accentSoft },
-  yoursText: { ...type.body, color: colors.text, lineHeight: 24 },
+  yoursLabel: { ...type.label, color: 'rgba(255, 255, 255, 0.5)', fontSize: 13, letterSpacing: 1 },
+  yoursText: { ...type.body, color: '#FFFFFF', fontSize: 18, lineHeight: 28 },
   actions: { marginTop: space.xxl, gap: space.md },
   readNote: { ...type.mono, color: colors.textFaint, textAlign: 'center' },
   back: { alignItems: 'center', paddingVertical: space.sm },

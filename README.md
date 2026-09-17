@@ -819,6 +819,8 @@ Early versions used a client-side credit ledger — which was trivially exploita
 
 ### What's next for Enuma Sky
 
+**Western Market Expansion (UI & Zodiac Scalability).** Our architecture is fully decoupled — the backend calculates pure astronomical data, while the frontend handles visual representation. This means we can instantly scale to the Western market just by adding a Circular Wheel UI component and toggling the Ayanamsa to Tropical in our Skyfield engine. No backend rewrite required. We plan to add a simple setting allowing users to seamlessly switch between North Indian (Diamond), South Indian (Square), and Western (Wheel) charts.
+
 **iOS launch.** Enuma Sky is currently live on Android. An iOS build is next — the Expo + EAS pipeline already supports both platforms, so the codebase is ready. The goal is to bring fear-free astrology to every smartphone, not just one ecosystem.
 
 **7-day free trial for Enuma Sky Pro.** We want every user to experience AI-powered grounded readings before committing to a subscription. A 7-day free trial through RevenueCat will let users explore the full Pro experience — unlimited AI chat, daily reflections, and tarot synthesis — risk-free, with no surprise charges.

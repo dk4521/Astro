@@ -106,7 +106,6 @@ export default function LearnIndex() {
                 <Text style={styles.progressCount}>
                   {done} / {chapters.length}
                 </Text>
-                <Text style={styles.progressMeta}>~{index.total_minutes} min</Text>
               </View>
               <View style={styles.track}>
                 <View
@@ -165,7 +164,6 @@ export default function LearnIndex() {
                     </View>
                     <View style={styles.rowText}>
                       <Text style={styles.rowTitle}>{chapter.title}</Text>
-                      <Text style={styles.rowSummary}>{chapter.summary}</Text>
                       <Text style={styles.rowMeta}>
                         {chapter.level} · {chapter.minutes} min
                       </Text>
@@ -201,27 +199,30 @@ const styles = StyleSheet.create({
   retry: { marginTop: space.md },
   progressCard: {
     marginTop: space.xl,
-    backgroundColor: colors.glass,
+    backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: colors.glassBorder,
+    borderColor: 'rgba(212, 175, 55, 0.4)', // Golden border
     borderRadius: radius.md,
     padding: space.md,
     gap: space.sm,
   },
   progressHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
-  progressCount: { ...type.heading, color: colors.text },
-  progressMeta: { ...type.mono, color: colors.textFaint },
-  track: { height: 4, borderRadius: 2, backgroundColor: colors.border, overflow: 'hidden' },
-  fill: { height: 4, backgroundColor: colors.accent, borderRadius: 2 },
+  progressCount: { ...type.heading, color: '#FFFFFF', fontSize: 20 },
+  progressMeta: { ...type.mono, color: colors.textMuted, fontSize: 14 },
+  track: { height: 4, borderRadius: 2, backgroundColor: 'rgba(255, 255, 255, 0.1)', overflow: 'hidden' },
+  fill: { height: 4, backgroundColor: '#FFFFFF', borderRadius: 2 },
   resume: {
     marginTop: space.sm,
-    backgroundColor: colors.accentDim,
-    borderRadius: radius.sm,
+    backgroundColor: '#1E1E24',
+    borderWidth: 1,
+    borderColor: '#D4AF37', // Golden border
+    borderRadius: radius.pill,
     paddingVertical: space.sm + 2,
     paddingHorizontal: space.md,
+    alignItems: 'center',
   },
-  resumeText: { ...type.body, color: colors.accentSoft, fontWeight: '600' },
-  finished: { ...type.mono, color: colors.textFaint, marginTop: space.xs },
+  resumeText: { ...type.body, color: '#FFFFFF', fontWeight: '600', fontSize: 16 },
+  finished: { ...type.mono, color: colors.textMuted, marginTop: space.xs },
   pressed: { opacity: 0.7 },
   partHeading: { marginTop: space.xl, marginBottom: space.xs },
   // Each chapter is its own sheet. A hairline rule was enough separation on a
@@ -231,27 +232,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: space.md,
     padding: space.md,
-    marginTop: space.sm,
-    backgroundColor: colors.glass,
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
-    borderRadius: radius.md,
+    paddingVertical: space.lg,
+    marginTop: space.xs,
+    backgroundColor: 'transparent',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(212, 175, 55, 0.5)', // Golden hairline border
   },
   badge: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(212, 175, 55, 0.4)', // Golden badge border
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 2,
   },
-  badgeRead: { backgroundColor: colors.accentDim, borderColor: colors.accent },
-  number: { ...type.mono, color: colors.textFaint },
-  numberRead: { color: colors.accentSoft },
-  rowText: { flex: 1 },
-  rowTitle: { ...type.heading, color: colors.text },
-  rowSummary: { ...type.body, color: colors.textMuted, marginTop: 2, lineHeight: 20 },
-  rowMeta: { ...type.mono, color: colors.textFaint, marginTop: space.xs },
+  badgeRead: { backgroundColor: 'transparent', borderColor: '#D4AF37' },
+  number: { ...type.mono, color: 'rgba(212, 175, 55, 0.8)', fontSize: 14 },
+  numberRead: { color: '#D4AF37', fontWeight: '700', fontSize: 15 },
+  rowText: { flex: 1, justifyContent: 'center' },
+  rowTitle: { ...type.heading, color: '#FFFFFF', fontSize: 18, fontWeight: '600' },
+  rowMeta: { ...type.mono, color: 'rgba(255, 255, 255, 0.6)', marginTop: space.xs + 2, fontSize: 13 },
 });

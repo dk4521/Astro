@@ -242,7 +242,7 @@ export default function Today() {
 
             <View style={styles.section}>
               <Label>{t.yourPeriod}</Label>
-              <Card>
+              <Card plain={true} style={{ backgroundColor: 'transparent', borderColor: 'rgba(255, 255, 255, 0.15)' }}>
                 {data.active.length === 0 ? (
                   <Text style={styles.empty}>{t.outsideCycle}</Text>
                 ) : (
@@ -282,7 +282,7 @@ export default function Today() {
 
             <View style={styles.section}>
               <Label>{t.panchangNow}</Label>
-              <Card>
+              <Card plain={true} style={{ backgroundColor: 'transparent', borderColor: 'rgba(255, 255, 255, 0.15)' }}>
                 <Row
                   label={t.tithi}
                   value={
@@ -349,7 +349,7 @@ export default function Today() {
 
             <View style={styles.section}>
               <Label>{t.againstBirth}</Label>
-              <Card>
+              <Card plain={true} style={{ backgroundColor: 'transparent', borderColor: 'rgba(255, 255, 255, 0.15)' }}>
                 <Row
                   label={t.moonThen}
                   value={language === 'hi' ? data.birth_moon_rashi_hi : data.birth_moon_rashi}
@@ -377,47 +377,43 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: space.lg, paddingTop: space.lg, paddingBottom: space.xxl },
   loading: { paddingVertical: space.xxl, alignItems: 'center' },
   retry: { marginTop: space.md },
-  kicker: { ...type.label, color: colors.accent },
+  kicker: { ...type.label, color: 'rgba(255, 255, 255, 0.85)' },
 
   // The hook. A sheet of glass with an accent edge — the one card on the screen
   // that is not a table, and the only place the app speaks rather than reports.
   hook: {
     marginTop: space.lg,
-    backgroundColor: colors.glass,
+    backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: colors.glassBorder,
-    borderLeftWidth: 3,
-    borderLeftColor: colors.accent,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
     borderRadius: radius.md,
     padding: space.md,
     gap: space.sm,
   },
-  hookLabel: { ...type.label, color: colors.accentSoft },
+  hookLabel: { ...type.label, color: 'rgba(255, 255, 255, 0.85)' },
   hookBody: { gap: space.sm },
   hookWho: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   // The name is an attribution beside the face, never a verb in a sentence:
   // Hindi has no ungendered "says", and five of the companions are men.
-  hookName: { ...type.body, color: colors.text, fontWeight: '600' },
-  hookText: { ...type.body, color: colors.text, lineHeight: 24 },
-  hookMuted: { ...type.body, color: colors.textMuted },
+  hookName: { ...type.body, color: 'rgba(255, 255, 255, 0.85)', fontWeight: '600' },
+  hookText: { ...type.body, color: 'rgba(255, 255, 255, 0.85)', lineHeight: 24 },
+  hookMuted: { ...type.body, color: 'rgba(255, 255, 255, 0.85)' },
   hookWaiting: { paddingVertical: space.md, alignItems: 'flex-start' },
   hookAction: { marginTop: space.xs },
-  title: { ...type.display, color: colors.text, marginTop: space.sm },
-  subtitle: { ...type.body, color: colors.textMuted, marginTop: space.xs },
+  title: { ...type.display, color: 'rgba(255, 255, 255, 0.85)', marginTop: space.sm },
+  subtitle: { ...type.body, color: 'rgba(255, 255, 255, 0.85)', marginTop: space.xs },
   section: { marginTop: space.xl },
-  caption: { ...type.mono, color: colors.textFaint, marginTop: space.sm, lineHeight: 18 },
-  empty: { ...type.body, color: colors.textMuted },
+  caption: { ...type.mono, color: 'rgba(255, 255, 255, 0.85)', marginTop: space.sm, lineHeight: 18 },
+  empty: { ...type.body, color: 'rgba(255, 255, 255, 0.85)' },
   track: { gap: space.md },
   step: {
-    borderLeftWidth: 2,
-    borderLeftColor: colors.accent,
-    paddingLeft: space.md,
+    paddingLeft: space.xs,
     paddingVertical: space.xs,
   },
   stepHead: { flexDirection: 'row', justifyContent: 'space-between', gap: space.sm },
-  stepLevel: { ...type.label, color: colors.textFaint },
-  stepDates: { ...type.mono, color: colors.textFaint },
-  stepLord: { ...type.title, color: colors.text, marginTop: space.xs },
-  stepLordHi: { ...type.body, color: colors.accentSoft },
-  stepMeaning: { ...type.body, color: colors.textMuted, marginTop: space.xs, lineHeight: 22 },
+  stepLevel: { ...type.label, color: 'rgba(255, 255, 255, 0.85)' },
+  stepDates: { ...type.mono, color: 'rgba(255, 255, 255, 0.85)' },
+  stepLord: { ...type.title, color: 'rgba(255, 255, 255, 0.85)', marginTop: space.xs },
+  stepLordHi: { ...type.body, color: 'rgba(255, 255, 255, 0.85)' },
+  stepMeaning: { ...type.body, color: 'rgba(255, 255, 255, 0.85)', marginTop: space.xs, lineHeight: 22 },
 });

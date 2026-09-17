@@ -207,14 +207,14 @@ export default function ChartScreen() {
 
           <View style={styles.section}>
             <Label>{t.currentPeriod}</Label>
-            <Card>
+            <Card plain={true} style={{ backgroundColor: 'transparent', borderColor: 'rgba(255, 255, 255, 0.15)' }}>
               <DashaTrack active={reading.dasha.active} language={language} />
             </Card>
           </View>
 
           <View style={styles.section}>
             <Label>{t.grahas}</Label>
-            <Card>
+            <Card plain={true} style={{ backgroundColor: 'transparent', borderColor: 'rgba(255, 255, 255, 0.15)' }}>
               {reading.chart.grahas.map((graha, index) => (
                 <View
                   key={graha.graha}
@@ -270,7 +270,7 @@ export default function ChartScreen() {
 
           <View style={styles.section}>
             <Label>{t.panchangAtBirth}</Label>
-            <Card>
+            <Card plain={true} style={{ backgroundColor: 'transparent', borderColor: 'rgba(255, 255, 255, 0.15)' }}>
               <Row
                 label={t.tithi}
                 value={
@@ -336,7 +336,7 @@ export default function ChartScreen() {
 
           <View style={styles.section}>
             <Label>{t.howComputed}</Label>
-            <Card>
+            <Card plain={true} style={{ backgroundColor: 'transparent', borderColor: 'rgba(255, 255, 255, 0.15)' }}>
               <Row
                 label={t.ayanamsa}
                 value={
@@ -380,20 +380,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: space.md,
   },
-  loadingText: { ...type.body, color: colors.textMuted },
-  kicker: { ...type.label, color: colors.accent },
-  title: { ...type.display, color: colors.text, marginTop: space.sm },
-  subtitle: { ...type.body, color: colors.textMuted, marginTop: space.xs },
+  loadingText: { ...type.body, color: 'rgba(255, 255, 255, 0.85)' },
+  kicker: { ...type.label, color: 'rgba(255, 255, 255, 0.85)' },
+  title: { ...type.display, color: 'rgba(255, 255, 255, 0.85)', marginTop: space.sm },
+  subtitle: { ...type.body, color: 'rgba(255, 255, 255, 0.85)', marginTop: space.xs },
   section: { marginTop: space.xl },
   caption: {
     ...type.mono,
-    color: colors.textFaint,
+    color: 'rgba(255, 255, 255, 0.85)',
     marginTop: space.sm,
     textAlign: 'center',
     lineHeight: 18,
   },
   retry: { marginTop: space.md },
-  empty: { ...type.body, color: colors.textMuted },
+  empty: { ...type.body, color: 'rgba(255, 255, 255, 0.85)' },
   grahaRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -405,24 +405,22 @@ const styles = StyleSheet.create({
   grahaName: { flexShrink: 0 },
   grahaTitleRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   grahaDot: { width: 8, height: 8, borderRadius: 4 },
-  grahaTitle: { ...type.heading, color: colors.text },
+  grahaTitle: { ...type.heading, color: 'rgba(255, 255, 255, 0.85)' },
   // Indented to clear the dot, so the Sanskrit name lines up under the English
   // one rather than under the swatch.
-  grahaHi: { ...type.mono, color: colors.textFaint, marginTop: 2, marginLeft: 8 + space.sm },
+  grahaHi: { ...type.mono, color: 'rgba(255, 255, 255, 0.85)', marginTop: 2, marginLeft: 8 + space.sm },
   grahaFacts: { flex: 1, alignItems: 'flex-end' },
-  grahaPosition: { ...type.body, color: colors.text, fontWeight: '600' },
-  grahaMeta: { ...type.mono, color: colors.textMuted, marginTop: 2, textAlign: 'right' },
+  grahaPosition: { ...type.body, color: 'rgba(255, 255, 255, 0.85)', fontWeight: '600' },
+  grahaMeta: { ...type.mono, color: 'rgba(255, 255, 255, 0.85)', marginTop: 2, textAlign: 'right' },
   chips: { flexDirection: 'row', gap: space.xs, marginTop: space.sm },
   dashaTrack: { gap: space.md },
   dashaStep: {
-    borderLeftWidth: 2,
-    borderLeftColor: colors.accent,
-    paddingLeft: space.md,
+    paddingLeft: space.xs, // Reduced padding since border is gone
     paddingVertical: space.xs,
   },
   dashaHeader: { flexDirection: 'row', justifyContent: 'space-between', gap: space.sm },
-  dashaLevel: { ...type.label, color: colors.textFaint },
-  dashaDates: { ...type.mono, color: colors.textFaint },
-  dashaLord: { ...type.title, color: colors.text, marginTop: space.xs },
-  dashaLordHi: { ...type.body, color: colors.accentSoft },
+  dashaLevel: { ...type.label, color: 'rgba(255, 255, 255, 0.85)', fontSize: 13 },
+  dashaDates: { ...type.mono, color: 'rgba(255, 255, 255, 0.85)', fontSize: 13 },
+  dashaLord: { ...type.title, color: 'rgba(255, 255, 255, 0.85)', marginTop: space.xs, fontSize: 22, fontWeight: '600' },
+  dashaLordHi: { ...type.body, color: 'rgba(255, 255, 255, 0.85)', fontSize: 16 },
 });

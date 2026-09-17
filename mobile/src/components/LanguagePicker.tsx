@@ -56,8 +56,8 @@ const styles = StyleSheet.create({
     paddingVertical: space.xs + 2,
     borderRadius: radius.pill,
   },
-  itemActive: { backgroundColor: colors.accentDim },
+  itemActive: { backgroundColor: '#FFFFFF' },
   pressed: { opacity: 0.7 },
   label: { fontSize: 12, fontWeight: '600', color: colors.textFaint },
-  labelActive: { color: colors.accentSoft },
+  labelActive: { color: '#000000' },
 });

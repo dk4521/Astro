@@ -267,7 +267,7 @@ export function ErrorNote({ message }: { message: string }) {
 const styles = StyleSheet.create({
   label: {
     ...type.label,
-    color: colors.textFaint,
+    color: 'rgba(255, 255, 255, 0.85)',
     marginBottom: space.sm,
   },
   card: {
@@ -287,10 +287,10 @@ const styles = StyleSheet.create({
     paddingVertical: space.sm + 2,
     gap: space.md,
   },
-  rowLabel: { ...type.body, color: colors.textMuted, flexShrink: 1 },
+  rowLabel: { ...type.body, color: 'rgba(255, 255, 255, 0.85)', flexShrink: 1 },
   rowValueGroup: { alignItems: 'flex-end', flexShrink: 1 },
-  rowValue: { ...type.body, color: colors.text, fontWeight: '600', textAlign: 'right' },
-  rowHint: { ...type.mono, color: colors.textFaint, marginTop: 2, textAlign: 'right' },
+  rowValue: { ...type.body, color: 'rgba(255, 255, 255, 0.85)', fontWeight: '600', textAlign: 'right' },
+  rowHint: { ...type.mono, color: 'rgba(255, 255, 255, 0.85)', marginTop: 2, textAlign: 'right' },
   button: {
     borderRadius: radius.pill,
     overflow: 'hidden',

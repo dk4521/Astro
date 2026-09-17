@@ -317,7 +317,7 @@ type Streak = {
 };
 
 /** The fraction of a cycle the streak is actually crossing the sky. */
-const TRAVEL = 0.15;
+const TRAVEL = 0.02;
 
 const STREAKS: Streak[] = [
   {
@@ -325,16 +325,16 @@ const STREAKS: Streak[] = [
     to: { x: 0.75, y: 0.46 },
     length: 110,
     color: '#DCE9FF',
-    period: 11000,
-    delay: 2500,
+    period: 80000,
+    delay: 0,
   },
   {
     from: { x: 1.1, y: 0.22 },
     to: { x: 0.25, y: 0.72 },
     length: 86,
     color: '#FFD6E8',
-    period: 17000,
-    delay: 9000,
+    period: 80000,
+    delay: 40000,
   },
 ];
 
@@ -535,7 +535,7 @@ function BrightStar({
     transform: [{ scale: 0.8 + v.value * 0.35 }],
   }));
 
-  const box = star.size * 7;
+  const box = star.size * 4.5;
   const gradientId = `halo${index}`;
 
   return (
@@ -555,13 +555,13 @@ function BrightStar({
       <Svg width={box} height={box}>
         <Defs>
           <RadialGradient id={gradientId} cx="50%" cy="50%" r="50%">
-            <Stop offset="0" stopColor={star.color} stopOpacity="0.6" />
-            <Stop offset="0.3" stopColor={star.color} stopOpacity="0.2" />
+            <Stop offset="0" stopColor={star.color} stopOpacity="0.4" />
+            <Stop offset="0.3" stopColor={star.color} stopOpacity="0.1" />
             <Stop offset="1" stopColor={star.color} stopOpacity="0" />
           </RadialGradient>
         </Defs>
         <Circle cx={box / 2} cy={box / 2} r={box / 2} fill={`url(#${gradientId})`} />
-        <Circle cx={box / 2} cy={box / 2} r={star.size * 0.5} fill="#FFFFFF" fillOpacity={0.95} />
+        <Circle cx={box / 2} cy={box / 2} r={star.size * 0.35} fill="#FFFFFF" fillOpacity={0.95} />
       </Svg>
     </Animated.View>
   );
