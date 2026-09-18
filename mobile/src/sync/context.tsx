@@ -404,10 +404,10 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       },
 
       async releaseConversation() {
-        await rememberConversationId(null);
         setConversationId(null);
         conversationLanguage.current = null;
         conversationPersona.current = undefined;
+        await rememberConversationId(null);
       },
 
       async listHistory() {

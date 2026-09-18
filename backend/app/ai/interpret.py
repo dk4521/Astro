@@ -110,7 +110,7 @@ def _complete(request: Request, chart: Chart, language: str) -> Interpretation:
         return _verify(stored, chart, language, cached=True)
 
     result = _verify(get_client().complete(request), chart, language)
-    if result.grounding_status != "CONTRADICTORY_CLAIM":
+    if result.grounding_status in ("FACTUAL_PLACEMENT", "TRADITIONAL_INTERPRETATION"):
         cache.put(request, result.text)
     return result
 

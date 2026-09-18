@@ -82,7 +82,7 @@ _NAKSHATRA_ALIASES.update(dict(zip(K.NAKSHATRAS_HI, K.NAKSHATRAS)))
 import functools
 
 @functools.lru_cache(maxsize=256)
-def extract_claims(text: str) -> list[StructuredClaim]:
+def extract_claims(text: str) -> list[StructuredClaim] | None:
     """Uses LLM to extract placement claims from text."""
     system_instruction = (
         "Extract all explicit astrological placement claims from the provided text. "
@@ -106,7 +106,7 @@ def extract_claims(text: str) -> list[StructuredClaim]:
         return ClaimList(**data).claims
     except Exception as e:
         print(f"Claim extraction failed: {e}")
-        return []
+        return None
 
 def _normalize_planet(planet_str: str) -> str | None:
     return _GRAHA_ALIASES.get(planet_str.lower().strip())
@@ -198,6 +198,8 @@ def evaluate_status(claims: list[StructuredClaim], contradictions: list[Contradi
 
 def check_and_evaluate(text: str, chart: Chart) -> tuple[list[Contradiction], GroundingStatus]:
     claims = extract_claims(text)
+    if claims is None:
+        return [], GroundingStatus.UNSUPPORTED_CLAIM
     
     found: list[Contradiction] = []
     for claim in claims:

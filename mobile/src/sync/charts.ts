@@ -113,18 +113,7 @@ export async function pushPrimaryChart(
   const existing = await fetchPrimaryChart(userId);
   if (existing && sameChart(existing.birth, birth)) return existing.id;
 
-  // `charts_one_primary` is a unique index over the primaries, so the old one
-  // has to step down before the new one can exist. If the insert then fails the
-  // account is briefly left with no primary — recoverable, because the next sync
-  // inserts one, and far better than the alternative of two.
-  if (existing) {
-    const { error } = await supabase
-      .from('charts')
-      .update({ is_primary: false })
-      .eq('id', existing.id);
-    if (error) throw new Error(error.message);
-  }
-
+  // Insert as non-primary first to avoid uniqueness constraint on `is_primary = true`
   const { data, error } = await supabase
     .from('charts')
     .insert({
@@ -135,11 +124,16 @@ export async function pushPrimaryChart(
       longitude: birth.longitude,
       place: birth.place ?? null,
       timezone: birth.timezone ?? null,
-      is_primary: true,
+      is_primary: false,
     })
     .select('id')
     .single<{ id: string }>();
 
   if (error) throw new Error(error.message);
+
+  // Atomically swap the new chart to primary
+  const { error: rpcError } = await supabase.rpc('set_primary_chart', { new_chart_id: data.id });
+  if (rpcError) throw new Error(rpcError.message);
+
   return data.id;
 }

@@ -89,7 +89,7 @@ create policy "read own charts"   on public.charts for select using (auth.uid() 
 drop policy if exists "insert own charts" on public.charts;
 create policy "insert own charts" on public.charts for insert with check (auth.uid() = user_id);
 drop policy if exists "update own charts" on public.charts;
-create policy "update own charts" on public.charts for update using (auth.uid() = user_id);
+create policy "update own charts" on public.charts for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 drop policy if exists "delete own charts" on public.charts;
 create policy "delete own charts" on public.charts for delete using (auth.uid() = user_id);
 
@@ -97,6 +97,17 @@ create policy "delete own charts" on public.charts for delete using (auth.uid() 
 -- --- Course progress --------------------------------------------------------
 -- Which chapters have been read. One row per chapter rather than an array, so
 -- two devices finishing different chapters merge instead of overwriting.
+
+create or replace function public.set_primary_chart(new_chart_id uuid)
+returns void
+language plpgsql
+security definer
+as $$
+begin
+  update public.charts set is_primary = false where user_id = auth.uid() and is_primary = true;
+  update public.charts set is_primary = true where id = new_chart_id and user_id = auth.uid();
+end;
+$$;
 
 create table if not exists public.course_progress (
   user_id   uuid not null references auth.users on delete cascade,
@@ -142,7 +153,7 @@ create table if not exists public.messages (
   content         text not null,
   -- The grounding verdict travels with the message it describes. A reading
   -- that disagreed with the chart must still say so when it is read back.
-  grounded        boolean,
+  grounding_status text,
   contradictions  text[],
   created_at      timestamptz not null default now()
 );
@@ -164,7 +175,7 @@ create policy "insert own conversations" on public.conversations for insert with
 -- held in. Found by running the sync layer against a real project, not by
 -- reading the schema.
 drop policy if exists "update own conversations" on public.conversations;
-create policy "update own conversations" on public.conversations for update using (auth.uid() = user_id);
+create policy "update own conversations" on public.conversations for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 drop policy if exists "delete own conversations" on public.conversations;
 create policy "delete own conversations" on public.conversations for delete using (auth.uid() = user_id);
 

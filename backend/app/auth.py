@@ -181,5 +181,7 @@ def optional_user(authorization: str | None = Header(default=None)) -> Account |
 
     try:
         return _verify(token)
-    except HTTPException:
+    except HTTPException as exc:
+        if exc.status_code >= 500:
+            raise
         return None
