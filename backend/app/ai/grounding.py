@@ -17,6 +17,9 @@ from pydantic import BaseModel, Field
 from ..astro import Chart
 from ..astro import constants as K
 from .client import Request, get_client
+import logging
+
+log = logging.getLogger("enumasky.grounding")
 
 
 class ClaimType(str, Enum):
@@ -108,7 +111,7 @@ def extract_claims(text: str) -> list[StructuredClaim] | None:
         data = json.loads(response_text)
         return ClaimList(**data).claims
     except Exception as e:
-        print(f"Claim extraction failed: {e}")
+        log.warning("claim extraction failed: %s", e)
         return None
 
 def _normalize_planet(planet_str: str) -> str | None:
@@ -272,7 +275,7 @@ def classify_safety(text: str) -> str:
         data = json.loads(response_text)
         return "CRISIS" if SafetyCheckResult(**data).is_crisis else "SAFE"
     except Exception as e:
-        print(f"Safety classification failed: {e}")
+        log.warning("safety classification failed: %s", e)
         return "UNKNOWN"
 
 
