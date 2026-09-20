@@ -28,6 +28,7 @@ include = ["app*"]
 dev = [
     "pytest>=8.3",
     "httpx>=0.27",
+    "ruff>=0.16",
 ]
 
 [tool.pytest.ini_options]
@@ -39,3 +40,6 @@ filterwarnings = [
     "ignore::DeprecationWarning:anyio",
     "ignore::starlette.exceptions.StarletteDeprecationWarning",
 ]
+
+[tool.ruff.lint]
+ignore = ["DTZ001", "B008", "BLE001"]

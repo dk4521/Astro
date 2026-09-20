@@ -26,10 +26,9 @@ from collections.abc import Iterator
 from dataclasses import dataclass, field
 
 from ..astro import Chart, panchang_for, vimshottari
-from . import cache, grounding, crisis
+from . import cache, crisis, grounding
 from .client import Request, get_client
-from .facts import build_brief
-from .facts import build_daily_brief
+from .facts import build_brief, build_daily_brief
 from .prompts import READING_REQUEST, chat_directive, reading_directive, tip_directive
 
 
@@ -121,7 +120,7 @@ def reading(
     as_of: dt.datetime | None = None,
 ) -> Interpretation:
     """A first introduction to the chart, with no question asked."""
-    moment = as_of or dt.datetime.now(dt.timezone.utc)
+    moment = as_of or dt.datetime.now(dt.UTC)
     request = _build_request(chart, READING_REQUEST, language, moment, reading_directive(language))
     return _complete(request, chart, language)
 
@@ -145,7 +144,7 @@ def daily_tip(
     contradiction here means the model reached for one anyway — exactly the case
     worth catching, and worth never storing.
     """
-    moment = as_of or dt.datetime.now(dt.timezone.utc)
+    moment = as_of or dt.datetime.now(dt.UTC)
     brief = build_daily_brief(
         natal, panchang_for(sky), sky, vimshottari(natal, levels=3), moment
     )
@@ -164,7 +163,7 @@ def answer(
     history: list[Turn] | None = None,
 ) -> Interpretation:
     """Answer one question about the chart."""
-    moment = as_of or dt.datetime.now(dt.timezone.utc)
+    moment = as_of or dt.datetime.now(dt.UTC)
     request = _build_request(chart, question, language, moment, chat_directive(language), history)
     return _complete(request, chart, language)
 
@@ -189,7 +188,7 @@ def stream_answer(
     small lie told by the UI, and the honest version is also the better one:
     asking the same question twice comes back instantly.
     """
-    moment = as_of or dt.datetime.now(dt.timezone.utc)
+    moment = as_of or dt.datetime.now(dt.UTC)
     
     safety_status = "SAFE"
     if session_id and crisis.is_in_crisis(session_id):

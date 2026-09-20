@@ -2,22 +2,15 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-brightgreen.svg)](LICENSE)
 
-AI-powered astrology app built to take astrology back from fear and
-fatalism. Mobile-first (React Native + Expo), Python backend, Postgres/Supabase
-for user data.
+An ethical, AI-driven reflection engine designed to disrupt the predatory $10B astrology market. Mobile-first (React Native + Expo), Python backend, Postgres/Supabase for user data, and strict server-side subscription validation via RevenueCat.
 
-**The mission:** to end the fear this trade runs on. People have been sold
-"flawed charts", doshas to be cured, and a future already written. Enuma Sky
-starts from the opposite position: no chart is wrong, no planet decides or
-reveals anyone's future, and astrology is worth having as a lens for reflection
-and nerve — not as a verdict. The tagline is the whole product in three words:
-**astrology without fear.**
+**The Mission & Market:** The modern astrology industry is plagued by fear-mongering. Exploiters use "flawed charts" and "doshas" to upsell expensive, fake remedies to vulnerable users. Enuma Sky disrupts this by replacing human cold-readers with a calm, mathematically grounded AI that strictly refuses to sell fear or predict the future. The tagline is the whole product in three words: **astrology without fear.**
 
-The product bet, from [app.md](app.md): **the AI is a translator, never an oracle.**
-Every number — planetary positions, nakshatras, dashas, panchang — comes from
-deterministic astronomical code. The language layer will explain that data and
-will never compute any part of it, which is what makes hallucinated positions
-structurally impossible rather than merely unlikely.
+**A Mirror, Not a Crystal Ball (No Pseudoscience):** We do not claim astrology predicts the future, nor do we validate it as a science. We use deterministic astronomy (NASA JPL data) to calculate precise planetary positions, but the AI treats the resulting astrological data purely as a cultural and psychological framework for introspection and mindfulness (similar to journaling). 
+
+**AI Safety & The Product Bet:** **The AI is a translator, never an oracle.** The language layer explains astronomical data but never computes it, making hallucinated positions structurally impossible. Crucially, the AI is tightly bound by a prompt contract and a live "Crisis Path" classifier—if a user expresses hopelessness or distress, the AI completely stops the astrology reading and seamlessly redirects them to professional mental health helplines (e.g., Tele-MANAS).
+
+**The Business Model:** By offering a highly polished, therapy-like alternative to scam-ridden astrology platforms, Enuma Sky unlocks massive, highly retentive B2C consumer subscriptions. The entire freemium gate—from daily reflections to unlimited AI chat—is enforced securely on the backend via the RevenueCat API.
 
 ## Status
 

@@ -58,7 +58,7 @@ def pick(text: Text, language: str) -> str:
 
 
 def apply_personalisation(
-    chapter: "Chapter", chart, panchang, dasha, place: str | None
+    chapter: Chapter, chart, panchang, dasha, place: str | None
 ) -> Text | None:
     """Run a chapter's personalisation, whatever arity it declared.
 

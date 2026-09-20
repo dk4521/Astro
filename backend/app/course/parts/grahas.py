@@ -77,6 +77,23 @@ CHAPTERS: tuple[Chapter, ...] = (
                 ),
             ),
             Section(
+                heading={"en": "Inner and outer orbits", "hi": "अंदर और बाहर की कक्षाएं"},
+                body=(
+                    {
+                        "en": "The astronomical difference between inner (inferior) and outer (superior) planets shapes how they appear in a chart. Mercury and Venus orbit between the Earth and the Sun, which means they can never wander very far from the Sun in your chart.",
+                        "hi": "अंदरूनी और बाहरी ग्रहों के बीच का यह खगोलीय फर्क ही तय करता है कि वे आपकी कुंडली में किस तरह बैठेंगे। बुध और शुक्र, पृथ्वी और सूर्य के बीच चक्कर लगाते हैं, जिसका सीधा सा मतलब है कि आपकी कुंडली में वे कभी भी सूर्य से ज्यादा दूर नहीं छिटक सकते।"
+                    },
+                    {
+                        "en": "Mars, Jupiter, and Saturn orbit outside Earth's path. They can appear anywhere in the zodiac relative to the Sun, and are visible high in the night sky when the Sun is on the other side of the Earth.",
+                        "hi": "दूसरी तरफ मंगल, गुरु (बृहस्पति) और शनि पृथ्वी की कक्षा के बाहर चक्कर लगाते हैं। इसलिए वे राशिचक्र में सूर्य के मुकाबले कहीं भी हो सकते हैं, और जब सूर्य पृथ्वी के दूसरी तरफ होता है, तब ये ग्रह रात के आसमान में एकदम साफ और ऊंचे चमकते दिखाई देते हैं।"
+                    },
+                    {
+                        "en": "This physical geometry is exactly why Indian practice groups Mercury and Venus differently from the slower outer bodies. Their behavior on paper is a direct consequence of their orbits in the sky.",
+                        "hi": "यही वो असली वजह है कि भारतीय ज्योतिष परंपरा बुध और शुक्र को उन बाकी धीमे और बाहरी ग्रहों से बिल्कुल अलग मानती है। कुंडली के कागज़ पर उनका यह बर्ताव, दरअसल आसमान में उनके घूमने के रास्तों का ही सीधा नतीजा है।"
+                    },
+                ),
+            ),
+            Section(
                 heading={"en": "Who owns which sign", "hi": "किस राशि का स्वामी कौन"},
                 body=(
                     {

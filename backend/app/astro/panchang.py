@@ -128,8 +128,8 @@ def _local_day_bounds(chart: Chart) -> tuple[float, float]:
     """
     zone = ZoneInfo(chart.timezone)
     midnight = dt.datetime.combine(chart.birth_local.date(), dt.time(0, 0))
-    start = midnight.replace(tzinfo=zone).astimezone(dt.timezone.utc)
-    end = (midnight + dt.timedelta(days=1)).replace(tzinfo=zone).astimezone(dt.timezone.utc)
+    start = midnight.replace(tzinfo=zone).astimezone(dt.UTC)
+    end = (midnight + dt.timedelta(days=1)).replace(tzinfo=zone).astimezone(dt.UTC)
     return E.julian_day(start), E.julian_day(end)
 
 

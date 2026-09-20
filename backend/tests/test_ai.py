@@ -20,7 +20,7 @@ from app.ai.prompts import SYSTEM_PROMPT
 from app.astro import build_chart, panchang_for, vimshottari
 from app.main import app
 
-BIRTH = dict(birth_local=dt.datetime(1947, 8, 15, 0, 0), latitude=28.6139, longitude=77.2090)
+BIRTH = {"birth_local": dt.datetime(1947, 8, 15, 0, 0), "latitude": 28.6139, "longitude": 77.2090}
 
 API_BIRTH = {
     "date": "1947-08-15",
@@ -65,7 +65,7 @@ def stub():
 
 def test_brief_contains_every_graha(chart):
     brief = build_brief(
-        chart, panchang_for(chart), vimshottari(chart), dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
+        chart, panchang_for(chart), vimshottari(chart), dt.datetime(2026, 1, 1, tzinfo=dt.UTC)
     )
     for graha in chart.grahas:
         assert graha in brief
@@ -73,7 +73,7 @@ def test_brief_contains_every_graha(chart):
 
 def test_brief_states_positions_the_model_would_otherwise_guess(chart):
     brief = build_brief(
-        chart, panchang_for(chart), vimshottari(chart), dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
+        chart, panchang_for(chart), vimshottari(chart), dt.datetime(2026, 1, 1, tzinfo=dt.UTC)
     )
     assert "Vrishabha" in brief          # lagna
     assert "Pushya" in brief             # janma nakshatra
@@ -85,7 +85,7 @@ def test_brief_states_positions_the_model_would_otherwise_guess(chart):
 
 def test_brief_marks_retrograde_and_combust(chart):
     brief = build_brief(
-        chart, panchang_for(chart), vimshottari(chart), dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
+        chart, panchang_for(chart), vimshottari(chart), dt.datetime(2026, 1, 1, tzinfo=dt.UTC)
     )
     assert "retrograde" in brief   # Rahu and Ketu always are
     assert "combust" in brief      # Venus and Saturn are, in this chart
@@ -96,7 +96,7 @@ def test_brief_reports_the_current_dasha(chart):
         chart,
         panchang_for(chart),
         vimshottari(chart, levels=3),
-        dt.datetime(1990, 1, 1, tzinfo=dt.timezone.utc),
+        dt.datetime(1990, 1, 1, tzinfo=dt.UTC),
     )
     assert "Mahadasha" in brief
     assert "Antardasha" in brief
@@ -332,7 +332,7 @@ def test_assistant_turns_are_renamed_for_gemini():
 
 
 def test_language_directive_rides_the_system_instruction():
-    from app.ai.client import Request, _system_instruction
+    from app.ai.client import _system_instruction
 
     combined = _system_instruction("Respond in English.")
     assert combined.startswith(SYSTEM_PROMPT)
@@ -389,8 +389,9 @@ def test_crisis_support_is_in_the_contract():
     assert "112" in SYSTEM_PROMPT         # emergency, India
     assert "crisis" in SYSTEM_PROMPT.lower()
 
-    from app.ai.client import GeminiClient
     import inspect
+
+    from app.ai.client import GeminiClient
 
     source = inspect.getsource(GeminiClient.__init__)
     assert "HARM_CATEGORY_DANGEROUS_CONTENT" in source
@@ -427,7 +428,8 @@ def test_capacity_errors_are_retryable_elsewhere():
         payload = {"error": {"code": code, "message": "x", "status": status}}
 
         class Resp:
-            headers = {}
+            def __init__(self):
+                self.headers = {}
 
             def json(self):
                 return payload

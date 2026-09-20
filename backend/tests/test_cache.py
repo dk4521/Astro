@@ -14,22 +14,22 @@ import datetime as dt
 import pytest
 from fastapi.testclient import TestClient
 
+from app import main
 from app.ai import cache, interpret
 from app.ai.client import Request
 from app.ai.interpret import Turn
 from app.ai.prompts import READING_REQUEST, reading_directive
 from app.astro import build_chart
-from app import main
 from app.main import app
 
-DELHI = dict(birth_local=dt.datetime(1947, 8, 15, 0, 0), latitude=28.6139, longitude=77.2090)
-MUMBAI = dict(birth_local=dt.datetime(1990, 6, 2, 14, 30), latitude=19.0760, longitude=72.8777)
+DELHI = {"birth_local": dt.datetime(1947, 8, 15, 0, 0), "latitude": 28.6139, "longitude": 77.2090}
+MUMBAI = {"birth_local": dt.datetime(1990, 6, 2, 14, 30), "latitude": 19.0760, "longitude": 72.8777}
 
 API_BIRTH = {"date": "1947-08-15", "time": "00:00", "latitude": 28.6139, "longitude": 77.2090}
 
 # Fixed so the fact brief — which carries `as of:` at day precision — does not
 # change underneath a test that happens to run across midnight.
-AS_OF = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
+AS_OF = dt.datetime(2026, 1, 1, tzinfo=dt.UTC)
 
 
 @pytest.fixture(scope="module")

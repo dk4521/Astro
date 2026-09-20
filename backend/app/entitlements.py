@@ -122,7 +122,7 @@ def _parse_expiry(value: object) -> dt.datetime | None:
     if not isinstance(value, str) or not value:
         return None
     try:
-        return dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
+        return dt.datetime.fromisoformat(value)
     except ValueError:
         log.warning("unparseable entitlement expiry: %r", value)
         return None
@@ -184,7 +184,7 @@ def _read(user_id: str) -> Entitlement:
     expires_at = _parse_expiry(granted.get("expires_date"))
     # RevenueCat only lists an entitlement it has granted, but it lists expired
     # ones too, so the date is what decides. No date means lifetime.
-    if expires_at is not None and expires_at <= dt.datetime.now(dt.timezone.utc):
+    if expires_at is not None and expires_at <= dt.datetime.now(dt.UTC):
         return NOT_ENTITLED
 
     product = granted.get("product_identifier")

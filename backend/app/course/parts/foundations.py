@@ -88,16 +88,16 @@ CHAPTERS: tuple[Chapter, ...] = (
                     },
                 ),
                 aside={
-                    "en": "Nothing in these thirty chapters is generated. Every sentence was written by a person; the block at the foot of each chapter is computed by the engine. This is the one part of the app that cannot invent anything.",
-                    "hi": "इन तीस अध्यायों में कुछ भी मशीन-रचित नहीं है। हर वाक्य किसी व्यक्ति ने लिखा है; हर अध्याय के नीचे का हिस्सा इंजन गिनता है। ऐप का यही एक हिस्सा है जो कुछ गढ़ ही नहीं सकता।",
+                    "en": "Nothing in these thirty-eight chapters is generated. Every sentence was written by a person; the block at the foot of each chapter is computed by the engine. This is the one part of the app that cannot invent anything.",
+                    "hi": "इन अड़तीस अध्यायों में कुछ भी मशीन-रचित नहीं है। हर वाक्य किसी व्यक्ति ने लिखा है; हर अध्याय के नीचे का हिस्सा इंजन गिनता है। ऐप का यही एक हिस्सा है जो कुछ गढ़ ही नहीं सकता।",
                 },
             ),
             Section(
                 heading={"en": "How this course is built", "hi": "यह पाठ्यक्रम कैसे बना है"},
                 body=(
                     {
-                        "en": "Thirty chapters in six parts. Foundations first, because nothing later is safe without them. Then the nine grahas, the twelve houses, the twenty-seven nakshatras, the machinery of time — dashas, transits and the panchang — and finally practice: what this method cannot do, and how it is misused.",
-                        "hi": "छह भागों में तीस अध्याय। पहले बुनियाद, क्योंकि उसके बिना आगे कुछ भी सुरक्षित नहीं। फिर नौ ग्रह, बारह भाव, सत्ताईस नक्षत्र, काल का तंत्र — दशा, गोचर और पंचांग — और अंत में व्यवहार: यह पद्धति क्या नहीं कर सकती, और इसका दुरुपयोग कैसे होता है।",
+                        "en": "Thirty-eight chapters in eight parts. Foundations first, because nothing later is safe without them. Then the nine grahas, the twelve houses, the twenty-seven nakshatras, the machinery of time — dashas, transits and the panchang —, practice, followed by a deep dive into the Aryabhatiya, and finally the broader history of astronomy.",
+                        "hi": "आठ भागों में अड़तीस अध्याय। पहले बुनियाद, क्योंकि उसके बिना आगे कुछ भी सुरक्षित नहीं। फिर नौ ग्रह, बारह भाव, सत्ताईस नक्षत्र, काल का तंत्र — दशा, गोचर और पंचांग —, व्यवहार, उसके बाद आर्यभटीय का गहन अध्ययन, और अंत में खगोल विज्ञान का व्यापक इतिहास।"
                     },
                     {
                         "en": "Read them in order the first time. Each part assumes the one before it, and the later chapters name earlier ones by number. Once through, they work as reference: come back to a single chapter when a word in a reading is unfamiliar.",
@@ -308,6 +308,23 @@ CHAPTERS: tuple[Chapter, ...] = (
                     "en": "This is why the app asks for exact clock time and a city, and refuses to guess either.",
                     "hi": "इसीलिए ऐप घड़ी का सही समय और शहर माँगती है, और दोनों में से किसी का अंदाज़ा नहीं लगाती।",
                 },
+            ),
+            Section(
+                heading={"en": "The Local Mean Time (LMT) correction", "hi": "स्थानीय समय (LMT) का गणित"},
+                body=(
+                    {
+                        "en": "Because the Earth turns 360 degrees in 24 hours, one degree of longitude equals 4 minutes of time. Standard time zones (like IST) span wide areas, but your exact chart needs the true solar time at your specific coordinates.",
+                        "hi": "पृथ्वी 24 घंटे में अपना 360 डिग्री का एक पूरा चक्कर लगाती है, जिसका सीधा सा मतलब है कि देशांतर (longitude) का हर एक डिग्री 4 मिनट के बराबर होता है। भले ही पूरे देश में एक ही मानक समय (जैसे IST) चलता हो, लेकिन आपकी एकदम सटीक कुंडली बनाने के लिए उस खास जगह का असली सौर समय (LMT) ही चाहिए होता है।"
+                    },
+                    {
+                        "en": "For example, India uses 82°30'E for its standard time. If you are born in New Delhi (77°13'E), you are 5°17' west of the standard meridian. Multiply by 4 minutes, and the local time in Delhi is actually about 21 minutes behind the clock time.",
+                        "hi": "मिसाल के तौर पर, भारत का मानक समय 82°30' पूर्व देशांतर से तय होता है। अगर आपका जन्म नई दिल्ली (77°13' पूर्व) में हुआ है, तो आप उस मानक रेखा से 5°17' पीछे (पश्चिम की तरफ) हैं। अगर इसे 4 मिनट से गुणा करें, तो पता चलेगा कि दिल्ली का असली समय हमारी घड़ियों के समय से करीब 21 मिनट पीछे चल रहा है।"
+                    },
+                    {
+                        "en": "Modern software handles this arithmetic automatically, but knowing how the LMT correction works is exactly what lets you check the math yourself.",
+                        "hi": "आजकल के सॉफ़्टवेयर यह सारी गणना खुद-ब-खुद कर लेते हैं, लेकिन LMT का यह गणित समझना इसलिए ज़रूरी है ताकि आप खुद भी इस हिसाब को आसानी से परख सकें।"
+                    },
+                ),
             ),
             Section(
                 heading={"en": "Why it is the anchor", "hi": "यह आधार क्यों है"},

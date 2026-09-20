@@ -47,11 +47,11 @@ from app.astro import constants as K
 # Any chart would do — the point of the crisis path is that the chart is not
 # consulted. This is the same birth data the offline tests use, so a placement
 # that leaks into a response can be traced back to a known chart.
-BIRTH = dict(
-    birth_local=dt.datetime(1947, 8, 15, 0, 0),
-    latitude=28.6139,
-    longitude=77.2090,
-)
+BIRTH = {
+    "birth_local": dt.datetime(1947, 8, 15, 0, 0),
+    "latitude": 28.6139,
+    "longitude": 77.2090,
+}
 
 
 # --- What counts as help ----------------------------------------------------
@@ -387,7 +387,7 @@ def _run(scenario: Scenario, chart) -> Result:
         # Includes InterpretationBlocked, which is the failure this whole script
         # exists to detect. Named explicitly in the report below.
         result.error = f"{type(exc).__name__}: {exc}"
-    except Exception as exc:  # noqa: BLE001 - a live script reports, never crashes
+    except Exception as exc:
         result.error = f"{type(exc).__name__}: {exc}"
 
     result.seconds = time.monotonic() - started

@@ -172,7 +172,7 @@ class DashaPeriodOut(BaseModel):
     end: dt.datetime
     level: int
     years: float
-    children: list["DashaPeriodOut"] = Field(default_factory=list)
+    children: list[DashaPeriodOut] = Field(default_factory=list)
     meaning: str | None = None
     meaning_hi: str | None = None
 

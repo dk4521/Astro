@@ -86,7 +86,7 @@ def test_dasha_active_periods_at_a_given_moment():
     assert len(body["active"]) == 3
     assert [p["level"] for p in body["active"]] == [1, 2, 3]
 
-    moment = dt.datetime(1990, 1, 1, tzinfo=dt.timezone.utc)
+    moment = dt.datetime(1990, 1, 1, tzinfo=dt.UTC)
     for period in body["active"]:
         start = dt.datetime.fromisoformat(period["start"])
         end = dt.datetime.fromisoformat(period["end"])

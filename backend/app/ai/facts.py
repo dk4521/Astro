@@ -28,9 +28,9 @@ def chart_facts(chart: Chart) -> str:
         f"  place: {chart.latitude:.4f}, {chart.longitude:.4f}",
         "",
         "ASCENDANT (lagna)",
-        f"  {chart.lagna.rashi} ({chart.lagna.rashi_en}) {chart.lagna.dms}"
+        (f"  {chart.lagna.rashi} ({chart.lagna.rashi_en}) {chart.lagna.dms}"
         f" — {chart.lagna.nakshatra} pada {chart.lagna.pada}"
-        f", sign ruler {chart.lagna.rashi_lord}",
+        f", sign ruler {chart.lagna.rashi_lord}"),
         "",
         "GRAHAS  (house numbers are whole-sign from the lagna)",
     ]
@@ -80,8 +80,8 @@ def panchang_facts(panchang: Panchang) -> str:
     return "\n".join(
         [
             "PANCHANG AT BIRTH",
-            f"  tithi: {panchang.paksha} {panchang.tithi}"
-            f" ({panchang.tithi_percent:.0f}% elapsed)",
+            (f"  tithi: {panchang.paksha} {panchang.tithi}"
+            f" ({panchang.tithi_percent:.0f}% elapsed)"),
             f"  nakshatra: {panchang.nakshatra} pada {panchang.nakshatra_pada}",
             f"  yoga: {panchang.yoga}",
             f"  karana: {panchang.karana}",
@@ -97,10 +97,10 @@ def dasha_facts(timeline: VimshottariTimeline, as_of: dt.datetime) -> str:
 
     lines = [
         "VIMSHOTTARI DASHA",
-        f"  janma nakshatra: {timeline.janma_nakshatra}"
-        f" (lord {timeline.janma_nakshatra_lord})",
-        f"  balance at birth: {timeline.balance_years:.2f} years of"
-        f" {timeline.janma_nakshatra_lord}",
+        (f"  janma nakshatra: {timeline.janma_nakshatra}"
+        f" (lord {timeline.janma_nakshatra_lord})"),
+        (f"  balance at birth: {timeline.balance_years:.2f} years of"
+        f" {timeline.janma_nakshatra_lord}"),
         f"  as of: {as_of:%Y-%m-%d}",
     ]
 
@@ -146,8 +146,8 @@ def today_facts(sky: Panchang, sky_chart: Chart, natal: Chart) -> str:
             f"  tithi: {sky.paksha} {sky.tithi} ({sky.tithi_percent:.0f}% elapsed)",
             f"  masa: {sky.masa}   Vikram Samvat {sky.vikram_samvat}",
             f"  vara: {sky.vara} (ruled by {sky.vara_lord})",
-            f"  Moon: {moon.placement.rashi} — {moon.placement.nakshatra}"
-            f" pada {moon.placement.pada}",
+            (f"  Moon: {moon.placement.rashi} — {moon.placement.nakshatra}"
+            f" pada {moon.placement.pada}"),
             f"  Sun: {sun.placement.rashi}",
             f"  yoga: {sky.yoga}   karana: {sky.karana}",
             "",

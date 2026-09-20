@@ -1,4 +1,5 @@
-from app.ai.grounding import StructuredClaim, ClaimType
+from app.ai.grounding import ClaimType, StructuredClaim
+
 
 def mock_extract_claims(text: str) -> list[StructuredClaim]:
     claims = []
@@ -33,12 +34,12 @@ def mock_extract_claims(text: str) -> list[StructuredClaim]:
     return claims
 
 def mock_classify_safety(text: str) -> bool:
-    if "kill" in text or "die" in text or "harm" in text or "hopeless" in text:
-        return True
-    return False
+    return bool("kill" in text or "die" in text or "harm" in text or "hopeless" in text)
 
 import pytest
+
 from app.ai import grounding
+
 
 @pytest.fixture(autouse=True)
 def apply_grounding_mocks(monkeypatch):

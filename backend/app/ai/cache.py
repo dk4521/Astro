@@ -63,7 +63,7 @@ class Stats:
 
 
 _lock = threading.Lock()
-_entries: "OrderedDict[str, tuple[float, str]]" = OrderedDict()
+_entries: OrderedDict[str, tuple[float, str]] = OrderedDict()
 _hits = 0
 _misses = 0
 _stored = 0

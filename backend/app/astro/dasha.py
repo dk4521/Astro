@@ -27,7 +27,7 @@ class DashaPeriod:
     start: dt.datetime
     end: dt.datetime
     level: int                                  # 1 = maha, 2 = antar, 3 = pratyantar
-    children: tuple["DashaPeriod", ...] = field(default=())
+    children: tuple[DashaPeriod, ...] = field(default=())
 
     @property
     def duration_days(self) -> float:

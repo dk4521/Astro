@@ -1,6 +1,6 @@
 """The course, split one module per part.
 
-Thirty chapters written out in full is a lot of prose, and prose is edited far
+Thirty-eight chapters written out in full is a lot of prose, and prose is edited far
 more often than the code around it. Keeping each part in its own module means a
 correction to the nakshatra chapters never touches the file the dasha chapters
 live in, and a reviewer reading a diff sees a part, not a wall.
@@ -13,7 +13,7 @@ moving every cross-reference that names its number.
 
 from __future__ import annotations
 
-# The six parts. Held here rather than in each module because the index screen
+# The eight parts. Held here rather than in each module because the index screen
 # groups by this string, and two spellings of "Foundations" would silently
 # become two groups.
 PART_FOUNDATIONS = {"en": "Foundations", "hi": "बुनियाद"}
@@ -22,12 +22,16 @@ PART_HOUSES = {"en": "Houses", "hi": "भाव"}
 PART_NAKSHATRAS = {"en": "Nakshatras", "hi": "नक्षत्र"}
 PART_TIME = {"en": "Time", "hi": "काल"}
 PART_PRACTICE = {"en": "Practice", "hi": "व्यवहार"}
+PART_ARYABHATA = {"en": "The Aryabhatiya", "hi": "आर्यभटीय"}
+PART_HISTORY = {"en": "History", "hi": "इतिहास"}
 
 __all__ = [
+    "PART_ARYABHATA",
     "PART_FOUNDATIONS",
     "PART_GRAHAS",
+    "PART_HISTORY",
     "PART_HOUSES",
     "PART_NAKSHATRAS",
-    "PART_TIME",
     "PART_PRACTICE",
+    "PART_TIME",
 ]

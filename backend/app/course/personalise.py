@@ -226,7 +226,7 @@ def luminaries(chart: Chart, panchang: Panchang, dasha: VimshottariTimeline) -> 
     sun, moon = chart.grahas.get("Sun"), chart.grahas.get("Moon")
     if sun is None or moon is None:
         return None
-    gap = int(round(abs(sun.placement.longitude - moon.placement.longitude))) % 360
+    gap = round(abs(sun.placement.longitude - moon.placement.longitude)) % 360
     return {
         "en": (
             f"Your Sun is in {sun.placement.rashi} and your Moon in "
@@ -455,7 +455,7 @@ def pada_navamsa(chart: Chart, panchang: Panchang, dasha: VimshottariTimeline) -
 
 
 def dasha_now(chart: Chart, panchang: Panchang, dasha: VimshottariTimeline) -> Text | None:
-    active = dasha.at(dt.datetime.now(dt.timezone.utc))
+    active = dasha.at(dt.datetime.now(dt.UTC))
     if not active:
         return None
     maha = active[0]
@@ -501,7 +501,7 @@ def dasha_balance(chart: Chart, panchang: Panchang, dasha: VimshottariTimeline) 
 
 
 def sub_periods(chart: Chart, panchang: Panchang, dasha: VimshottariTimeline) -> Text | None:
-    active = dasha.at(dt.datetime.now(dt.timezone.utc))
+    active = dasha.at(dt.datetime.now(dt.UTC))
     if len(active) < 3:
         return None
     maha, antar, praty = active[0], active[1], active[2]

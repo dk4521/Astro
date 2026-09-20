@@ -22,11 +22,10 @@ from fastapi.responses import StreamingResponse
 
 from .. import ai, auth, course, entitlements, meanings, places, ratelimit, tarot
 from ..ai import grounding
-from ..tarot import reading as tarot_reading
 from ..astro import ashtakoot, build_chart, navamsa_chart, panchang_for, vimshottari
-from ..astro.ephemeris import from_julian_day
 from ..astro.chart import Chart, Placement
 from ..astro.dasha import DashaPeriod
+from ..astro.ephemeris import from_julian_day
 from ..schemas import (
     BirthDetails,
     ChapterOut,
@@ -46,8 +45,8 @@ from ..schemas import (
     MatchRequest,
     MatchResponse,
     PanchangResponse,
-    PlaceOut,
     PlacementOut,
+    PlaceOut,
     ReadingResponse,
     TarotCardOut,
     TarotDeckResponse,
@@ -62,6 +61,7 @@ from ..schemas import (
     TipResponse,
     TodayResponse,
 )
+from ..tarot import reading as tarot_reading
 
 router = APIRouter()
 
@@ -205,9 +205,9 @@ def _dasha_out(chart: Chart, levels: int, as_of: dt.datetime) -> DashaResponse:
 def _resolve_as_of(as_of: dt.datetime | None) -> dt.datetime:
     """Default to now, and treat a naive input as UTC."""
     if as_of is None:
-        return dt.datetime.now(dt.timezone.utc)
+        return dt.datetime.now(dt.UTC)
     if as_of.tzinfo is None:
-        return as_of.replace(tzinfo=dt.timezone.utc)
+        return as_of.replace(tzinfo=dt.UTC)
     return as_of
 
 
@@ -417,7 +417,7 @@ def tip(
     _require_interpreter()
     natal = _build(payload.birth)
 
-    now_utc = dt.datetime.now(dt.timezone.utc)
+    now_utc = dt.datetime.now(dt.UTC)
     now_local = now_utc.astimezone(ZoneInfo(natal.timezone)).replace(tzinfo=None)
     sky = build_chart(now_local, payload.birth.latitude, payload.birth.longitude, natal.timezone)
 
@@ -529,7 +529,7 @@ def today(details: BirthDetails) -> TodayResponse:
     """
     natal = _build(details)
 
-    now_utc = dt.datetime.now(dt.timezone.utc)
+    now_utc = dt.datetime.now(dt.UTC)
     now_local = now_utc.astimezone(ZoneInfo(natal.timezone)).replace(tzinfo=None)
     sky = build_chart(now_local, details.latitude, details.longitude, natal.timezone)
 

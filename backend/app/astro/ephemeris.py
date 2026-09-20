@@ -30,12 +30,12 @@ import os
 import threading
 from dataclasses import dataclass
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import numpy as np
 from skyfield.api import Loader, wgs84
 from skyfield.nutationlib import iau2000b, mean_obliquity
 from timezonefinder import TimezoneFinder
-from zoneinfo import ZoneInfo
 
 from . import constants as K
 
@@ -173,7 +173,7 @@ def to_utc(
     name = tz_name or timezone_for(latitude, longitude)
     zone = ZoneInfo(name)
     localized = local_naive.replace(tzinfo=zone, fold=0)
-    return localized.astimezone(dt.timezone.utc), name
+    return localized.astimezone(dt.UTC), name
 
 
 def julian_day(utc: dt.datetime) -> float:
@@ -184,7 +184,7 @@ def julian_day(utc: dt.datetime) -> float:
     """
     if utc.tzinfo is None:
         raise ValueError("expected a timezone-aware UTC datetime")
-    utc = utc.astimezone(dt.timezone.utc)
+    utc = utc.astimezone(dt.UTC)
 
     a = (14 - utc.month) // 12
     y = utc.year + 4800 - a
@@ -222,7 +222,7 @@ def from_julian_day(jd: float) -> dt.datetime:
     month = m + 3 - 12 * (m // 10)
     year = 100 * b + d - 4800 + m // 10
 
-    base = dt.datetime(year, month, day, tzinfo=dt.timezone.utc)
+    base = dt.datetime(year, month, day, tzinfo=dt.UTC)
     return base + dt.timedelta(seconds=round(fraction * 86400.0, 3))
 
 
@@ -406,8 +406,8 @@ def mesha_ingress(year: int) -> float:
     ayanamsa, drifting about a day per century, so a window of 5-25 April
     contains it with room to spare.
     """
-    low = julian_day(dt.datetime(year, 4, 5, tzinfo=dt.timezone.utc))
-    high = julian_day(dt.datetime(year, 4, 25, tzinfo=dt.timezone.utc))
+    low = julian_day(dt.datetime(year, 4, 5, tzinfo=dt.UTC))
+    high = julian_day(dt.datetime(year, 4, 25, tzinfo=dt.UTC))
     return _bisect(lambda jd: _signed(_sidereal_longitude("Sun", jd)), low, high)
 
 
@@ -447,8 +447,7 @@ def previous_new_moon(jd: float) -> float:
 
     # Guard against the seed landing past `jd` when the Moon is running fast and
     # the conjunction is minutes away: the answer must never be in the future.
-    if high > jd:
-        high = jd
+    high = min(high, jd)
 
     return _bisect(lambda at: _signed(elongation(at)), low, high)
 

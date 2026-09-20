@@ -14,7 +14,6 @@ from dataclasses import dataclass, field
 from . import constants as K
 from . import ephemeris as E
 
-
 # --- Longitude decomposition ------------------------------------------------
 
 
@@ -66,7 +65,7 @@ class Placement:
         degrees = int(total)
         minutes_full = (total - degrees) * 60.0
         minutes = int(minutes_full)
-        seconds = int(round((minutes_full - minutes) * 60.0))
+        seconds = round((minutes_full - minutes) * 60.0)
         if seconds == 60:
             seconds = 0
             minutes += 1

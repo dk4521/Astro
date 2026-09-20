@@ -43,7 +43,8 @@ def _forget_entitlements():
     entitlements._cache.clear()
     yield
     entitlements._cache.clear()
-from app.ai.grounding import StructuredClaim, ClaimType
+from app.ai.grounding import ClaimType, StructuredClaim
+
 
 def mock_extract_claims(text: str) -> list[StructuredClaim]:
     claims = []
@@ -83,7 +84,9 @@ def mock_classify_safety(text: str) -> str:
     return "SAFE"
 
 import pytest
+
 from app.ai import grounding
+
 
 @pytest.fixture(autouse=True)
 def apply_grounding_mocks(monkeypatch):

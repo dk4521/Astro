@@ -1,4 +1,4 @@
-"""The course: thirty chapters, in English and Hindi.
+"""The course: thirty-eight chapters, in English and Hindi.
 
 Prose, not code. It lives here rather than in the mobile bundle for three
 reasons: the app stays small, a correction ships without an app release, and the
@@ -27,7 +27,16 @@ House style, worth keeping:
 from __future__ import annotations
 
 from .models import Chapter
-from .parts import cycles, foundations, grahas, houses, nakshatras, practice
+from .parts import (
+    aryabhata,
+    cycles,
+    foundations,
+    grahas,
+    history,
+    houses,
+    nakshatras,
+    practice,
+)
 
 CHAPTERS: tuple[Chapter, ...] = (
     foundations.CHAPTERS      # 1-5    what a chart is
@@ -36,6 +45,8 @@ CHAPTERS: tuple[Chapter, ...] = (
     + nakshatras.CHAPTERS     # 19-22  the twenty-seven nakshatras
     + cycles.CHAPTERS         # 23-27  dashas, transits, panchang
     + practice.CHAPTERS       # 28-30  divisions, limits, responsibility
+    + aryabhata.CHAPTERS      # 31-34  the aryabhatiya breakdown
+    + history.CHAPTERS        # 35-38  history of astronomy
 )
 
 CHAPTERS_BY_SLUG = {c.slug: c for c in CHAPTERS}

@@ -11,11 +11,13 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from enum import Enum
+
 from pydantic import BaseModel, Field
 
 from ..astro import Chart
 from ..astro import constants as K
-from .client import get_client, Request
+from .client import Request, get_client
+
 
 class ClaimType(str, Enum):
     PLANET_RASHI = "planet_rashi"
@@ -80,6 +82,7 @@ _NAKSHATRA_ALIASES.update(dict(zip(K.NAKSHATRAS_HI, K.NAKSHATRAS)))
 
 
 import functools
+
 
 @functools.lru_cache(maxsize=256)
 def extract_claims(text: str) -> list[StructuredClaim] | None:

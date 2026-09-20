@@ -19,11 +19,11 @@ from app.astro.panchang import _karana_name
 
 # The 1947 Indian independence chart is the most widely published Indian
 # nativity, so its values are a genuine external check.
-INDEPENDENCE = dict(
-    birth_local=dt.datetime(1947, 8, 15, 0, 0),
-    latitude=28.6139,
-    longitude=77.2090,
-)
+INDEPENDENCE = {
+    "birth_local": dt.datetime(1947, 8, 15, 0, 0),
+    "latitude": 28.6139,
+    "longitude": 77.2090,
+}
 
 
 @pytest.fixture(scope="module")
@@ -189,7 +189,7 @@ def test_timezone_resolved_from_coordinates(independence_chart):
     assert independence_chart.timezone == "Asia/Kolkata"
     # 00:00 IST is 18:30 UTC the previous day.
     assert independence_chart.birth_utc == dt.datetime(
-        1947, 8, 14, 18, 30, tzinfo=dt.timezone.utc
+        1947, 8, 14, 18, 30, tzinfo=dt.UTC
     )
 
 
@@ -267,7 +267,7 @@ def test_sidereal_conversion_accounts_for_nutation():
     them, which reads as a plausible chart rather than an error.
     """
 
-    jd = E.julian_day(dt.datetime(1947, 8, 14, 18, 30, tzinfo=dt.timezone.utc))
+    jd = E.julian_day(dt.datetime(1947, 8, 14, 18, 30, tzinfo=dt.UTC))
     t = E._load_kernel()[0].ut1_jd(jd)
 
     mean = E._mean_ayanamsa(jd)
@@ -338,7 +338,7 @@ def test_rejects_out_of_range_coordinates():
 def test_rejects_timezone_aware_birth_time():
     with pytest.raises(ValueError):
         build_chart(
-            dt.datetime(2000, 1, 1, tzinfo=dt.timezone.utc), 28.6, 77.2
+            dt.datetime(2000, 1, 1, tzinfo=dt.UTC), 28.6, 77.2
         )
 
 
@@ -437,7 +437,7 @@ def test_antardasha_proportions(independence_chart):
 
 def test_lookup_returns_nested_active_periods(independence_chart):
     timeline = vimshottari(independence_chart, levels=3)
-    moment = dt.datetime(1990, 1, 1, tzinfo=dt.timezone.utc)
+    moment = dt.datetime(1990, 1, 1, tzinfo=dt.UTC)
     active = timeline.at(moment)
 
     assert len(active) == 3
@@ -448,8 +448,8 @@ def test_lookup_returns_nested_active_periods(independence_chart):
 
 def test_lookup_outside_timeline_is_empty(independence_chart):
     timeline = vimshottari(independence_chart, levels=1)
-    assert timeline.at(dt.datetime(1800, 1, 1, tzinfo=dt.timezone.utc)) == []
-    assert timeline.at(dt.datetime(2500, 1, 1, tzinfo=dt.timezone.utc)) == []
+    assert timeline.at(dt.datetime(1800, 1, 1, tzinfo=dt.UTC)) == []
+    assert timeline.at(dt.datetime(2500, 1, 1, tzinfo=dt.UTC)) == []
 
 
 def test_levels_argument_is_validated(independence_chart):
@@ -495,9 +495,7 @@ def test_karana_sequence():
 
 def test_every_karana_index_is_named():
     names = {_karana_name(i) for i in range(60)}
-    assert names == set(_MOVABLE := set(
-        ("Bava", "Balava", "Kaulava", "Taitila", "Gara", "Vanija", "Vishti")
-    )) | {"Kimstughna", "Shakuni", "Chatushpada", "Naga"}
+    assert names == set(_MOVABLE := {"Bava", "Balava", "Kaulava", "Taitila", "Gara", "Vanija", "Vishti"}) | {"Kimstughna", "Shakuni", "Chatushpada", "Naga"}
 
 
 def test_tithi_and_yoga_indices_stay_in_range():

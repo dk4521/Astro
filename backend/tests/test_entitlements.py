@@ -127,7 +127,7 @@ def test_a_lifetime_purchase_has_no_expiry_and_is_still_active(monkeypatch):
 def test_an_entitlement_that_has_run_out_is_not_active(monkeypatch):
     """RevenueCat lists expired entitlements too, so the date is what decides."""
     monkeypatch.setattr(entitlements, "SECRET_KEY", "sk_test")
-    past = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=1)).isoformat().replace(
+    past = (dt.datetime.now(dt.UTC) - dt.timedelta(days=1)).isoformat().replace(
         "+00:00", "Z"
     )
     monkeypatch.setattr(entitlements.httpx, "get", _answering(200, _subscriber_body(past)))
