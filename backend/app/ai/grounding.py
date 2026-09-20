@@ -9,6 +9,7 @@ A finding means "this contradicts the chart", never "this is bad astrology".
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass
 from enum import Enum
 
@@ -17,7 +18,6 @@ from pydantic import BaseModel, Field
 from ..astro import Chart
 from ..astro import constants as K
 from .client import Request, get_client
-import logging
 
 log = logging.getLogger("enumasky.grounding")
 
