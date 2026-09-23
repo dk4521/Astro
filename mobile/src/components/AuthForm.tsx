@@ -32,6 +32,7 @@ export function AuthForm({
   subtitle,
   action,
   onSubmit,
+  onForgot,
   footer,
   onSkip,
   notice,
@@ -41,6 +42,8 @@ export function AuthForm({
   subtitle?: string;
   action: string;
   onSubmit: (email: string, password: string) => Promise<string | null>;
+  /** Called when the user taps "Forgot password?" — sign-in only. */
+  onForgot?: (email: string) => Promise<string | null>;
   footer: { text: string; link: string; onPress: () => void };
   onSkip?: () => void;
   notice?: string | null;
@@ -58,6 +61,8 @@ export function AuthForm({
   const [touched, setTouched] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [forgotBusy, setForgotBusy] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
 
   const emailValid = EMAIL.test(email.trim());
   const passwordValid = password.length >= MIN_PASSWORD;
@@ -72,6 +77,24 @@ export function AuthForm({
     const message = await onSubmit(email, password);
     setBusy(false);
     if (message) setError(message);
+  };
+
+  const handleForgot = async () => {
+    if (!onForgot) return;
+    const trimmed = email.trim();
+    if (!EMAIL.test(trimmed)) {
+      setError('Enter your email address first, then tap Forgot password.');
+      return;
+    }
+    setForgotBusy(true);
+    setError(null);
+    const message = await onForgot(trimmed);
+    setForgotBusy(false);
+    if (message) {
+      setError(message);
+    } else {
+      setForgotSent(true);
+    }
   };
 
   return (
@@ -138,6 +161,25 @@ export function AuthForm({
               Use at least {MIN_PASSWORD} characters.
             </Text>
           ) : null}
+
+          {onForgot ? (
+            forgotSent ? (
+              <Text style={styles.forgotSent}>
+                ✓ Reset link sent! Check your inbox.
+              </Text>
+            ) : (
+              <Pressable
+                accessibilityRole="button"
+                onPress={handleForgot}
+                disabled={forgotBusy || busy}
+                style={({ pressed }) => [styles.forgot, pressed && styles.pressed]}
+              >
+                <Text style={styles.forgotText}>
+                  {forgotBusy ? 'Sending…' : 'Forgot password?'}
+                </Text>
+              </Pressable>
+            )
+          ) : null}
         </View>
 
         {error ? (
@@ -182,7 +224,13 @@ const styles = StyleSheet.create({
   // Pulled left so the arrow lines up with the text below it, not with its
   // own padding box.
   backRow: { marginLeft: -space.sm, marginBottom: space.md },
-  kicker: { ...type.label, color: colors.accent },
+  kicker: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    letterSpacing: 3,
+    textTransform: 'uppercase' as const,
+    color: '#79B4F5',
+  },
   title: { ...type.display, color: colors.text, marginTop: space.sm, marginBottom: space.xl },
   subtitle: {
     ...type.body,
@@ -198,11 +246,11 @@ const styles = StyleSheet.create({
     marginBottom: space.lg,
   },
   noticeText: { ...type.body, color: colors.accentSoft, lineHeight: 21 },
-  field: { marginBottom: space.lg },
+  field: { marginBottom: space.md },
   input: {
     backgroundColor: colors.glass,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
     borderRadius: radius.sm,
     paddingHorizontal: space.md,
     paddingVertical: space.md,
@@ -212,11 +260,14 @@ const styles = StyleSheet.create({
   inputError: { borderColor: colors.combust },
   hintError: { ...type.mono, color: colors.combust, marginTop: space.sm },
   errorSlot: { marginBottom: space.md },
-  actions: { marginTop: space.sm },
+  actions: { marginTop: space.xs },
   footer: { marginTop: space.lg, alignItems: 'center', paddingVertical: space.sm },
   footerText: { ...type.body, color: colors.textMuted },
-  footerLink: { color: colors.accentSoft, fontWeight: '600' },
+  footerLink: { color: '#79B4F5', fontWeight: '600' },
   skip: { marginTop: space.md, alignItems: 'center', paddingVertical: space.sm },
-  skipText: { ...type.mono, color: colors.textFaint },
+  skipText: { ...type.mono, color: '#FFFFFF' },
+  forgot: { alignSelf: 'flex-end', marginTop: space.sm, paddingVertical: space.xs },
+  forgotText: { ...type.mono, fontSize: 13, color: '#79B4F5' },
+  forgotSent: { ...type.mono, fontSize: 13, color: colors.signIn, marginTop: space.sm },
   pressed: { opacity: 0.7 },
 });

@@ -18,6 +18,7 @@ import { useCallback } from 'react';
 import { markAccountsSeen } from '../../src/api/storage';
 import { AuthForm } from '../../src/components/AuthForm';
 import { useAuth } from '../../src/auth/context';
+import { authErrorMessage, supabase } from '../../src/auth/client';
 
 export default function SignIn() {
   const router = useRouter();
@@ -35,12 +36,21 @@ export default function SignIn() {
     [signIn, router],
   );
 
+  const forgot = useCallback(async (email: string) => {
+    if (!supabase) return 'Accounts are not configured in this build.';
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: 'https://dk4521.github.io/anumaapk/reset-password',
+    });
+    return error ? authErrorMessage(error) : null;
+  }, []);
+
   return (
     <AuthForm
       title={'Welcome back.'}
       action="Sign in"
       tone="signIn"
       onSubmit={submit}
+      onForgot={forgot}
       footer={{
         text: 'No account yet?',
         link: 'Create one',

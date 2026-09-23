@@ -404,19 +404,18 @@ const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: 'transparent' },
   // No horizontal padding: the hero above is full-bleed, and the grid brings
   // its own in `page`.
-  content: { paddingBottom: space.xxl },
-  page: { paddingHorizontal: space.lg, justifyContent: 'center' },
+  content: { paddingBottom: space.lg },
+  page: { paddingHorizontal: 14, paddingTop: 15 },
   kicker: { ...type.label, color: colors.accent },
 
   // Two columns without a column gap: `space-between` supplies the gutter from
   // whatever is left over, so the cards fit any screen width. A percentage
   // width plus a fixed gap overflows on a narrow phone and drops to one column.
   grid: {
-    marginTop: 8,
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    alignContent: 'center',
+    alignContent: 'flex-start',
     flex: 1,
     rowGap: 10,
   },
