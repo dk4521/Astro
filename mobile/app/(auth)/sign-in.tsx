@@ -39,7 +39,7 @@ export default function SignIn() {
   const forgot = useCallback(async (email: string) => {
     if (!supabase) return 'Accounts are not configured in this build.';
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: 'https://dk4521.github.io/anumaapk/reset-password',
+      redirectTo: 'https://www.enumasky.app/resetpass.html',
     });
     return error ? authErrorMessage(error) : null;
   }, []);
