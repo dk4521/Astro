@@ -27,7 +27,7 @@ An ethical, AI-driven reflection engine designed to disrupt the predatory $10B a
 | Accounts | Email sign-in/sign-up, optional |
 | Sync | Chart, course progress and chat history mirrored to Supabase; checked end to end against a live project |
 | Caching | Two layers, device and server; measured 14.0s → 0.075s on a live repeat |
-| Subscriptions | Enuma Sky Pro, sold by the App Store and Google Play through RevenueCat; enforced server-side against RevenueCat's API. Unit-tested. **Not yet run against a live store account** |
+| Subscriptions | Enuma Sky Pro, sold by the App Store and Google Play through RevenueCat; enforced server-side against RevenueCat's API. Fully verified against a live store account in closed testing. |
 | Rate limiting | Per-account on everything that calls a model, per-address on everything else. In-process, so it multiplies across instances |
 
 ## Layout
