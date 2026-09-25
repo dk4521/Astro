@@ -9,28 +9,22 @@
       "environment": "development",
       "android": {
         "buildType": "apk"
-      }
+      },
+      "channel": "development"
     },
     "preview": {
       "autoIncrement": true,
       "distribution": "internal",
       "environment": "preview",
-      "env": {
-        "EXPO_PUBLIC_API_URL": "https://astro-16jw.onrender.com"
-      },
       "android": {
         "buildType": "apk"
-      }
+      },
+      "channel": "preview"
     },
     "production": {
       "autoIncrement": true,
       "environment": "production",
-      "env": {
-        "EXPO_PUBLIC_API_URL": "https://astro-16jw.onrender.com",
-        "EXPO_PUBLIC_SUPABASE_URL": "https://qibfipocrvwoytzumicp.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_4cMjoOIWruZQePrRJr7XlA_fsjpUvVx",
-        "EXPO_PUBLIC_REVENUECAT_ANDROID_KEY": "goog_wxrkVejjHhzAFTRRRXeclZclgnh"
-      }
+      "channel": "production"
     }
   },
   "submit": {
