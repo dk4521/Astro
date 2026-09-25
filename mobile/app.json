@@ -2,7 +2,7 @@
   "expo": {
     "name": "Enuma Sky",
     "slug": "enumasky",
-    "version": "1.0.1",
+    "version": "2.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "enumasky",
@@ -20,14 +20,18 @@
       },
       "predictiveBackGestureEnabled": false
     },
-    "platforms": ["android", "ios"],
+    "platforms": [
+      "android",
+      "ios"
+    ],
     "web": {
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-web-browser"
     ],
     "extra": {
       "router": {},
