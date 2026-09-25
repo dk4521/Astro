@@ -7,9 +7,10 @@ import logging
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.security import HTTPBearer
 
 from . import ai, auth, entitlements, ratelimit
 from .api.billing import router as billing_router
@@ -147,8 +148,23 @@ def health() -> dict[str, object]:
 _METRICS_TOKEN = os.environ.get("METRICS_TOKEN", "").strip()
 
 
+_bearer = HTTPBearer(auto_error=False)
+
+
+def _require_metrics_token(credentials=Depends(_bearer)) -> None:
+    """The metrics token travels in the Authorization header, not the URL.
+
+    Accepting it as a query parameter would leak it into server logs and
+    browser history, so the only supported transport is `Authorization: Bearer`.
+    """
+    if not _METRICS_TOKEN:
+        raise HTTPException(status_code=404, detail="Not Found")
+    if credentials is None or not hmac.compare_digest(credentials.credentials, _METRICS_TOKEN):
+        raise HTTPException(status_code=404, detail="Not Found")
+
+
 @app.get("/v1/health/cache", summary="Interpretation cache reuse", include_in_schema=False)
-def cache_stats(token: str = "") -> dict[str, object]:
+def cache_stats(_=Depends(_require_metrics_token)) -> dict[str, object]:
     """Cache reuse, for whoever is paying the model bill.
 
     Worth watching rather than assuming: the free tier allows twenty requests
@@ -156,11 +172,6 @@ def cache_stats(token: str = "") -> dict[str, object]:
     can survive its own users. It resets when the process does — the cache is in
     memory, and on a free instance that means every cold start.
     """
-    # `compare_digest` because the comparison is against a secret and the timing
-    # of a byte-by-byte mismatch is information — the same reason the Razorpay
-    # webhook used it, kept now that it is the only secret compared here.
-    if not _METRICS_TOKEN or not hmac.compare_digest(token, _METRICS_TOKEN):
-        raise HTTPException(status_code=404, detail="Not Found")
 
     stats = ai.cache.stats()
     return {

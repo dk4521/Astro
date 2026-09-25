@@ -88,6 +88,8 @@ class Panchang:
     # one set and a lookup is one.
     @property
     def tithi_hi(self) -> str:
+        if self.tithi_index % 15 == 14:
+            return "पूर्णिमा" if self.paksha == "Shukla" else "अमावस्या"
         return K.TITHI_NAMES_HI[self.tithi_index % 15]
 
     @property
@@ -178,7 +180,8 @@ def panchang_for(chart: Chart) -> Panchang:
     # polar circles there may be no sunrise, and we fall back to the civil day.
     rise_jd = E.sunrise(chart.julian_day, chart.latitude, chart.longitude)
     reference_jd = rise_jd if rise_jd is not None else chart.julian_day
-    weekday = int(reference_jd + 1.5) % 7
+    local_reference = E.from_julian_day(reference_jd).astimezone(ZoneInfo(chart.timezone))
+    weekday = (local_reference.weekday() + 1) % 7
 
     moon_placement = decompose(moon)
 
@@ -193,7 +196,11 @@ def panchang_for(chart: Chart) -> Panchang:
 
     return Panchang(
         tithi_index=tithi_index,
-        tithi=K.TITHI_NAMES[tithi_index % 15],
+        tithi=(
+            ("Purnima" if paksha == "Shukla" else "Amavasya")
+            if tithi_index % 15 == 14
+            else K.TITHI_NAMES[tithi_index % 15]
+        ),
         tithi_number=(tithi_index % 15) + 1,
         paksha=paksha,
         tithi_percent=tithi_percent,

@@ -82,7 +82,10 @@ export default function Today() {
   const load = useCallback(async () => {
     try {
       const birth = await loadBirthDetails();
-      if (!birth) return;
+      if (!birth) {
+        router.replace('/onboarding');
+        return;
+      }
       setData(await fetchToday(birth));
       setError(null);
     } catch (err) {

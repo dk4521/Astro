@@ -81,6 +81,13 @@ def _build_request(
     messages: list[dict[str, object]] = []
 
     if history:
+        first_user = next((index for index, turn in enumerate(history) if turn.role == "user"), None)
+        if first_user is None:
+            history = []
+        else:
+            history = history[first_user:]
+
+    if history:
         messages.append({"role": "user", "content": f"{brief}\n\n{history[0].content}"})
         for turn in history[1:]:
             messages.append({"role": turn.role, "content": turn.content})

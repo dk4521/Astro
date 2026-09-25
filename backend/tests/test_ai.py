@@ -148,6 +148,19 @@ def test_conversation_history_is_replayed(chart, stub):
     assert messages[-1]["content"] == "And relationships?"
 
 
+def test_conversation_history_discards_leading_assistant_turn(chart, stub):
+    history = [
+        interpret.Turn(role="assistant", content="An old answer."),
+        interpret.Turn(role="user", content="What about my career?"),
+        interpret.Turn(role="assistant", content="Your 10th house is Kumbha."),
+    ]
+    interpret.answer(chart, "And relationships?", language="en", history=history)
+
+    messages = stub.requests[0].messages
+    assert [m["role"] for m in messages] == ["user", "assistant", "user"]
+    assert "An old answer." not in messages[0]["content"]
+
+
 def test_streaming_yields_chunks(chart, stub):
     chunks = list(interpret.stream_answer(chart, "Tell me about Saturn", language="en"))
     assert len(chunks) > 1
@@ -171,6 +184,11 @@ def test_fabricated_rashi_is_caught(chart):
     assert found[0].asserted == "Simha"
     assert found[0].actual == "Karka"
     assert found[0].kind == "rashi"
+
+
+def test_grounding_skips_unavailable_claim_extraction(chart, monkeypatch):
+    monkeypatch.setattr(grounding, "extract_claims", lambda text: None)
+    assert grounding.check("Jupiter is in Aries.", chart) == []
 
 
 def test_devanagari_prose_makes_no_claim(chart):

@@ -27,6 +27,7 @@ type AuthState = {
   signIn: (email: string, password: string) => Promise<string | null>;
   signUp: (email: string, password: string) => Promise<{ error: string | null; needsConfirmation: boolean }>;
   signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<string | null>;
   /**
    * Delete the account and everything the account holds. Null on success.
    *
@@ -101,6 +102,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       async signOut() {
         await supabase?.auth.signOut();
+      },
+
+      async resetPassword(email) {
+        if (!supabase) return 'Accounts are not configured in this build.';
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: 'https://www.enumasky.app/resetpass.html',
+        });
+        return error ? authErrorMessage(error) : null;
       },
 
       async deleteAccount() {

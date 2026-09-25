@@ -46,6 +46,7 @@ export function Matching({
   const [match, setMatch] = useState<Match | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
+  const [role, setRole] = useState<'bride' | 'groom'>('bride');
 
   const isoDate = toIsoDate(date);
   const isoTime = toIsoTime(time);
@@ -101,21 +102,22 @@ export function Matching({
     setRunning(true);
     setError(null);
     try {
-      setMatch(
-        await fetchMatch(birth, {
-          date: isoDate,
-          time: isoTime,
-          latitude: place.latitude,
-          longitude: place.longitude,
-          place: `${place.name}, ${place.admin}`,
-        }),
-      );
+      const partner: BirthDetails = {
+        date: isoDate,
+        time: isoTime,
+        latitude: place.latitude,
+        longitude: place.longitude,
+        place: `${place.name}, ${place.admin}`,
+      };
+      setMatch(await fetchMatch(role === 'bride' ? birth : partner, role === 'bride' ? partner : birth));
     } catch (err) {
       setError(err instanceof Error ? err.message : t.unreachable);
     } finally {
       setRunning(false);
     }
-  }, [ready, place, isoDate, isoTime, birth, t]);
+  }, [ready, place, isoDate, isoTime, birth, role, t]);
+
+  const youAreBride = role === 'bride';
 
   const total = useMemo(
     // Half points are real in this procedure — Tara and Vashya both produce
@@ -140,16 +142,24 @@ export function Matching({
               <Text style={styles.party}>
                 <Text style={styles.partyWho}>{t.matchYou}</Text>
                 {'  '}
-                {language === 'hi' ? match.bride_nakshatra_hi : match.bride_nakshatra}
+                {language === 'hi'
+                  ? (youAreBride ? match.bride_nakshatra_hi : match.groom_nakshatra_hi)
+                  : (youAreBride ? match.bride_nakshatra : match.groom_nakshatra)}
                 {' · '}
-                {language === 'hi' ? match.bride_rashi_hi : match.bride_rashi}
+                {language === 'hi'
+                  ? (youAreBride ? match.bride_rashi_hi : match.groom_rashi_hi)
+                  : (youAreBride ? match.bride_rashi : match.groom_rashi)}
               </Text>
               <Text style={styles.party}>
                 <Text style={styles.partyWho}>{t.matchThem}</Text>
                 {'  '}
-                {language === 'hi' ? match.groom_nakshatra_hi : match.groom_nakshatra}
+                {language === 'hi'
+                  ? (youAreBride ? match.groom_nakshatra_hi : match.bride_nakshatra_hi)
+                  : (youAreBride ? match.groom_nakshatra : match.bride_nakshatra)}
                 {' · '}
-                {language === 'hi' ? match.groom_rashi_hi : match.groom_rashi}
+                {language === 'hi'
+                  ? (youAreBride ? match.groom_rashi_hi : match.bride_rashi_hi)
+                  : (youAreBride ? match.groom_rashi : match.bride_rashi)}
               </Text>
             </View>
 
@@ -195,6 +205,20 @@ export function Matching({
         <>
           <Card>
             <Text style={styles.formLabel}>{t.matchPartnerLabel}</Text>
+            <Text style={styles.formLabel}>{t.matchRoleLabel}</Text>
+            <View style={styles.rolePicker}>
+              {(['bride', 'groom'] as const).map((option) => (
+                <Pressable
+                  key={option}
+                  onPress={() => setRole(option)}
+                  style={[styles.roleOption, role === option && styles.roleOptionSelected]}
+                >
+                  <Text style={[styles.roleText, role === option && styles.roleTextSelected]}>
+                    {option === 'bride' ? t.matchBride : t.matchGroom}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
 
             <TextInput
               style={styles.input}
@@ -271,6 +295,18 @@ export function Matching({
 
 const styles = StyleSheet.create({
   wrap: { marginTop: space.lg },
+  rolePicker: { flexDirection: 'row', gap: space.xs, marginBottom: space.md },
+  roleOption: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+    paddingVertical: space.sm,
+    alignItems: 'center',
+  },
+  roleOptionSelected: { backgroundColor: colors.accent, borderColor: colors.accent },
+  roleText: { ...type.label, color: colors.textMuted },
+  roleTextSelected: { color: colors.bg },
   intro: { ...type.body, color: colors.textMuted, marginBottom: space.md, lineHeight: 22 },
 
   formLabel: { ...type.label, color: colors.textFaint, marginBottom: space.sm },

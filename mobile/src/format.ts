@@ -48,13 +48,13 @@ export function toIsoDate(display: string): string | null {
   const day = Number(match[1]);
   const month = Number(match[2]);
   const year = Number(match[3]);
-  if (month < 1 || month > 12 || day < 1 || year < 1800) return null;
+  if (month < 1 || month > 12 || day < 1 || year < 1850) return null;
 
-  const date = new Date(Date.UTC(year, month - 1, day));
+  const date = new Date(year, month - 1, day);
   const real =
-    date.getUTCFullYear() === year &&
-    date.getUTCMonth() === month - 1 &&
-    date.getUTCDate() === day;
+    date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day;
   if (!real || date.getTime() > Date.now()) return null;
 
   return `${match[3]}-${match[2]}-${match[1]}`;

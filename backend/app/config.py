@@ -8,6 +8,7 @@ be silently overridden by a stray `.env` that got into an image.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -16,3 +17,5 @@ ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
 
 # override=False: an already-set variable is left alone.
 load_dotenv(ENV_FILE, override=False)
+
+RUNTIME_ENV = os.environ.get("ASTRO_ENV", "development").strip().lower()

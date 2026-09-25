@@ -241,6 +241,9 @@ def require_pro(account: auth.Account | None = Depends(auth.optional_user)) -> a
     locally without standing up billing.
     """
     if not is_configured():
+        if config.RUNTIME_ENV == "production":
+            log.error("REVENUECAT_SECRET_KEY is required in production")
+            raise HTTPException(status_code=503, detail="Subscription service is not configured.")
         return account
 
     if account is None:

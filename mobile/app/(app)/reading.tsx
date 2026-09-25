@@ -470,10 +470,12 @@ export default function ReadingScreen() {
       setSending(true);
 
       // The history is the conversation only — never the opening reading.
-      const history: ChatTurn[] = messages
+      const historyWindow = messages
         .filter((message) => message.text.trim().length > 0)
         .map((message) => ({ role: message.role, content: message.text }))
         .slice(-HISTORY_TURNS);
+      const firstUser = historyWindow.findIndex((message) => message.role === 'user');
+      const history: ChatTurn[] = firstUser >= 0 ? historyWindow.slice(firstUser) : [];
 
       const askedId = nextId.current++;
       const answerId = nextId.current++;

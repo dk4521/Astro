@@ -21,7 +21,7 @@ import type { ConversationSummary, StoredTurn } from '../../src/sync/chat';
 import { PERSONAS, Portrait } from '../../src/components/Avatar';
 import { ScreenHeader } from '../../src/components/ScreenHeader';
 import { RichText } from '../../src/components/RichText';
-import { Label } from '../../src/components/ui';
+import { ErrorNote, Label } from '../../src/components/ui';
 import { colors, radius, space, type } from '../../src/theme';
 
 /** "today", "yesterday", "13 Nov" — enough to place a conversation. */
@@ -45,6 +45,7 @@ export default function History() {
   const [rows, setRows] = useState<ConversationSummary[] | null>(null);
   const [open, setOpen] = useState<ConversationSummary | null>(null);
   const [turns, setTurns] = useState<StoredTurn[] | null>(null);
+  const [turnsError, setTurnsError] = useState<string | null>(null);
 
   // On focus, not on mount. The drawer keeps its screens mounted, so a plain
   // effect runs once and then never again — the list showed a message count
@@ -70,7 +71,10 @@ export default function History() {
     (row: ConversationSummary) => {
       setOpen(row);
       setTurns(null);
-      readConversation(row.id).then(setTurns);
+      setTurnsError(null);
+      readConversation(row.id).then(setTurns).catch((error) => {
+        setTurnsError(error instanceof Error ? error.message : 'Could not load this conversation');
+      });
     },
     [readConversation],
   );
@@ -81,7 +85,9 @@ export default function History() {
       <View style={styles.flex}>
         <ScreenHeader title={person?.name ?? 'Conversation'} onBack={() => setOpen(null)} />
         <ScrollView contentContainerStyle={styles.content}>
-          {turns === null ? (
+          {turnsError ? (
+            <ErrorNote message={turnsError} />
+          ) : turns === null ? (
             <View style={styles.loading}>
               <ActivityIndicator color={colors.accent} />
             </View>

@@ -148,6 +148,8 @@ def check(text: str, chart: Chart) -> list[Contradiction]:
     Returns a list of Contradictions.
     """
     claims = extract_claims(text)
+    if not claims:
+        return []
     found: list[Contradiction] = []
     
     for claim in claims:

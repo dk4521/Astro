@@ -326,7 +326,7 @@ export default function Settings() {
         <View style={styles.section}>
           <Label>Course</Label>
           <Card>
-            <Row label="Chapters read" value={`${readCount} of 30`} />
+            <Row label="Chapters read" value={`${readCount} of 38`} />
           </Card>
           <View style={styles.action}>
             <Button title="Reset progress" onPress={resetCourse} variant="ghost" />

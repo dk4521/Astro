@@ -18,11 +18,10 @@ import { useCallback } from 'react';
 import { markAccountsSeen } from '../../src/api/storage';
 import { AuthForm } from '../../src/components/AuthForm';
 import { useAuth } from '../../src/auth/context';
-import { authErrorMessage, supabase } from '../../src/auth/client';
 
 export default function SignIn() {
   const router = useRouter();
-  const { signIn, available } = useAuth();
+  const { signIn, resetPassword, available } = useAuth();
 
   const submit = useCallback(
     async (email: string, password: string) => {
@@ -36,13 +35,12 @@ export default function SignIn() {
     [signIn, router],
   );
 
-  const forgot = useCallback(async (email: string) => {
-    if (!supabase) return 'Accounts are not configured in this build.';
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: 'https://www.enumasky.app/resetpass.html',
-    });
-    return error ? authErrorMessage(error) : null;
-  }, []);
+  const forgot = useCallback(
+    async (email: string) => {
+      return await resetPassword(email);
+    },
+    [resetPassword],
+  );
 
   return (
     <AuthForm

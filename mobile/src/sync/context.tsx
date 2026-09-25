@@ -116,6 +116,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [chartId, setChartId] = useState<string | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const conversationIdRef = useRef<string | null>(null);
 
   // Guards a second pass from starting while one is in flight — two merges
   // racing would each see the other's half-finished state.
@@ -149,7 +150,11 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     loadSyncIds().then((ids) => {
       setChartId((current) => current ?? ids.chartId);
-      setConversationId((current) => current ?? ids.conversationId);
+      setConversationId((current) => {
+        const known = current ?? ids.conversationId;
+        conversationIdRef.current = known;
+        return known;
+      });
     });
   }, []);
 
@@ -204,6 +209,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       // A different chart drops the conversation with it — see `rememberChartId`.
       const ids = await rememberChartId(resolvedChartId);
       setChartId(ids.chartId);
+      conversationIdRef.current = ids.conversationId;
       setConversationId(ids.conversationId);
       if (!ids.conversationId) conversationLanguage.current = null;
 
@@ -252,6 +258,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         setSettledFor(null);
         clearSyncIds();
         setChartId(null);
+        conversationIdRef.current = null;
         setConversationId(null);
         conversationLanguage.current = null;
       }
@@ -337,11 +344,12 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       async loadChatHistory(persona) {
         if (!userId || !chartId) return [];
         try {
-          const cached = conversationPersona.current === persona ? conversationId : null;
+          const cached = conversationPersona.current === persona ? conversationIdRef.current : null;
           const known = cached ?? (await findConversation(userId, chartId, persona))?.id ?? null;
           if (!known) return [];
-          if (known !== conversationId) {
+          if (known !== conversationIdRef.current) {
             await rememberConversationId(known);
+            conversationIdRef.current = known;
             setConversationId(known);
           }
           conversationPersona.current = persona;
@@ -360,8 +368,8 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         const write = writes.current.then(async () => {
           if (!opening.current) {
             opening.current = (async () => {
-              if (conversationId && conversationPersona.current === persona) {
-                return conversationId;
+              if (conversationIdRef.current && conversationPersona.current === persona) {
+                return conversationIdRef.current;
               }
               const found = await findConversation(userId, chartId, persona);
               const conversation =
@@ -372,6 +380,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
               conversationLanguage.current = conversation.language;
               conversationPersona.current = persona;
               await rememberConversationId(conversation.id);
+              conversationIdRef.current = conversation.id;
               setConversationId(conversation.id);
               return conversation.id;
             })();
@@ -404,6 +413,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       },
 
       async releaseConversation() {
+        conversationIdRef.current = null;
         setConversationId(null);
         conversationLanguage.current = null;
         conversationPersona.current = undefined;
@@ -435,6 +445,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
           // that everything stored goes.
           await deleteAllConversations(userId);
           await rememberConversationId(null);
+          conversationIdRef.current = null;
           setConversationId(null);
           conversationLanguage.current = null;
           conversationPersona.current = undefined;

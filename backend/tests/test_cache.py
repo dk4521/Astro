@@ -299,9 +299,11 @@ def test_health_reports_cache_reuse(chart, model, monkeypatch):
     interpret.reading(chart, language="en", as_of=AS_OF)
 
     # The stats left `/health` when it stopped answering "is the paywall on"
-    # to anyone who asked. They now need the operator's token.
+    # to anyone who asked. They now need the operator's token in a header.
     monkeypatch.setattr(main, "_METRICS_TOKEN", "t0ken")
-    body = TestClient(app).get("/v1/health/cache", params={"token": "t0ken"}).json()
+    body = TestClient(app).get(
+        "/v1/health/cache", headers={"Authorization": "Bearer t0ken"}
+    ).json()
     assert body["hits"] == 1
     assert body["misses"] == 1
     assert body["entries"] == 1

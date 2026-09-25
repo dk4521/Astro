@@ -63,7 +63,7 @@ export default function ChapterScreen() {
   return (
     <View style={styles.flex}>
       <ScreenHeader
-        title={chapter ? `${chapter.number} / 30` : 'Learn'}
+        title={chapter ? `${chapter.number} / 38` : 'Learn'}
         // Not router.back(). A chapter is a drawer route, not a pushed screen,
         // and the drawer's navigate() does not add a history entry — so back()
         // lands on whatever drawer route was open before Learn. Verified on a

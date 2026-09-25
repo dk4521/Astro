@@ -125,7 +125,7 @@ export default function Onboarding() {
       setError(err instanceof Error ? err.message : 'Could not save your details');
       setSaving(false);
     }
-  }, [ready, place, isoDate, isoTime, router, pushBirth]);
+  }, [ready, place, isoDate, isoTime, name, router, pushBirth]);
 
   return (
     // Android needs `padding` as much as iOS does here: with edge-to-edge the

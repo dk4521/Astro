@@ -104,6 +104,9 @@ type Strings = {
   matching: string;
   matchingIntro: string;
   matchPartnerLabel: string;
+  matchRoleLabel: string;
+  matchBride: string;
+  matchGroom: string;
   matchDate: string;
   matchTime: string;
   matchPlace: string;
@@ -249,6 +252,9 @@ const EN: Strings = {
   matchingIntro:
     'Ashtakoot Milan scores two janma nakshatras across eight categories. The arithmetic is below in full, so you can check every point.',
   matchPartnerLabel: 'The other person\u2019s birth',
+  matchRoleLabel: 'Your role in this traditional calculation',
+  matchBride: 'Bride',
+  matchGroom: 'Groom',
   matchDate: 'Date of birth',
   matchTime: 'Time of birth',
   matchPlace: 'Place of birth',
@@ -406,6 +412,9 @@ const HI: Strings = {
   matchingIntro:
     'अष्टकूट मिलान दो जन्म नक्षत्रों को आठ कूटों में अंक देता है। पूरा गणित नीचे है, ताकि आप हर अंक ख़ुद जाँच सकें।',
   matchPartnerLabel: 'दूसरे व्यक्ति का जन्म',
+  matchRoleLabel: 'इस पारंपरिक गणना में आपकी भूमिका',
+  matchBride: 'वधू',
+  matchGroom: 'वर',
   matchDate: 'जन्म तिथि',
   matchTime: 'जन्म समय',
   matchPlace: 'जन्म स्थान',

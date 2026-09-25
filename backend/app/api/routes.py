@@ -464,33 +464,35 @@ def chat(
     history = [ai.Turn(role=t.role, content=t.content) for t in payload.history]
 
     def events():
-        collected: list[str] = []
         try:
-            session_id = account.id if account else None
-            for chunk in ai.stream_answer(
-                chart,
-                payload.question,
-                language=payload.language,
-                history=history,
-                session_id=session_id,
-            ):
-                collected.append(chunk)
-                yield f"event: token\ndata: {json.dumps({'text': chunk})}\n\n"
-        except ai.InterpretationUnavailable as exc:
-            # There is nothing to refund now — the subscription paid for the
-            # month, not for this answer. What is left is to say so plainly
-            # rather than ending the stream on silence.
-            yield f"event: error\ndata: {json.dumps({'detail': str(exc)})}\n\n"
-            return
+            collected: list[str] = []
+            try:
+                session_id = account.id if account else None
+                for chunk in ai.stream_answer(
+                    chart,
+                    payload.question,
+                    language=payload.language,
+                    history=history,
+                    session_id=session_id,
+                ):
+                    collected.append(chunk)
+                    yield f"event: token\ndata: {json.dumps({'text': chunk})}\n\n"
+            except ai.InterpretationUnavailable as exc:
+                yield f"event: error\ndata: {json.dumps({'detail': str(exc)})}\n\n"
+                return
 
-        text = "".join(collected)
-        contradictions_list, status = grounding.check_and_evaluate(text, chart)
-        contradictions = [str(c) for c in contradictions_list]
-        payload_out = {
-            "grounding_status": status.value,
-            "contradictions": contradictions,
-        }
-        yield f"event: done\ndata: {json.dumps(payload_out)}\n\n"
+            text = "".join(collected)
+            contradictions_list, status = grounding.check_and_evaluate(text, chart)
+            contradictions = [str(c) for c in contradictions_list]
+            payload_out = {
+                "grounding_status": status.value,
+                "contradictions": contradictions,
+            }
+            yield f"event: done\ndata: {json.dumps(payload_out)}\n\n"
+        except Exception:
+            log.exception("streaming chat failed")
+            yield f"event: error\ndata: {json.dumps({'detail': 'The reading could not be completed.'})}\n\n"
+            return
 
     return StreamingResponse(
         events(),

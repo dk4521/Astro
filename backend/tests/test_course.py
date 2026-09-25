@@ -31,10 +31,10 @@ def client():
 # --- Content ----------------------------------------------------------------
 
 
-def test_thirty_chapters_with_unique_slugs():
+def test_course_chapters_have_unique_slugs():
     slugs = [c.slug for c in course.CHAPTERS]
-    assert len(slugs) == 30
-    assert len(set(slugs)) == 30
+    assert len(slugs) == 38
+    assert len(set(slugs)) == 38
 
 
 def test_every_chapter_exists_in_both_languages():
@@ -85,8 +85,8 @@ def test_crisis_helplines_survive_in_the_final_chapter():
 
 def test_index_is_small_and_ordered(client):
     body = client.get("/v1/course").json()
-    assert len(body["chapters"]) == 30
-    assert [c["number"] for c in body["chapters"]] == list(range(1, 31))
+    assert len(body["chapters"]) == 38
+    assert [c["number"] for c in body["chapters"]] == list(range(1, 39))
     assert body["total_minutes"] > 0
     # The index is fetched on every visit; chapter prose must not ride along.
     assert "sections" not in body["chapters"][0]
