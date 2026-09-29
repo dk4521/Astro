@@ -1,6 +1,7 @@
 # Enuma Sky
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-brightgreen.svg)](LICENSE)
+[![CI](https://github.com/dk4521/Astro/actions/workflows/ci.yml/badge.svg)](https://github.com/dk4521/Astro/actions/workflows/ci.yml)
 
 An ethical, AI-driven reflection engine designed to disrupt the predatory $10B astrology market. Mobile-first (React Native + Expo), Python backend, Postgres/Supabase for user data, and strict server-side subscription validation via RevenueCat.
 
@@ -19,7 +20,7 @@ An ethical, AI-driven reflection engine designed to disrupt the predatory $10B a
 | Astrology engine (astronomy data, chart, dasha, panchang) | Built, 69 tests passing |
 | REST API (FastAPI) | Built, running locally |
 | Mobile app (Expo, TypeScript) | Sidebar over today, chart, reading/chat, course and settings; driven end to end on an Android device |
-| Learning course | 30 chapters, English and Hindi, served from the backend |
+| Learning course | 38 chapters, English and Hindi, served from the backend |
 | Today | Panchang for this moment plus the active dasha — no model, no quota |
 | Tarot | 78-card deck in two languages, seeded shuffle, three-card spread; the written meanings and the draw are free, reading the spread together needs Pro. 37 tests |
 | AI interpretation layer | Built on Gemini, verified against the live API |
@@ -41,9 +42,9 @@ backend/          FastAPI service and the deterministic engine
   app/auth.py     verifies the Supabase token — who is asking
   app/entitlements.py  asks RevenueCat whether they have paid; the only gate
   app/ratelimit.py     fixed-window ceilings, per account and per address
-  tests/          240 tests, including known-chart, grounding, cache, entitlement and tarot
+  tests/          242 tests, including known-chart, grounding, cache, entitlement and tarot
   app/tarot/      the deck (written, not generated), the seeded shuffle, the card check
-  app/course/     the course — 30 chapters of prose, in two languages
+  app/course/     the course — 38 chapters of prose, in two languages
   app/places_data.py  ~3,000 places, India tier-1 to tier-3; built by scripts/
 mobile/           Expo app (React Native + TypeScript)
   app/            expo-router screens; (app)/ sits behind the drawer
@@ -64,7 +65,7 @@ uv venv                               # or: python3 -m venv .venv
 uv pip install -e ".[dev]"
 cp .env.example .env                  # then paste your GEMINI_API_KEY into it
 python scripts/fetch_ephemeris.py     # 32 MB JPL data, one time
-./.venv/bin/python -m pytest          # 240 tests
+./.venv/bin/python -m pytest          # 242 tests
 ./.venv/bin/python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
@@ -307,7 +308,7 @@ until a real keyboard has opened on top of it.
 
 ## The course
 
-Thirty chapters, English and Hindi, in `backend/app/course/`. It is the app's
+Thirty-eight chapters, English and Hindi, in `backend/app/course/`. It is the app's
 clearest differentiator: every other astrology app treats teaching as a blog —
 generic articles that read identically for anyone. Each chapter here explains one
 idea and then shows it **in the reader's own chart**. Chapter 23 explains
@@ -686,13 +687,13 @@ Early versions used a client-side credit ledger — which was trivially exploita
 
 ### Accomplishments that we're proud of
 
-**240 automated tests passing.** The pytest suite covers astronomical accuracy against known historical charts, grounding logic, entitlement gate enforcement, crisis detection, and reproducible tarot shuffles. Every push is tested before it can break a user's reading.
+**242 automated tests passing.** The pytest suite covers astronomical accuracy against known historical charts, grounding logic, entitlement gate enforcement, crisis detection, and reproducible tarot shuffles. Every push is tested before it can break a user's reading.
 
 **Test Suites Breakdown:**
-- **Total automated tests:** 240
+- **Total automated tests:** 242
 - **Astro Engine & Matching tests:** 69
 - **AI Grounding & Tarot tests:** 76
-- **Backend API & Subscriptions tests:** 95
+- **Backend API & Subscriptions tests:** 97
 
 **The Grounded badge is visible to users.** Most AI apps hide their verification. Enuma Sky shows a ✅ Grounded badge on every verified reading — and flags it when verification fails. Users see the math behind the magic. Full transparency, no hand-waving.
 
