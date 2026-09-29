@@ -51,7 +51,7 @@ from urllib.parse import quote
 import httpx
 from fastapi import Depends, HTTPException
 
-from . import auth, config  # noqa: F401  — config loads .env before os.environ
+from . import auth, config  # side-effect import: config loads .env before os.environ
 
 log = logging.getLogger("enumasky.entitlements")
 
