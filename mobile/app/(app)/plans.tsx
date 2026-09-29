@@ -43,15 +43,10 @@ import { restorePurchases } from '../../src/purchases/client';
 import { presentCustomerCenter, presentPaywall } from '../../src/purchases/paywall';
 import { colors, radius, space, type } from '../../src/theme';
 
-/** What a subscription covers, and what never needed one. */
+/** What a subscription covers. */
 const INCLUDED = [
-  'Your opening reading, in Hinglish, English or Hindi',
-  'Questions about your chart, for as long as you want to ask them',
-  'The daily line on the home screen',
-  'Reading a tarot spread together',
-];
-
-const ALWAYS_FREE = [
+  'Your opening reading, in English or Hindi',
+  'Unlimited conversation',
   'Your chart, navamsa and house lords',
   'Vimshottari dashas, to three levels',
   'Panchang, today and at birth',
@@ -289,17 +284,11 @@ export default function Plans() {
 
         <View style={styles.section}>
           <Text style={styles.labelHighlight}>What Pro covers</Text>
-          <Card>
+          <Card plain style={styles.proListCard}>
             <Bullets items={INCLUDED} />
           </Card>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.labelHighlight}>Free, and staying that way</Text>
-          <Card>
-            <Bullets items={ALWAYS_FREE} muted />
-          </Card>
-        </View>
 
         {!user && accountsAvailable && !pro ? (
           <View style={styles.section}>
@@ -321,19 +310,20 @@ const styles = StyleSheet.create({
   section: { gap: space.sm },
   labelHighlight: { 
     ...type.label, 
-    color: colors.accent, 
+    color: colors.send, 
     fontSize: 12,
     letterSpacing: 1.5,
   },
 
   cardCurrent: { borderColor: colors.accent },
+  proListCard: { borderColor: colors.send },
 
   planTitle: { ...type.heading, color: colors.text },
   planSub: { ...type.body, color: colors.textMuted, marginTop: 2 },
 
-  bullets: { gap: space.xs },
-  bullet: { ...type.body, color: colors.text, lineHeight: 21 },
-  bulletMuted: { ...type.body, color: colors.textMuted, lineHeight: 21 },
+  bullets: { gap: space.sm },
+  bullet: { ...type.body, color: colors.text, fontSize: 16, lineHeight: 26 },
+  bulletMuted: { ...type.body, color: colors.textMuted, fontSize: 16, lineHeight: 26 },
 
   action: { marginTop: space.md },
   actionTop: { marginTop: 0 },

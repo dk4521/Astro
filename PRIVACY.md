@@ -2,7 +2,7 @@
 
 **Last updated: 18 August 2026**
 
-Enuma Sky is a Vedic astrology app. This policy describes exactly what the app
+Enuma Sky is a astrology app. This policy describes exactly what the app
 collects, where it goes, and how to remove it. It describes what the app
 actually does today, not what it might do later.
 

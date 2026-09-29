@@ -724,27 +724,9 @@ Early versions used a client-side credit ledger — which was trivially exploita
 
 **Going global — worldwide city coverage.** Right now, the app supports ~3,000 Indian cities for birth location entry. Users manually select their birth city — we don't access phone GPS because birth location is about where you were born, not where you are now. The next step is expanding this gazetteer to cover cities worldwide, so anyone on the planet can generate an accurate birth chart.
 
-**Deepening the 30-chapter course.** The interactive course already teaches astrological principles using your own chart. The plan is to make it richer — more chapters, deeper explanations, and stronger personalized "In Your Chart" examples that make every lesson feel like it was written just for you.
+**Deepening the 38-chapter course.** The interactive course already teaches astrological principles using your own chart. The plan is to make it richer — more chapters, deeper explanations, and stronger personalized "In Your Chart" examples that make every lesson feel like it was written just for you.
 
 **Multi-language expansion.** The app currently supports English, Hindi, and conversational Hinglish. We want to add more Indian regional languages — Tamil, Telugu, Bengali, Marathi — to reach the millions who are most vulnerable to fear-based exploitation in their native tongue.
-
-### Category-Specific Answers
-
-**Next Gen Award (Student Category)**
-
-Built entirely solo by Deepak Singh, a second year Data Science student at IIT Madras. The full source code is open-source under the MIT License at [github.com/dk4521/Astro](https://github.com/dk4521/Astro). RevenueCat SDK powers the entire subscription lifecycle — from presenting the native paywall on mobile to server-side entitlement validation on the backend via RevenueCat's REST API. Every Pro feature gate checks RevenueCat before granting access.
-
-**RevenueCat Peace Prize (Social Good)**
-
-Traditional astrology in India is a multi-billion dollar industry built on fear. People are told their charts are cursed, burdened with fabricated doshas, and sold expensive remedies — gemstones, rituals, pujas — to "fix" problems that never existed. Enuma Sky directly combats this exploitation by refusing to use fear-based language, refusing to sell remedies, and refusing to predict doom. The AI is contractually bound to never say a chart is "bad" or a person is "cursed." Most importantly, when a user expresses self-harm or despair, astrology halts completely and verified government mental health helplines are displayed immediately — Tele-MANAS (14416, 24x7 toll-free in 20 languages), AASRA, Women Helpline (181), and National Emergency (112). No astrology app in the market does this.
-
-**HAMM Award (Monetization Strategy)**
-
-Enuma Sky's monetization is designed around a simple principle: math is free, AI costs money. All deterministic astronomical features — birth chart, Kundli visualization, Panchang, Dashas, 30-chapter course, 78-card Tarot deck, and Ashtakoot Matching — are free forever with no account required. Enuma Sky Pro unlocks AI-powered features that have real server costs: grounded chart readings, unlimited conversational chat (SSE streaming), daily cosmic reflections, and Tarot synthesis readings. Subscriptions are offered as Weekly (ideal for India's UPI micro-transaction culture), Monthly, Yearly, and Lifetime — all managed through RevenueCat with native platform billing. Entitlements are validated server-side against RevenueCat's REST API with a 60-second cache and instant refresh post-purchase. No client-side trust, no replay exploits, no dark patterns.
-
-**RevenueCat Design Award (Craft & Aesthetics)**
-
-Open any popular astrology app and you'll see: red-and-gold color schemes, aggressive pop-ups, countdown timers, and ads covering half the screen. Enuma Sky is the opposite. A calming, deep-space dark palette with glassmorphic translucency, animated starfields, and high-contrast typography. The birth chart is rendered as a pure SVG North Indian diamond Kundli — geometric, precise, and beautiful without heavy image downloads. 12 photorealistic AI companion personas give the chat experience warmth and personality. The Plans screen is calm and honest — no urgency tricks, no "last chance" banners. Every pixel is designed to make the user feel respected, not pressured.
 
 ## Acknowledgments & Credits
 
