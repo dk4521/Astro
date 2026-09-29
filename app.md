@@ -131,7 +131,7 @@ arcana आम शब्द हैं।
 | मोबाइल ऐप | पूरा, Google Play Console "Closed Testing" में प्रकाशित |
 | AI परत + grounding | पूरा, live API पर सत्यापित (✅ Grounded badge चालू है) |
 | संकट-पथ | पूरा — live जाँचा गया, 3 भाषाओं (English, Hindi, Hinglish) में verified |
-| सीखने का कोर्स | 30 अध्याय, दो भाषाओं में, backend से |
+| सीखने का कोर्स | 38 अध्याय, दो भाषाओं में, backend से |
 | "आज" screen | इस क्षण का पंचांग + चालू दशा — बिना किसी AI के |
 | टैरो | 78 कार्ड दो भाषाओं में, बीज से चलने वाला फेंटना, तीन-कार्ड spread; 36 tests। अर्थ मुफ़्त, साथ में पाठ Pro |
 | खाते (login/signup) | पूरा — Supabase Auth, वैकल्पिक |
