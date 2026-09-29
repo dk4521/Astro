@@ -1,6 +1,8 @@
 # Enuma Sky
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-brightgreen.svg)](LICENSE)
+[![CI](https://github.com/dk4521/Astro/actions/workflows/ci.yml/badge.svg)](https://github.com/dk4521/Astro/actions/workflows/ci.yml)
+[![CI passing](.github/badges/ci.svg)](https://github.com/dk4521/Astro/actions/workflows/ci.yml)
 
 An ethical, AI-driven reflection engine designed to disrupt the predatory $10B astrology market. Mobile-first (React Native + Expo), Python backend, Postgres/Supabase for user data, and strict server-side subscription validation via RevenueCat.
 
@@ -686,7 +688,7 @@ Early versions used a client-side credit ledger — which was trivially exploita
 
 ### Accomplishments that we're proud of
 
-**242 automated tests passing.** The pytest suite covers astronomical accuracy against known historical charts, grounding logic, entitlement gate enforcement, crisis detection, and reproducible tarot shuffles.
+**242 automated tests passing.** The pytest suite covers astronomical accuracy against known historical charts, grounding logic, entitlement gate enforcement, crisis detection, and reproducible tarot shuffles. Every push is tested before it can break a user's reading.
 
 **Test Suites Breakdown:**
 - **Total automated tests:** 242
