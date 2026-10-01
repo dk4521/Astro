@@ -618,101 +618,10 @@ error, so `API_NOT_CONFIGURED` in [client.ts](mobile/src/api/client.ts) detects 
 release build resolving to a loopback address and the settings screen says so
 under **API** rather than leaving someone reading timeouts.
 
-## Devpost Submission — RevenueCat Ship-a-ton 2026
+## Built for RevenueCat Ship-a-ton 2026
 
-### Inspiration
-
-Hello, my name is Deepak, and I am a student at IIT Madras.
-
-Since childhood, I have seen and felt how deeply people are surrounded by different kinds of superstitions. Astrology is one of them.
-
-I have seen how some people take advantage of those who know little or nothing about astrology — scaring them, misleading them, and exploiting them. Sometimes it is done in the name of a dosha in their birth chart, and sometimes through rituals performed to "fix" it, all for money.
-
-For some time now, I have been seeing the same thing happen on the internet. Some people, driven by money, misuse technology to build apps and websites that essentially make people talk to a modern-day fraudster and tell them things that have no real basis.
-
-I cannot go from house to house explaining to everyone what astrology actually is.
-
-At the same time, there are people who completely reject astrology without ever learning about its history.
-
-I wanted to show people that astrology was never originally meant to be a tool for exploiting people. It was deeply connected to the mathematical and astronomical knowledge of its time.
-
-For example, what is a birth chart, essentially?
-
-A birth chart can be understood as a kind of astronomical snapshot, or timestamp, of the sky at the time and place of a person's birth. With the right time and location, we can use astronomical calculations to reconstruct where celestial bodies were at that moment.
-
-I believe we should respect that old knowledge, history, and wisdom while also taking responsibility for stopping the exploitation happening in its name by bringing people accurate information.
-
-No one should have to surrender their life, decisions, or future to fate, the stars, zodiac signs, or some supposed supernatural energy.
-
-At the same time, I also don't want young people to simply dismiss everything as "nonsense" without understanding what lies behind it.
-
-That is why I decided to make a small attempt to do something about it — to enter the crowded world of thousands of astrology apps and try to clean up some of the noise and misinformation being spread through them.
-
-**That attempt became Enuma Sky.**
-
-### What it does
-
-Enuma Sky transforms astrology from a fear-based industry into a science-grounded self-reflection tool.
-
-Here's the problem: In India, a multi-billion dollar astrology industry thrives on telling people their birth charts are "cursed." Millions pay for fake remedies — expensive gemstones, rituals, pujas — to "fix" fabricated flaws like *Manglik Dosh*, *Kaal Sarp Dosh*, *Pitra Dosh* (blaming ancestors for your problems), or *Vastu Dosh* (blaming your home's architecture). People delay marriages, abandon careers, and spiral into anxiety — all based on pseudoscientific fear tactics.
-
-**Enuma Sky says: No birth chart is broken. Ever.**
-
-The app computes your complete birth chart — Lagna (Ascendant), 9 planetary bodies, 27 Nakshatras, Vimshottari Dashas, and daily Panchang — using real **NASA JPL DE440s** astronomy data (the same data NASA uses to navigate spacecraft), accurate to within 1.7 arcseconds across 150 years.
-
-Then, instead of handing that data to a fortune-teller, **Google Gemini AI** acts purely as an empathetic translator — explaining what your chart *reflects* about your psychology, strengths, and growth areas, without ever predicting doom or selling remedies. Every single AI response is verified against the actual astronomical math by a custom **Grounding Engine**, and a visible ✅ **Grounded badge** proves it.
-
-**But the feature we're most proud of isn't astrology — it's the Crisis Safety Net.** If a user expresses self-harm, hopelessness, or despair, astrology stops immediately. No horoscope. No prediction. Instead, the app surfaces real, verified mental health helplines — **Tele-MANAS (14416)**, **AASRA**, **Women Helpline (181)**, **Emergency (112)** — because no chart reading is worth more than a human life.
-
-**Beyond readings, Enuma Sky teaches.** A 38-chapter interactive course explains authentic astrological principles using *your own chart* as the textbook — not generic sun-sign articles. A deterministic 78-card Tarot system uses cryptographic seeds (fully reproducible, zero mysticism) reframed as Situation → Obstacle → Advice, where even reversed cards carry constructive wisdom. And Ashtakoot Kundli Matching computes the traditional 36-point compatibility score — without ever labeling any match as \"bad\" or \"doomed.\"
-
-**Monetization is clean and ethical**, powered by **RevenueCat**: all astronomical calculations, panchang, courses, and tarot are free forever. **Enuma Sky Pro** (Weekly / Monthly / Yearly / Lifetime) unlocks unlimited AI conversations, grounded readings, and daily reflections — validated server-side against RevenueCat's REST API so no one can game entitlements.
-
-**In short:** Enuma Sky is the app that treats astrology as a mirror, not a verdict — backed by NASA-grade math, ethically bounded AI, and a safety net that puts human life above horoscopes.
-
-### Accomplishments that we're proud of
-
-**242 automated tests passing.** The pytest suite covers astronomical accuracy against known historical charts, grounding logic, entitlement gate enforcement, crisis detection, and reproducible tarot shuffles. Every push is tested before it can break a user's reading.
-
-**Test Suites Breakdown:**
-- **Total automated tests:** 242
-- **Astro Engine & Matching tests:** 78
-- **AI Grounding & Tarot tests:** 78
-- **Backend API, Cache & Subscriptions tests:** 86
-
-**The Grounded badge is visible to users.** Most AI apps hide their verification. Enuma Sky shows a ✅ Grounded badge on every verified reading — and flags it when verification fails. Users see the math behind the magic. Full transparency, no hand-waving.
-
-**Crisis intervention actually works — and is tested.** This isn't a checkbox feature. The crisis path has been tested against real-world phrasing in three languages to ensure it never fails silently. When it triggers, astrology stops completely. Verified government helpline numbers (Tele-MANAS 14416, AASRA, 181, 112) are displayed immediately.
-
-**14 seconds → 75 milliseconds.** A dual-layer caching system (in-memory + disk) dropped AI response latency from 14 seconds to 75ms for repeat queries. Users don't wait, and Gemini API costs stay controlled.
-
-**Zero ads. Zero dark patterns. Zero fear.** In a category dominated by aggressive pop-ups, fake urgency timers, and fear-driven upsells, Enuma Sky has none. The core astronomical features are free forever — not free-trial-then-locked, genuinely free. The Pro subscription unlocks AI conversations, and RevenueCat's native paywall keeps the upgrade experience calm and honest.
-
-**Live in Production on Google Play.** From zero coding experience to a live app on the Play Store, with a Python backend, NASA-grade astronomy engine, AI grounding system, and RevenueCat subscription infrastructure — built entirely alone.
-
-### What we learned
-
-**LLMs should interpret, never compute.** The moment you let a language model do math, you lose accuracy and gain hallucinations. The cleanest architecture is: deterministic code computes, AI translates. This separation isn't just good engineering — it's the only way to build trust in a domain where wrong numbers can ruin someone's decisions.
-
-**Ethical software is a competitive advantage.** Every astrology app in the market uses fear to drive engagement and revenue. By refusing to do that — no doshas, no doom, no fake remedies — Enuma Sky doesn't just feel different, it *is* different. Users notice when an app respects them instead of manipulating them.
-
-**Monetization doesn't have to be manipulative.** RevenueCat made it possible to build a subscription system where the free tier is genuinely generous (all math, all courses, all tarot) and the paid tier is genuinely valuable (unlimited AI conversations). No dark patterns, no countdown timers, no "your trial expires in 2 hours" pressure. Clean monetization builds loyalty, not resentment.
-
-**You don't need years of experience to ship something real.** I started this project as a second year Data Science student at IIT Madras. The tools available today — Expo, Supabase, RevenueCat, Gemini API, Skyfield — make it possible for a solo builder to ship a production-grade app that would have required a full team just a few years ago.
-
-### What's next for Enuma Sky
-
-**Western Market Expansion (UI & Zodiac Scalability).** Our architecture is fully decoupled — the backend calculates pure astronomical data, while the frontend handles visual representation. This means we can instantly scale to the Western market just by adding a Circular Wheel UI component and toggling the Ayanamsa to Tropical in our Skyfield engine. No backend rewrite required. We plan to add a simple setting allowing users to seamlessly switch between North Indian (Diamond), South Indian (Square), and Western (Wheel) charts.
-
-**iOS launch.** Enuma Sky is currently live on Android. An iOS build is next — the Expo + EAS pipeline already supports both platforms, so the codebase is ready. The goal is to bring fear-free astrology to every smartphone, not just one ecosystem.
-
-**7-day free trial for Enuma Sky Pro.** We want every user to experience AI-powered grounded readings before committing to a subscription. A 7-day free trial through RevenueCat will let users explore the full Pro experience — unlimited AI chat, daily reflections, and tarot synthesis — risk-free, with no surprise charges.
-
-**Going global — worldwide city coverage.** Right now, the app supports ~3,000 Indian cities for birth location entry. Users manually select their birth city — we don't access phone GPS because birth location is about where you were born, not where you are now. The next step is expanding this gazetteer to cover cities worldwide, so anyone on the planet can generate an accurate birth chart.
-
-**Deepening the 38-chapter course.** The interactive course already teaches astrological principles using your own chart. The plan is to make it richer — more chapters, deeper explanations, and stronger personalized "In Your Chart" examples that make every lesson feel like it was written just for you.
-
-**Multi-language expansion.** The app currently supports English, Hindi, and conversational Hinglish. We want to add more Indian regional languages — Tamil, Telugu, Bengali, Marathi — to reach the millions who are most vulnerable to fear-based exploitation in their native tongue.
+Submitted to the RevenueCat Ship-a-ton 2026 hackathon.
+[Full Devpost submission →](https://devpost.com/software/enuma-sky)
 
 ## Acknowledgments & Credits
 
