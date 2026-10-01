@@ -317,7 +317,7 @@ idea and then shows it **in the reader's own chart**. Chapter 23 explains
 Vimshottari, then names your mahadasha, its dates, and the janma nakshatra it was
 derived from.
 
-**Why the content is on the server.** Thirty chapters in two languages is prose,
+**Why the content is on the server.** Thirty-eight chapters in two languages is prose,
 and prose in a bundle is weight every install pays for material read a chapter at
 a time. More importantly, teaching text gets corrected far more often than code:
 a typo, a clarification, or a whole new chapter should not need an app release
@@ -664,7 +664,7 @@ Then, instead of handing that data to a fortune-teller, **Google Gemini AI** act
 
 **But the feature we're most proud of isn't astrology — it's the Crisis Safety Net.** If a user expresses self-harm, hopelessness, or despair, astrology stops immediately. No horoscope. No prediction. Instead, the app surfaces real, verified mental health helplines — **Tele-MANAS (14416)**, **AASRA**, **Women Helpline (181)**, **Emergency (112)** — because no chart reading is worth more than a human life.
 
-**Beyond readings, Enuma Sky teaches.** A 30-chapter interactive course explains authentic astrological principles using *your own chart* as the textbook — not generic sun-sign articles. A deterministic 78-card Tarot system uses cryptographic seeds (fully reproducible, zero mysticism) reframed as Situation → Obstacle → Advice, where even reversed cards carry constructive wisdom. And Ashtakoot Kundli Matching computes the traditional 36-point compatibility score — without ever labeling any match as "bad" or "doomed."
+**Beyond readings, Enuma Sky teaches.** A 38-chapter interactive course explains authentic astrological principles using *your own chart* as the textbook — not generic sun-sign articles. A deterministic 78-card Tarot system uses cryptographic seeds (fully reproducible, zero mysticism) reframed as Situation → Obstacle → Advice, where even reversed cards carry constructive wisdom. And Ashtakoot Kundli Matching computes the traditional 36-point compatibility score — without ever labeling any match as \"bad\" or \"doomed.\"
 
 **Monetization is clean and ethical**, powered by **RevenueCat**: all astronomical calculations, panchang, courses, and tarot are free forever. **Enuma Sky Pro** (Weekly / Monthly / Yearly / Lifetime) unlocks unlimited AI conversations, grounded readings, and daily reflections — validated server-side against RevenueCat's REST API so no one can game entitlements.
 
