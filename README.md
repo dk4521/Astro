@@ -3,6 +3,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-brightgreen.svg)](LICENSE)
 [![CI](https://github.com/dk4521/Astro/actions/workflows/ci.yml/badge.svg)](https://github.com/dk4521/Astro/actions/workflows/ci.yml)
 
+> **For judges** — [Play Store](https://play.google.com/store/apps/details?id=com.enumasky) · [enumasky.app](https://enumasky.app)
+
 An ethical, AI-driven reflection engine designed to disrupt the predatory $10B astrology market. Mobile-first (React Native + Expo), Python backend, Postgres/Supabase for user data, and strict server-side subscription validation via RevenueCat.
 
 **The Mission & Market:** The modern astrology industry is plagued by fear-mongering. Exploiters use "flawed charts" and "doshas" to upsell expensive, fake remedies to vulnerable users. Enuma Sky disrupts this by replacing human cold-readers with a calm, mathematically grounded AI that strictly refuses to sell fear or predict the future. The tagline is the whole product in three words: **astrology without fear.**
@@ -17,7 +19,7 @@ An ethical, AI-driven reflection engine designed to disrupt the predatory $10B a
 
 | Piece | State |
 | --- | --- |
-| Astrology engine (astronomy data, chart, dasha, panchang) | Built, 69 tests passing |
+| Astrology engine (astronomy data, chart, dasha, panchang) | Built, 78 tests passing |
 | REST API (FastAPI) | Built, running locally |
 | Mobile app (Expo, TypeScript) | Sidebar over today, chart, reading/chat, course and settings; driven end to end on an Android device |
 | Learning course | 38 chapters, English and Hindi, served from the backend |
@@ -434,6 +436,8 @@ in `test_tarot.py` makes that a loud decision rather than a quiet diff.
 Enuma Sky Pro, one entitlement, sold by the App Store and Google Play through
 RevenueCat. The split is by feature, not by count:
 
+Pro comes with a **7-day free trial** — users get the full experience before the subscription begins.
+
 | Free, and needs no account | Pro |
 | --- | --- |
 | Chart, navamsa, house lords | The opening reading |
@@ -614,10 +618,6 @@ error, so `API_NOT_CONFIGURED` in [client.ts](mobile/src/api/client.ts) detects 
 release build resolving to a loopback address and the settings screen says so
 under **API** rather than leaving someone reading timeouts.
 
-Before the first store build: turn Supabase email confirmation back on
-(see [supabase/README.md](supabase/README.md)), and run the pending
-`update own conversations` policy if that project predates the sync layer.
-
 ## Devpost Submission — RevenueCat Ship-a-ton 2026
 
 ### Inspiration
@@ -670,30 +670,15 @@ Then, instead of handing that data to a fortune-teller, **Google Gemini AI** act
 
 **In short:** Enuma Sky is the app that treats astrology as a mirror, not a verdict — backed by NASA-grade math, ethically bounded AI, and a safety net that puts human life above horoscopes.
 
-### How we built it
-
-I am a second year student at IIT Madras. I built Enuma Sky solo — every line of code, every design decision, every ethical guardrail.
-
-**The core architecture is built on one rule: math and language must never mix.**
-
-The backend is a **Python FastAPI** service hosted on **Render**. All astronomical calculations — planetary positions, Lagna, Nakshatras, Dashas, Panchang, sunrise/sunset — are computed deterministically using **NASA JPL DE440s** astronomy data files via the **Skyfield** library. This is the same data NASA uses to navigate interplanetary spacecraft. No AI touches any calculation. The math is physics, not prediction.
-
-When someone tells an astrology app "I don't want to live anymore," the worst possible response is a horoscope. I had to ensure that no prompt injection, no conversation history, and no edge case could trick the system into resuming astrology when a user is in crisis. An explicit LLM Safety Classifier runs on every user message before any astrology logic. If triggered, a short-lived session lock (1 hour) is engaged, and when triggered, Gemini's entire system prompt is overridden to respond only with empathy and real helpline numbers. Testing this across English, Hindi, and Hinglish edge cases was one of the hardest parts of the project.
-
-**4. Licensing traps in open-source astronomy.**
-
-**5. Building a subscription system that can't be cheated.**
-Early versions used a client-side credit ledger — which was trivially exploitable via request replay. I scrapped the entire system and rebuilt it with RevenueCat's server-side verification. Every AI request now checks entitlements against RevenueCat's REST API before processing. No local trust, no stored tokens, no shortcuts.
-
 ### Accomplishments that we're proud of
 
 **242 automated tests passing.** The pytest suite covers astronomical accuracy against known historical charts, grounding logic, entitlement gate enforcement, crisis detection, and reproducible tarot shuffles. Every push is tested before it can break a user's reading.
 
 **Test Suites Breakdown:**
 - **Total automated tests:** 242
-- **Astro Engine & Matching tests:** 69
-- **AI Grounding & Tarot tests:** 76
-- **Backend API & Subscriptions tests:** 97
+- **Astro Engine & Matching tests:** 78
+- **AI Grounding & Tarot tests:** 78
+- **Backend API, Cache & Subscriptions tests:** 86
 
 **The Grounded badge is visible to users.** Most AI apps hide their verification. Enuma Sky shows a ✅ Grounded badge on every verified reading — and flags it when verification fails. Users see the math behind the magic. Full transparency, no hand-waving.
 
